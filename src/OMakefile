@@ -1,0 +1,4 @@
+
+FILES[] = main
+
+OCamlProgram($(PROGRAM), $(FILES))

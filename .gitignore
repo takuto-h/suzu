@@ -3,5 +3,4 @@
 *.omc
 *.cmi
 *.cmo
-*.run
-rhea
+bin
