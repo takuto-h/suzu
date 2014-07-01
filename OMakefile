@@ -7,9 +7,12 @@ SRC = $(dir src)
 
 PROGRAM = $(BIN)/suzu
 
-.SUBDIRS: $(SRC)
+if $(not $(file-exists $(BIN)))
+    mkdir $(BIN)
 
 .DEFAULT: $(PROGRAM)
+
+.SUBDIRS: $(SRC)
 
 .PHONY: run
 run: $(PROGRAM)
