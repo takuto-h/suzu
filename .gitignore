@@ -3,4 +3,5 @@
 *.omc
 *.cmi
 *.cmo
-bin
+*.run
+suzu

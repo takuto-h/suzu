@@ -2,21 +2,16 @@
 NATIVE_ENABLED = false
 BYTE_ENABLED = true
 
-BIN = $(dir bin)
-SRC = $(dir src)
-
-PROGRAM = $(BIN)/suzu
-
-if $(not $(file-exists $(BIN)))
-    mkdir $(BIN)
+PROGRAM = suzu
+PROGRAM_FILES[] = main
 
 .DEFAULT: $(PROGRAM)
 
-.SUBDIRS: $(SRC)
+OCamlProgram($(PROGRAM), $(PROGRAM_FILES))
 
 .PHONY: run
 run: $(PROGRAM)
-    $(PROGRAM)
+    ./$(PROGRAM)
 
 .PHONY: clean
 clean:
