@@ -10,7 +10,6 @@ type t =
   | Char of char
   | Ident of string
   | Reserved of string
-  | AssignOp of string
   | OrOp of string
   | AndOp of string
   | CmpOp of string
@@ -21,7 +20,7 @@ type t =
 
 let get_op token =
   begin match token with
-    | AssignOp str | OrOp str | AndOp str | CmpOp str | AddOp str | MulOp str | PowOp str ->
+    | OrOp str | AndOp str | CmpOp str | AddOp str | MulOp str | PowOp str ->
       Some str
     | _ ->
       None
@@ -43,6 +42,6 @@ let show token =
       "character"
     | Ident _ ->
       "identifier"
-    | Reserved s | AssignOp s | OrOp s | AndOp s | CmpOp s | AddOp s | MulOp s | PowOp s ->
+    | Reserved s | OrOp s | AndOp s | CmpOp s | AddOp s | MulOp s | PowOp s ->
       sprintf "'%s'" s
   end

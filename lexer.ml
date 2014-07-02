@@ -195,7 +195,7 @@ let lex_visible_token lexer pos c =
   begin
     Source.junk lexer.source;
     begin match c with
-      | ';' | ',' | '^' | '.' | '$' ->
+      | ';' | ',' | '^' | '.' | '$' | ':' ->
         Token.Reserved (sprintf "%c" c)
       | '(' | '{' | '[' ->
         begin
@@ -267,16 +267,6 @@ let lex_visible_token lexer pos c =
               Buffer.add_char buf c;
               Token.MulOp (lex_op lexer buf)
             end
-        end
-      | ':' ->
-        begin match Source.peek lexer.source with
-          | Some '=' ->
-            begin
-              Source.junk lexer.source;
-              Token.AssignOp ":="
-            end
-          | Some _ | None ->
-            Token.Reserved ":"
         end
       | '"' ->
         let buf = Buffer.create initial_buffer_size in
