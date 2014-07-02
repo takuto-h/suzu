@@ -2,8 +2,13 @@
 NATIVE_ENABLED = false
 BYTE_ENABLED = true
 
+SUZU_FILES[] = snPervasives pos
+
 PROGRAM = suzu
-PROGRAM_FILES[] = main
+PROGRAM_FILES[] = $(SUZU_FILES) main
+
+TOP = suzutop
+TOP_FILES[] = $(addsuffix .cmo, $(SUZU_FILES))
 
 .DEFAULT: $(PROGRAM)
 
@@ -12,6 +17,13 @@ OCamlProgram($(PROGRAM), $(PROGRAM_FILES))
 .PHONY: run
 run: $(PROGRAM)
     ./$(PROGRAM)
+
+$(TOP): $(TOP_FILES)
+    $(OCAMLMKTOP) -o $(TOP) $(TOP_FILES)
+
+.PHONY: top
+top: $(TOP)
+    ./$(TOP)
 
 .PHONY: clean
 clean:
