@@ -4,7 +4,7 @@ let with_open_in fname_in func =
   begin try
     let x = func chan_in in
     begin
-      (close_in chan_in);
+      close_in chan_in;
       x
     end
   with
