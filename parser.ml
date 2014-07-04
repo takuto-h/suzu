@@ -7,6 +7,11 @@ type t = {
   mutable pos : Pos.t;
 }
 
+type sep_or_term = 
+  | Sep
+  | Term
+  | Neither
+
 let create lexer = {
   lexer = lexer;
   token = Token.EOF;
@@ -42,6 +47,44 @@ let parse_token parser token =
     failwith (expected parser (Token.show token))
   else
      lookahead parser
+  end
+
+let parse_elems parser sep_or_term parse_elem =
+  let rec loop elems =
+    begin match sep_or_term parser.token with
+      | Term ->
+        begin
+          lookahead parser;
+          List.rev elems
+        end
+      | _ ->
+        let elem = parse_elem parser in
+        begin match sep_or_term parser.token with
+          | Term ->
+            begin
+              lookahead parser;
+              List.rev (elem::elems)
+            end
+          | Sep ->
+            begin
+              lookahead parser;
+              loop (elem::elems)
+            end
+          | Neither ->
+            failwith (expected parser "separator or terminator")
+        end
+    end
+  in
+  loop []
+
+let comma_or_rparen token =
+  begin match token with
+    | Token.Reserved "," ->
+      Sep
+    | Token.Reserved ")" ->
+      Term
+    | _ ->
+      Neither
   end
 
 let parse_literal parser =
@@ -86,18 +129,14 @@ let parse_ident parser =
       failwith (expected parser "identifier")
   end
 
-let rec parse_parens parser pos =
-  if parser.token = Token.Reserved ")" then
-    begin
-      lookahead parser;
-      Expr.at pos (Expr.Con Literal.Unit)
-    end
-  else
-    let expr = parse_expr parser in
-    begin
-      parse_token parser (Token.Reserved ")");
-      expr
-    end
+let parse_params parser =
+  begin
+    parse_token parser (Token.Reserved "(");
+    parse_elems parser comma_or_rparen parse_ident
+  end
+
+let rec parse_expr parser =
+  parse_atomic_expr parser
 
 and parse_atomic_expr parser =
   let pos = parser.pos in
@@ -112,12 +151,63 @@ and parse_atomic_expr parser =
         lookahead parser;
         parse_parens parser pos
       end
+    | Token.Reserved "^" ->
+      begin
+        lookahead parser;
+        parse_abs parser pos
+      end
     | _ ->
       (failwith ((expected parser) "expression"))
   end
 
-and parse_expr parser =
-  parse_atomic_expr parser
+and parse_parens parser pos =
+  if parser.token = Token.Reserved ")" then
+    begin
+      lookahead parser;
+      Expr.at pos (Expr.Con Literal.Unit)
+    end
+  else
+    let expr = parse_expr parser in
+    begin
+      parse_token parser (Token.Reserved ")");
+      expr
+    end
+
+and parse_abs parser pos =
+  let params = parse_params parser in
+  let body = parse_block parser in
+  Expr.at pos (Expr.Abs (params, body))
+
+and parse_block parser =
+  begin match parser.token with
+    | Token.Reserved ":" ->
+      begin
+        Lexer.indent parser.lexer;
+        lookahead parser;
+        parse_indented_block parser
+      end
+    | Token.Reserved "{" ->
+      begin
+        lookahead parser;
+        parse_braced_block parser
+      end
+    | _ ->
+      failwith (expected parser "':' or '{'")
+  end
+
+and parse_indented_block parser =
+  let expr = parse_expr parser in
+  begin
+    parse_token parser Token.Undent;
+    expr
+  end
+
+and parse_braced_block parser =
+  let expr = parse_expr parser in
+  begin
+    parse_token parser (Token.Reserved "}");
+    expr
+  end
 
 let parse_stmt parser =
   let expr = parse_expr parser in
