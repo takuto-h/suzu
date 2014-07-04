@@ -1,7 +1,7 @@
 
 open Printf
 
-let initial_buffer_size = 256
+let initial_buffer_size = 64
 
 let eval str =
   let source = Source.of_string "<stdin>" str in
