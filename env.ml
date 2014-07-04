@@ -8,7 +8,7 @@ type t =
 let initial_global_table_size = 16
 let initial_local_table_size = 4
 
-let create_global = Global (Hashtbl.create initial_global_table_size)
+let create_global () = Global (Hashtbl.create initial_global_table_size)
 let create_local outer = Local (Hashtbl.create initial_local_table_size, outer)
 
 let rec find env x =

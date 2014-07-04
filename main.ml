@@ -3,7 +3,7 @@ open Printf
 
 let initial_buffer_size = 64
 
-let eval str =
+let eval eva str =
   let source = Source.of_string "<stdin>" str in
   let lexer = Lexer.create source in
   let parser = Parser.create lexer in
@@ -14,7 +14,7 @@ let eval str =
           ()
         | Some expr ->
           begin
-            printf "%s\n" (Value.show (Eva.eval expr));
+            printf "%s\n" (Value.show (Eva.eval eva expr));
             loop ()
           end
       end
@@ -56,17 +56,17 @@ let read () =
     line
   end
 
-let rec repl () =
+let rec repl eva =
   begin try
     begin
       printf ">>> ";
       let str = read () in
-      eval str;
-      repl ()
+      eval eva str;
+      repl eva
     end
   with
     | End_of_file ->
       ()
   end
 
-let () = repl ()
+let () = repl (Eva.create ())

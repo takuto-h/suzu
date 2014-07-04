@@ -1,4 +1,14 @@
 
+open Printf
+
+type t = {
+  env : Env.t;
+}
+
+let create () = {
+  env = Env.create_global ();
+}
+
 let value_of_literal lit =
   begin match lit with
     | Literal.Unit ->
@@ -13,12 +23,17 @@ let value_of_literal lit =
       Value.Bool b
   end
 
-let rec eval expr =
-  begin match expr.Expr.raw with
+let rec eval eva {Expr.pos;Expr.raw;} =
+  begin match raw with
     | Expr.Con lit ->
       value_of_literal lit
     | Expr.Var x ->
-      Value.Unit
+      begin try
+        Env.find eva.env x
+      with
+        | Not_found ->
+          failwith (Pos.show_error pos (sprintf "unbound variable: %s\n" x))
+      end
     | Expr.Abs (params, body) ->
       Value.Unit
     | Expr.App (func, args) ->

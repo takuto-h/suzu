@@ -75,8 +75,49 @@ let parse_literal parser =
       failwith (expected parser "literal")
   end
 
-let parse_expr parser =
-  Expr.at parser.pos (Expr.Con (parse_literal parser))
+let parse_ident parser =
+  begin match parser.token with
+    | Token.Ident str ->
+      begin
+        lookahead parser;
+        str
+      end
+    | _ ->
+      failwith (expected parser "identifier")
+  end
+
+let rec parse_parens parser pos =
+  if parser.token = Token.Reserved ")" then
+    begin
+      lookahead parser;
+      Expr.at pos (Expr.Con Literal.Unit)
+    end
+  else
+    let expr = parse_expr parser in
+    begin
+      parse_token parser (Token.Reserved ")");
+      expr
+    end
+
+and parse_atomic_expr parser =
+  let pos = parser.pos in
+  begin match parser.token with
+    | Token.Int _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
+      let lit = parse_literal parser in
+      Expr.at pos (Expr.Con lit)
+    | Token.Ident _ ->
+      Expr.at pos (Expr.Var (parse_ident parser))
+    | Token.Reserved "(" ->
+      begin
+        lookahead parser;
+        parse_parens parser pos
+      end
+    | _ ->
+      (failwith ((expected parser) "expression"))
+  end
+
+and parse_expr parser =
+  parse_atomic_expr parser
 
 let parse_stmt parser =
   let expr = parse_expr parser in
