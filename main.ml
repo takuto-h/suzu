@@ -29,22 +29,38 @@ let eval str =
       end
   end
 
-let rec read buf =
+let rec read_multiple_lines buf =
+  begin
+    printf "... ";
+    let line = read_line () in
+    begin if line = "" then
+      Buffer.contents buf
+    else
+      begin
+        Buffer.add_string buf (sprintf "%s\n" line);
+        read_multiple_lines buf
+      end
+    end
+  end
+
+let read () =
   let line = read_line () in
-  if line = "" then
-    Buffer.contents buf
-  else
+  let len = String.length line in
+  begin if len <> 0 && (line.[len - 1] = ':' || line.[len - 1] = '{') then
+    let buf = Buffer.create initial_buffer_size in
     begin
       Buffer.add_string buf (sprintf "%s\n" line);
-      printf "... ";
-      read buf
+      read_multiple_lines buf
     end
+  else
+    line
+  end
 
 let rec repl () =
   begin try
     begin
       printf ">>> ";
-      let str = read (Buffer.create initial_buffer_size) in
+      let str = read () in
       eval str;
       repl ()
     end
