@@ -2,10 +2,12 @@
 NATIVE_ENABLED = false
 BYTE_ENABLED = true
 
-SUZU_FILES[] = snPervasives pos source token lexer literal expr
+SUZU_FILES[] = snPervasives snString pos source token lexer literal expr parser
 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES) main
+
+OCAMLCFLAGS += -annot
 
 TOP = suzutop
 TOP_FILES[] = $(addsuffix .cmo, $(SUZU_FILES))

@@ -22,6 +22,8 @@ let make fname lnum cnum bol source = {
   source = source;
 }
 
+let dummy = make "<dummy>" 1 0 0 (String "<dummy>")
+
 let show {fname;lnum;cnum;bol;} =
   let offset = cnum - bol in
   sprintf "%s:%d:%d" fname lnum offset

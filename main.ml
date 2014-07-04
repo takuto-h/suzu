@@ -3,6 +3,32 @@ open Printf
 
 let initial_buffer_size = 256
 
+let parse str =
+  let source = Source.of_string "<stdin>" str in
+  let lexer = Lexer.create source in
+  let parser = Parser.create lexer in
+  begin try
+    let rec loop () =
+      begin match Parser.parse parser with
+        | None ->
+          ()
+        | Some expr ->
+          begin
+            printf "%s\n" (Expr.show expr);
+            loop ()
+          end
+      end
+    in
+    loop ()
+  with
+    | Failure message ->
+      begin
+        eprintf "%s" message;
+        flush stderr;
+        ()
+      end
+  end
+
 let rec read buf =
   let line = read_line () in
   if line = "" then
@@ -19,7 +45,7 @@ let rec loop () =
     begin
       printf ">>> ";
       let str = read (Buffer.create initial_buffer_size) in
-      printf "%s\n" str;
+      parse str;
       loop ()
     end
   with
