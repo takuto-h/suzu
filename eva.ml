@@ -1,12 +1,16 @@
 
 open Printf
 
+module Env = Value.Env
+
 type t = {
   env : Env.t;
+  dummy : unit;
 }
 
 let create () = {
   env = Env.create_global ();
+  dummy = ();
 }
 
 let value_of_literal lit =
@@ -35,7 +39,30 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           failwith (Pos.show_error pos (sprintf "unbound variable: %s\n" x))
       end
     | Expr.Abs (params, body) ->
-      Value.Unit
+      Value.Closure (eva.env, params, body)
     | Expr.App (func, args) ->
-      Value.Unit
+      let func = eval eva func in
+      let args = List.map (eval eva) args in
+      apply eva pos func args
+  end
+
+and apply eva pos func args =
+  begin match func with
+    | Value.Closure (env, params, body) ->
+      let env = Env.create_local env in
+      let eva = { eva with env = env } in
+      begin try
+        begin
+          List.iter2 (Env.add env) params args;
+          eval eva body
+        end
+      with
+        | Invalid_argument _ ->
+          let req_num = List.length params in
+          let got_num = List.length args in
+          let message = sprintf "wrong number of arguments: required %d, but got %d\n" req_num got_num in
+          failwith (Pos.show_error pos message)
+      end
+    | _ ->
+      failwith (Pos.show_error pos "lhs is not a function; it cannot be applied.\n")
   end
