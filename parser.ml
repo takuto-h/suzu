@@ -245,7 +245,7 @@ and parse_atomic_expr parser =
       let lit = parse_literal parser in
       Expr.at pos (Expr.Con lit)
     | Token.Ident _ ->
-      Expr.at pos (Expr.Var (parse_ident parser))
+      Expr.at pos (Expr.Get (Expr.Var (parse_ident parser)))
     | Token.Reserved "(" ->
       begin
         lookahead parser;

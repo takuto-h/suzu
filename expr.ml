@@ -8,12 +8,16 @@ type t = {
 
 and raw = 
   | Con of Literal.t
-  | Var of string
+  | Get of get
   | Abs of string list * t
   | App of t * t list
   | Block of t list
   | Def of string * t
   | MethodCall of t * string * t list
+
+and get =
+  | Var of string
+  | Method of t * string
 
 let at pos raw = {
   pos = pos;
@@ -24,8 +28,10 @@ let rec show {raw} =
   begin match raw with
     | Con lit ->
       sprintf "(Con %s)" (Literal.show lit)
-    | Var x ->
-      sprintf "(Var %s)" x
+    | Get (Var x) ->
+      sprintf "(Get (Var %s))" x
+    | Get (Method (klass, sel)) ->
+      sprintf "(Get (Method %s %s))" (show klass) sel
     | Abs (params, body) ->
       sprintf "(Abs (%s) %s)" (SnString.concat " " params) (show body)
     | App (func, args) ->

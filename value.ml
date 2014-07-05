@@ -7,7 +7,8 @@ type t =
   | String of string
   | Char of char
   | Bool of bool
-  | Closure of env * string list * Expr.t 
+  | Closure of env * string list * Expr.t
+  | Class of string
 
 and env =
   | Global of frame
@@ -21,17 +22,19 @@ and frame = {
 let class_of value =
   begin match value with
     | Unit ->
-      "Unit"
+      "Unit:C"
     | Int _ ->
-      "Int"
+      "Int:C"
     | String _ ->
-      "String"
+      "String:C"
     | Char _ ->
-      "Char"
+      "Char:C"
     | Bool _ ->
-      "Bool"
+      "Bool:C"
     | Closure (_,  _, _) ->
-      "Closure"
+      "Closure:C"
+    | Class _ ->
+      "Class:C"
   end
 
 let show value =
@@ -48,6 +51,8 @@ let show value =
       sprintf "%B" b
     | Closure (_,  _, _) ->
       "<closure>"
+    | Class klass ->
+      sprintf "<class %s>" klass
   end
 
 module Frame = struct

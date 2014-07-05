@@ -5,8 +5,8 @@ type t = {
   source : Source.t;
   parens : string Stack.t;
   offside_lines : int Stack.t;
-  mutable is_bol : bool;
-  mutable is_bob : bool;
+  mutable is_bol : bool;  (* beginning of line *)
+  mutable is_bob : bool;  (* beginning of block *)
 }
 
 let initial_buffer_size = 16
@@ -29,8 +29,8 @@ let create source = {
   source = source;
   parens = Stack.create ();
   offside_lines = Stack.create ();
-  is_bol = true;  (* beginning of line *)
-  is_bob = true;  (* beginning of block *)
+  is_bol = true;
+  is_bob = true;
 }
 
 let indent lexer =

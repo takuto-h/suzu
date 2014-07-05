@@ -31,12 +31,25 @@ let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Con lit ->
       value_of_literal lit
-    | Expr.Var x ->
+    | Expr.Get (Expr.Var x) ->
       begin try
         Env.find_var eva.env x
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "undefined variable: %s\n" x))
+          failwith (Pos.show_error pos (sprintf "variable not found: %s\n" x))
+      end
+    | Expr.Get (Expr.Method (klass, sel)) ->
+      let klass = eval eva klass in
+      begin match klass with
+        | Value.Class klass ->
+          begin try
+            Env.find_method eva.env klass sel
+          with
+            | Not_found ->
+              failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass sel))
+          end
+        | _ ->
+          failwith (Pos.show_error pos (sprintf "class required, but got: %s\n" (Value.show klass)))
       end
     | Expr.Abs (params, body) ->
       Value.Closure (eva.env, params, body)
@@ -63,7 +76,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         apply eva pos meth args
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "undefined method: %s#%s\n" klass sel))
+          failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass sel))
       end
   end
 
@@ -85,5 +98,5 @@ and apply eva pos func args =
           failwith (Pos.show_error pos message)
       end
     | _ ->
-      failwith (Pos.show_error pos "lhs is not a function; it cannot be applied.\n")
+      failwith (Pos.show_error pos (sprintf "function required, but got: %s\n" (Value.show func)))
   end
