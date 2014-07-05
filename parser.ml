@@ -219,11 +219,11 @@ and parse_dot_expr parser =
   loop expr
 
 and parse_prim_expr parser =
-  let expr = parse_atomic_expr parser in
+  let expr = parse_sharp_expr parser in
   let rec loop func =
-    let pos = parser.pos in
     begin match parser.token with
       | Token.Reserved "(" ->
+        let pos = parser.pos in
         begin
           lookahead parser;
           let args = parse_args parser in
@@ -237,6 +237,20 @@ and parse_prim_expr parser =
 
 and parse_args parser =
   parse_elems parser comma_or_rparen parse_expr
+
+and parse_sharp_expr parser =
+  let expr = parse_atomic_expr parser in
+  begin match parser.token with
+    | Token.Reserved "#" ->
+      let pos = parser.pos in
+      begin
+        lookahead parser;
+        let sel = parse_ident parser in
+        Expr.at pos (Expr.Get (Expr.Method (expr, sel)))
+      end
+    | _ ->
+      expr
+  end
 
 and parse_atomic_expr parser =
   let pos = parser.pos in

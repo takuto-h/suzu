@@ -195,7 +195,7 @@ let lex_visible_token lexer pos c =
   begin
     Source.junk lexer.source;
     begin match c with
-      | ';' | ',' | '^' | '.' | '$' | ':' ->
+      | ';' | ',' | '^' | '.' | ':' | '#' ->
         Token.Reserved (sprintf "%c" c)
       | '(' | '{' | '[' ->
         begin
