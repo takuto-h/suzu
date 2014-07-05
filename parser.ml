@@ -189,25 +189,54 @@ and parse_def_expr parser =
         Expr.at pos (Expr.Def (ident, expr))
       end
     | _ ->
-      parse_prim_expr parser
+      parse_dot_expr parser
   end
 
+and parse_dot_expr parser =
+  let expr = parse_prim_expr parser in
+  let rec loop recv =
+    begin match parser.token with
+      | Token.Reserved "." ->
+        let pos = parser.pos in
+        begin
+          lookahead parser;
+          let sel = parse_ident parser in
+          begin match parser.token with
+            | Token.Reserved "(" ->
+              begin
+                lookahead parser;
+                let args = parse_args parser in
+                loop (Expr.at pos (Expr.MethodCall (recv, sel, args)))
+              end
+            | _ ->
+              Expr.at pos (Expr.MethodCall (recv, sel, []))
+          end
+        end
+      | _ ->
+        recv
+    end
+  in
+  loop expr
+
 and parse_prim_expr parser =
-  let fun_expr = parse_atomic_expr parser in
-  let rec loop fun_expr =
+  let expr = parse_atomic_expr parser in
+  let rec loop func =
     let pos = parser.pos in
     begin match parser.token with
       | Token.Reserved "(" ->
         begin
           lookahead parser;
-          let arg_exprs = parse_elems parser comma_or_rparen parse_expr in
-          loop (Expr.at pos (Expr.App (fun_expr, arg_exprs)))
+          let args = parse_args parser in
+          loop (Expr.at pos (Expr.App (func, args)))
         end
       | _ ->
-        fun_expr
+        func
     end
   in
-  loop fun_expr
+  loop expr
+
+and parse_args parser =
+  parse_elems parser comma_or_rparen parse_expr
 
 and parse_atomic_expr parser =
   let pos = parser.pos in
