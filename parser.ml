@@ -136,7 +136,24 @@ let parse_params parser =
   end
 
 let rec parse_expr parser =
-  parse_atomic_expr parser
+  parse_prim_expr parser
+
+and parse_prim_expr parser =
+  let fun_expr = parse_atomic_expr parser in
+  let rec loop fun_expr =
+    let pos = parser.pos in
+    begin match parser.token with
+      | Token.Reserved "(" ->
+        begin
+          lookahead parser;
+          let arg_exprs = parse_elems parser comma_or_rparen parse_expr in
+          loop (Expr.at pos (Expr.App (fun_expr, arg_exprs)))
+        end
+      | _ ->
+        fun_expr
+    end
+  in
+  loop fun_expr
 
 and parse_atomic_expr parser =
   let pos = parser.pos in
@@ -157,7 +174,7 @@ and parse_atomic_expr parser =
         parse_abs parser pos
       end
     | _ ->
-      (failwith ((expected parser) "expression"))
+      failwith (expected parser "expression")
   end
 
 and parse_parens parser pos =
