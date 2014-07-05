@@ -87,6 +87,45 @@ let comma_or_rparen token =
       Neither
   end
 
+let semi_or_newline_or_undent token =
+  begin match token with
+    | Token.Reserved ";" ->
+      Sep
+    | Token.Newline ->
+      Sep
+    | Token.Undent ->
+      Term
+    | _ ->
+      Neither
+  end
+
+let semi_or_rbrace token =
+  begin match token with
+    | Token.Reserved ";" ->
+      Sep
+    | Token.Reserved "}" ->
+      Term
+    | _ ->
+      Neither
+  end
+
+let parse_block_like_elems parser parse_elem =
+  begin match parser.token with
+    | Token.Reserved ":" ->
+      begin
+        Lexer.indent parser.lexer;
+        lookahead parser;
+        parse_elems parser semi_or_newline_or_undent parse_elem
+      end
+    | Token.Reserved "{" ->
+      begin
+        lookahead parser;
+        parse_elems parser semi_or_rbrace parse_elem
+      end
+    | _ ->
+      failwith (expected parser "':' or '{'")
+  end
+
 let parse_literal parser =
   begin match parser.token with
     | Token.Int n ->
@@ -196,35 +235,9 @@ and parse_abs parser pos =
   Expr.at pos (Expr.Abs (params, body))
 
 and parse_block parser =
-  begin match parser.token with
-    | Token.Reserved ":" ->
-      begin
-        Lexer.indent parser.lexer;
-        lookahead parser;
-        parse_indented_block parser
-      end
-    | Token.Reserved "{" ->
-      begin
-        lookahead parser;
-        parse_braced_block parser
-      end
-    | _ ->
-      failwith (expected parser "':' or '{'")
-  end
-
-and parse_indented_block parser =
-  let expr = parse_expr parser in
-  begin
-    parse_token parser Token.Undent;
-    expr
-  end
-
-and parse_braced_block parser =
-  let expr = parse_expr parser in
-  begin
-    parse_token parser (Token.Reserved "}");
-    expr
-  end
+  let pos = parser.pos in
+  let exprs = parse_block_like_elems parser parse_expr in
+  Expr.at pos (Expr.Block exprs)
 
 let parse_stmt parser =
   let expr = parse_expr parser in

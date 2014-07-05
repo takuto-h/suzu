@@ -44,6 +44,10 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       let func = eval eva func in
       let args = List.map (eval eva) args in
       apply eva pos func args
+    | Expr.Block exprs ->
+      List.fold_left begin fun _ elem ->
+        eval eva elem
+      end Value.Unit exprs
   end
 
 and apply eva pos func args =
