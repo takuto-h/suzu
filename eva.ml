@@ -33,10 +33,10 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       value_of_literal lit
     | Expr.Var x ->
       begin try
-        Env.find eva.env x
+        Env.find_var eva.env x
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "unbound variable: %s\n" x))
+          failwith (Pos.show_error pos (sprintf "undefined variable: %s\n" x))
       end
     | Expr.Abs (params, body) ->
       Value.Closure (eva.env, params, body)
@@ -51,8 +51,19 @@ let rec eval eva {Expr.pos;Expr.raw;} =
     | Expr.Def (x, expr) ->
       let value = eval eva expr in
       begin
-        Env.add eva.env x value;
+        Env.add_var eva.env x value;
         value
+      end
+    | Expr.MethodCall (recv, sel, args) ->
+      let recv = eval eva recv in
+      let klass = Value.class_of recv in
+      begin try
+        let meth = Env.find_method eva.env klass sel in
+        let args = List.map (eval eva) args in
+        apply eva pos meth args
+      with
+        | Not_found ->
+          failwith (Pos.show_error pos (sprintf "undefined method: %s#%s\n" klass sel))
       end
   end
 
@@ -63,7 +74,7 @@ and apply eva pos func args =
       let eva = { eva with env = env } in
       begin try
         begin
-          List.iter2 (Env.add env) params args;
+          List.iter2 (Env.add_var env) params args;
           eval eva body
         end
       with

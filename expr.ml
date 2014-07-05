@@ -13,6 +13,7 @@ and raw =
   | App of t * t list
   | Block of t list
   | Def of string * t
+  | MethodCall of t * string * t list
 
 let at pos raw = {
   pos = pos;
@@ -33,4 +34,6 @@ let rec show {raw} =
       sprintf "(Block %s)" (SnString.concat_map " " show exprs)
     | Def (x, expr) ->
       sprintf "(Def %s %s)" x (show expr)
+    | MethodCall (recv, sel, args) ->
+      sprintf "(MethodCall %s %s (%s))" (show recv) sel (SnString.concat_map " " show args)
   end
