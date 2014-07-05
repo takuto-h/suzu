@@ -12,6 +12,7 @@ and raw =
   | Abs of string list * t
   | App of t * t list
   | Block of t list
+  | Def of string * t
 
 let at pos raw = {
   pos = pos;
@@ -30,4 +31,6 @@ let rec show {raw} =
       sprintf "(App %s (%s))" (show func) (SnString.concat_map " " show args)
     | Block exprs ->
       sprintf "(Block %s)" (SnString.concat_map " " show exprs)
+    | Def (x, expr) ->
+      sprintf "(Def %s %s)" x (show expr)
   end

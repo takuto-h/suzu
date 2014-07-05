@@ -175,7 +175,22 @@ let parse_params parser =
   end
 
 let rec parse_expr parser =
-  parse_prim_expr parser
+  parse_def_expr parser
+
+and parse_def_expr parser =
+  begin match parser.token with
+    | Token.Reserved "def" ->
+      let pos = parser.pos in
+      begin
+        lookahead parser;
+        let ident = parse_ident parser in
+        parse_token parser (Token.CmpOp "=");
+        let expr = parse_expr parser in
+        Expr.at pos (Expr.Def (ident, expr))
+      end
+    | _ ->
+      parse_prim_expr parser
+  end
 
 and parse_prim_expr parser =
   let fun_expr = parse_atomic_expr parser in

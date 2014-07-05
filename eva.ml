@@ -48,6 +48,12 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       List.fold_left begin fun _ elem ->
         eval eva elem
       end Value.Unit exprs
+    | Expr.Def (x, expr) ->
+      let value = eval eva expr in
+      begin
+        Env.add eva.env x value;
+        value
+      end
   end
 
 and apply eva pos func args =
