@@ -17,7 +17,7 @@ and raw =
 
 and get =
   | Var of string
-  | Method of t * string
+  | Method of string * string
 
 let at pos raw = {
   pos = pos;
@@ -31,7 +31,7 @@ let rec show {raw} =
     | Get (Var x) ->
       sprintf "(Get (Var %s))" x
     | Get (Method (klass, sel)) ->
-      sprintf "(Get (Method %s %s))" (show klass) sel
+      sprintf "(Get (Method %s %s))" klass sel
     | Lambda (params, body) ->
       sprintf "(Lambda (%s) %s)" (SnString.concat " " params) (show body)
     | FunCall (func, args) ->
