@@ -29,7 +29,7 @@ let value_of_literal lit =
 
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
-    | Expr.Con lit ->
+    | Expr.Const lit ->
       value_of_literal lit
     | Expr.Get (Expr.Var x) ->
       begin try
@@ -51,17 +51,17 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | _ ->
           failwith (Pos.show_error pos (sprintf "class required, but got: %s\n" (Value.show klass)))
       end
-    | Expr.Abs (params, body) ->
+    | Expr.Lambda (params, body) ->
       Value.Closure (eva.env, params, body)
-    | Expr.App (func, args) ->
+    | Expr.FunCall (func, args) ->
       let func = eval eva func in
       let args = List.map (eval eva) args in
-      apply eva pos func args
+      funcall eva pos func args
     | Expr.Block exprs ->
       List.fold_left begin fun _ elem ->
         eval eva elem
       end Value.Unit exprs
-    | Expr.Def (x, expr) ->
+    | Expr.Define (x, expr) ->
       let value = eval eva expr in
       begin
         Env.add_var eva.env x value;
@@ -73,14 +73,14 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       begin try
         let meth = Env.find_method eva.env klass sel in
         let args = List.map (eval eva) args in
-        apply eva pos meth args
+        funcall eva pos meth args
       with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass sel))
       end
   end
 
-and apply eva pos func args =
+and funcall eva pos func args =
   begin match func with
     | Value.Closure (env, params, body) ->
       let env = Env.create_local env in

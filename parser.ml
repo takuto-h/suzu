@@ -186,7 +186,7 @@ and parse_def_expr parser =
         let ident = parse_ident parser in
         parse_token parser (Token.CmpOp "=");
         let expr = parse_expr parser in
-        Expr.at pos (Expr.Def (ident, expr))
+        Expr.at pos (Expr.Define (ident, expr))
       end
     | _ ->
       parse_dot_expr parser
@@ -227,7 +227,7 @@ and parse_prim_expr parser =
         begin
           lookahead parser;
           let args = parse_args parser in
-          loop (Expr.at pos (Expr.App (func, args)))
+          loop (Expr.at pos (Expr.FunCall (func, args)))
         end
       | _ ->
         func
@@ -243,7 +243,7 @@ and parse_atomic_expr parser =
   begin match parser.token with
     | Token.Int _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
       let lit = parse_literal parser in
-      Expr.at pos (Expr.Con lit)
+      Expr.at pos (Expr.Const lit)
     | Token.Ident _ ->
       Expr.at pos (Expr.Get (Expr.Var (parse_ident parser)))
     | Token.Reserved "(" ->
@@ -254,7 +254,7 @@ and parse_atomic_expr parser =
     | Token.Reserved "^" ->
       begin
         lookahead parser;
-        parse_abs parser pos
+        parse_lambda parser pos
       end
     | _ ->
       failwith (expected parser "expression")
@@ -264,7 +264,7 @@ and parse_parens parser pos =
   if parser.token = Token.Reserved ")" then
     begin
       lookahead parser;
-      Expr.at pos (Expr.Con Literal.Unit)
+      Expr.at pos (Expr.Const Literal.Unit)
     end
   else
     let expr = parse_expr parser in
@@ -273,10 +273,10 @@ and parse_parens parser pos =
       expr
     end
 
-and parse_abs parser pos =
+and parse_lambda parser pos =
   let params = parse_params parser in
   let body = parse_block parser in
-  Expr.at pos (Expr.Abs (params, body))
+  Expr.at pos (Expr.Lambda (params, body))
 
 and parse_block parser =
   let pos = parser.pos in

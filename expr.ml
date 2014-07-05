@@ -7,12 +7,12 @@ type t = {
 }
 
 and raw = 
-  | Con of Literal.t
+  | Const of Literal.t
   | Get of get
-  | Abs of string list * t
-  | App of t * t list
+  | Lambda of string list * t
+  | FunCall of t * t list
   | Block of t list
-  | Def of string * t
+  | Define of string * t
   | MethodCall of t * string * t list
 
 and get =
@@ -26,20 +26,20 @@ let at pos raw = {
 
 let rec show {raw} =
   begin match raw with
-    | Con lit ->
-      sprintf "(Con %s)" (Literal.show lit)
+    | Const lit ->
+      sprintf "(Const %s)" (Literal.show lit)
     | Get (Var x) ->
       sprintf "(Get (Var %s))" x
     | Get (Method (klass, sel)) ->
       sprintf "(Get (Method %s %s))" (show klass) sel
-    | Abs (params, body) ->
-      sprintf "(Abs (%s) %s)" (SnString.concat " " params) (show body)
-    | App (func, args) ->
-      sprintf "(App %s (%s))" (show func) (SnString.concat_map " " show args)
+    | Lambda (params, body) ->
+      sprintf "(Lambda (%s) %s)" (SnString.concat " " params) (show body)
+    | FunCall (func, args) ->
+      sprintf "(FunCall %s (%s))" (show func) (SnString.concat_map " " show args)
     | Block exprs ->
       sprintf "(Block %s)" (SnString.concat_map " " show exprs)
-    | Def (x, expr) ->
-      sprintf "(Def %s %s)" x (show expr)
+    | Define (x, expr) ->
+      sprintf "(Define %s %s)" x (show expr)
     | MethodCall (recv, sel, args) ->
       sprintf "(MethodCall %s %s (%s))" (show recv) sel (SnString.concat_map " " show args)
   end
