@@ -270,7 +270,7 @@ and parse_get_expr parser pos ident =
       begin
         lookahead parser;
         let sel = parse_ident parser in
-        Expr.at pos (Expr.Get (Expr.Method (ident, sel)))
+        Expr.at pos (Expr.Get (Expr.Method ([], ident, sel)))
       end
     | _ ->
       Expr.at pos (Expr.Get (Expr.Var ident))
