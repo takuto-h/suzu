@@ -9,6 +9,7 @@ type t =
   | Bool of bool
   | Closure of env * string list * Expr.t
   | Class of string
+  | Module of env
 
 and env =
   | Global of frame
@@ -35,6 +36,8 @@ let class_of value =
       "Closure:C"
     | Class _ ->
       "Class:C"
+    | Module _ ->
+      "Module:C"
   end
 
 let show value =
@@ -53,6 +56,8 @@ let show value =
       "<closure>"
     | Class klass ->
       sprintf "<class %s>" klass
+    | Module _ ->
+      "<module>"
   end
 
 module Frame = struct
@@ -79,7 +84,7 @@ module Env = struct
   let create_global () = Global (Frame.create initial_global_table_size)
   let create_local outer = Local (Frame.create initial_local_table_size, outer)
     
-  let rec find env proc =
+  let rec find_name proc env =
     begin match env with
       | Global frame ->
         proc frame 
@@ -88,11 +93,25 @@ module Env = struct
           proc frame
         with
           | Not_found ->
-            find outer proc
+            find_name proc outer
         end
     end
 
-  let add env proc =
+  let rec find_path proc env mods =
+    begin match mods with
+      | [] ->
+        find_name proc env
+      | modl::mods ->
+        let modl = find_name (fun frame -> Frame.find_var frame modl) env in
+        begin match modl with
+          | Module modl ->
+            find_path proc modl mods
+          | _ ->
+            raise Not_found
+        end
+    end
+
+  let add_name proc env =
     begin match env with
       | Global frame ->
         proc frame
@@ -100,9 +119,15 @@ module Env = struct
         proc frame
     end
 
-  let find_var env x = find env (fun frame -> Frame.find_var frame x)
-  let add_var env x v = add env (fun frame -> Frame.add_var frame x v)    
+  let rec find_var env mods x =
+    find_path (fun frame -> Frame.find_var frame x) env mods
 
-  let find_method env klass sel = find env (fun frame -> Frame.find_method frame klass sel)
-  let add_method env klass sel meth = find env (fun frame -> Frame.add_method frame klass sel meth)
+  let add_var env x v =
+    add_name (fun frame -> Frame.add_var frame x v) env
+
+  let find_method env mods klass sel =
+    find_path (fun frame -> Frame.find_method frame klass sel) env mods
+
+  let add_method env klass sel meth =
+    add_name (fun frame -> Frame.add_method frame klass sel meth) env
 end

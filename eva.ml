@@ -33,14 +33,14 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       value_of_literal lit
     | Expr.Get (Expr.Var x) ->
       begin try
-        Env.find_var eva.env x
+        Env.find_var eva.env [] x
       with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "variable not found: %s\n" x))
       end
     | Expr.Get (Expr.Method (klass, sel)) ->
       begin try
-        Env.find_method eva.env klass sel
+        Env.find_method eva.env [] klass sel
       with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass sel))
@@ -65,7 +65,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       let recv = eval eva recv in
       let klass = Value.class_of recv in
       begin try
-        let meth = Env.find_method eva.env klass sel in
+        let meth = Env.find_method eva.env [] klass sel in
         let args = List.map (eval eva) args in
         funcall eva pos meth args
       with
