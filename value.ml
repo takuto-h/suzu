@@ -20,6 +20,8 @@ and frame = {
   method_table : (string * string, t) Hashtbl.t;
 }
 
+type value = t
+
 let class_of value =
   begin match value with
     | Unit ->
@@ -78,6 +80,9 @@ end
 module Env = struct
   type t = env
 
+  exception Module_not_found of string
+  exception Not_a_module of string * value
+
   let initial_global_table_size = 16
   let initial_local_table_size = 4
     
@@ -101,13 +106,19 @@ module Env = struct
     begin match mods with
       | [] ->
         find_name proc env
-      | modl::mods ->
-        let modl = find_name (fun frame -> Frame.find_var frame modl) env in
+      | mod_name::mods ->
+        let modl = begin try
+          find_name (fun frame -> Frame.find_var frame mod_name) env
+        with
+          | Not_found ->
+            raise (Module_not_found mod_name)
+        end
+        in
         begin match modl with
           | Module modl ->
             find_path proc modl mods
           | _ ->
-            raise Not_found
+            raise (Not_a_module (mod_name, modl))
         end
     end
 

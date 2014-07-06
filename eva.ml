@@ -1,15 +1,13 @@
 
 open Printf
 
-module Env = Value.Env
-
 type t = {
-  env : Env.t;
+  env : Value.Env.t;
   dummy : unit;
 }
 
 let create () = {
-  env = Env.create_global ();
+  env = Value.Env.create_global ();
   dummy = ();
 }
 
@@ -27,20 +25,40 @@ let value_of_literal lit =
       Value.Bool b
   end
 
+let find_var env pos mods x =
+  begin try
+    Value.Env.find_var env mods x
+  with
+    | Value.Env.Module_not_found mod_name ->
+      failwith (Pos.show_error pos (sprintf "module not found: %s\n" mod_name))
+    | Value.Env.Not_a_module (mod_name, value) ->
+      failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
+  end
+
+let find_method env pos mods klass sel =
+  begin try
+    Value.Env.find_method env mods klass sel
+  with
+    | Value.Env.Module_not_found mod_name ->
+      failwith (Pos.show_error pos (sprintf "module not found: %s\n" mod_name))
+    | Value.Env.Not_a_module (mod_name, value) ->
+      failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
+  end
+
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Const lit ->
       value_of_literal lit
     | Expr.Get (mods, Expr.Var x) ->
       begin try
-        Env.find_var eva.env mods x
+        find_var eva.env pos mods x
       with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "variable not found: %s\n" (SnString.concat ":" (mods @ [x]))))
       end
     | Expr.Get (mods1, Expr.Method (mods2, klass, sel)) ->
       let klass = begin try
-        Env.find_var eva.env mods2 klass
+        find_var eva.env pos mods2 klass
       with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat ":" (mods2 @ [klass]))))
@@ -49,7 +67,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       begin match klass with
         | Value.Class klass ->
           begin try
-            Env.find_method eva.env mods1 klass sel
+            find_method eva.env pos mods1 klass sel
           with
             | Not_found ->
               let pair = sprintf "(%s#%s)" klass sel in
@@ -65,37 +83,38 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       let args = List.map (eval eva) args in
       funcall eva pos func args
     | Expr.Block exprs ->
-      let eva = { eva with env = Env.create_local eva.env } in
+      let eva = { eva with env = Value.Env.create_local eva.env } in
       List.fold_left begin fun _ elem ->
         eval eva elem
       end Value.Unit exprs
     | Expr.Define (x, expr) ->
       let value = eval eva expr in
       begin
-        Env.add_var eva.env x value;
+        Value.Env.add_var eva.env x value;
         value
       end
     | Expr.MethodCall (recv, sel, args) ->
       let recv = eval eva recv in
       let klass = Value.class_of recv in
-      begin try
-        let meth = Env.find_method eva.env [] klass sel in
-        let args = List.map (eval eva) args in
-        funcall eva pos meth args
+      let meth = begin try
+        find_method eva.env pos [] klass sel
       with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass sel))
       end
+      in
+      let args = List.map (eval eva) args in
+      funcall eva pos meth args
   end
 
 and funcall eva pos func args =
   begin match func with
     | Value.Closure (env, params, body) ->
-      let env = Env.create_local env in
+      let env = Value.Env.create_local env in
       let eva = { eva with env = env } in
       begin try
         begin
-          List.iter2 (Env.add_var env) params args;
+          List.iter2 (Value.Env.add_var env) params args;
           List.fold_left begin fun _ elem ->
             eval eva elem
           end Value.Unit body

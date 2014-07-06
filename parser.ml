@@ -174,6 +174,42 @@ let parse_params parser =
     parse_elems parser comma_or_rparen parse_ident
   end
 
+let parse_var_or_method parser =
+  let ident = parse_ident parser in
+  begin match parser.token with
+    | Token.Reserved "#" ->
+      begin
+        lookahead parser;
+        let sel = parse_ident parser in
+        Expr.Method ([], ident, sel)
+      end
+    | Token.Reserved ":" ->
+      begin
+        lookahead parser;
+        let rec loop rev_idents =
+          let ident = parse_ident parser in
+          begin match parser.token with
+            | Token.Reserved "#" ->
+              begin
+                lookahead parser;
+                let sel = parse_ident parser in
+                Expr.Method (List.rev rev_idents, ident, sel)
+              end
+            | Token.Reserved ":" ->
+              begin
+                lookahead parser;
+                loop (ident::rev_idents)
+              end
+            | _ ->
+              failwith (expected parser "'#' or ':'")
+          end
+        in
+        loop [ident]
+      end
+    | _ ->
+      Expr.Var ident
+  end
+
 let rec parse_expr parser =
   parse_def_expr parser
 
@@ -244,11 +280,9 @@ and parse_atomic_expr parser =
     | Token.Int _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
       let lit = parse_literal parser in
       Expr.at pos (Expr.Const lit)
-    | Token.Ident ident ->
-      begin
-        lookahead parser;
-        parse_get_expr parser pos ident;
-      end
+    | Token.Ident _ ->
+      let ident = parse_ident parser in
+      parse_get_expr parser pos [ident];
     | Token.Reserved "(" ->
       begin
         lookahead parser;
@@ -263,17 +297,34 @@ and parse_atomic_expr parser =
       failwith (expected parser "expression")
   end
 
-and parse_get_expr parser pos ident =
+and parse_get_expr parser pos rev_idents =
   begin match parser.token with
     | Token.Reserved "#" ->
-      let pos = parser.pos in
       begin
         lookahead parser;
         let sel = parse_ident parser in
-        Expr.at pos (Expr.Get ([], Expr.Method ([], ident, sel)))
+        Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), Expr.Method ([], List.hd rev_idents, sel)))
+      end
+    | Token.Reserved ":" ->
+      begin
+        lookahead parser;
+        begin match parser.token with
+          | Token.Reserved "(" ->
+            begin
+              lookahead parser;
+              let var_or_method = parse_var_or_method parser in
+              parse_token parser (Token.Reserved ")");
+              Expr.at pos (Expr.Get (List.rev rev_idents, var_or_method))
+            end
+          | Token.Ident _ ->
+            let ident = parse_ident parser in
+            parse_get_expr parser pos (ident::rev_idents);
+          | _ ->
+            failwith (expected parser "identifier or '('")
+        end
       end
     | _ ->
-      Expr.at pos (Expr.Get ([], Expr.Var ident))
+      Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), Expr.Var (List.hd rev_idents)))
   end
 
 and parse_parens parser pos =
