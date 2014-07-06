@@ -7,7 +7,7 @@ type t =
   | String of string
   | Char of char
   | Bool of bool
-  | Closure of env * string list * Expr.t
+  | Closure of env * string list * Expr.t list
   | Class of string
   | Module of env
 

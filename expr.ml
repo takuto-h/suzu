@@ -9,7 +9,7 @@ type t = {
 and raw = 
   | Const of Literal.t
   | Get of get
-  | Lambda of string list * t
+  | Lambda of string list * t list
   | FunCall of t * t list
   | Block of t list
   | Define of string * t
@@ -29,17 +29,17 @@ let rec show {raw} =
     | Const lit ->
       sprintf "(Const %s)" (Literal.show lit)
     | Get (Var x) ->
-      sprintf "(Get (Var %s))" x
+      sprintf "(GetVar %s)" x
     | Get (Method (klass, sel)) ->
-      sprintf "(Get (Method %s %s))" klass sel
+      sprintf "(GetMethod %s %s)" klass sel
     | Lambda (params, body) ->
-      sprintf "(Lambda (%s) %s)" (SnString.concat " " params) (show body)
+      sprintf "(Lambda (%s) %s)" (SnString.concat " " params) (SnString.concat_map " " show body)
     | FunCall (func, args) ->
-      sprintf "(FunCall %s (%s))" (show func) (SnString.concat_map " " show args)
+      sprintf "(FunCall %s %s)" (show func) (SnString.concat_map " " show args)
     | Block exprs ->
       sprintf "(Block %s)" (SnString.concat_map " " show exprs)
     | Define (x, expr) ->
       sprintf "(Define %s %s)" x (show expr)
     | MethodCall (recv, sel, args) ->
-      sprintf "(MethodCall %s %s (%s))" (show recv) sel (SnString.concat_map " " show args)
+      sprintf "(MethodCall %s %s %s)" (show recv) sel (SnString.concat_map " " show args)
   end

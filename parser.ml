@@ -291,7 +291,7 @@ and parse_parens parser pos =
 
 and parse_lambda parser pos =
   let params = parse_params parser in
-  let body = parse_block parser in
+  let body = parse_block_like_elems parser parse_expr in
   Expr.at pos (Expr.Lambda (params, body))
 
 and parse_block parser =

@@ -52,6 +52,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       let args = List.map (eval eva) args in
       funcall eva pos func args
     | Expr.Block exprs ->
+      let eva = { eva with env = Env.create_local eva.env } in
       List.fold_left begin fun _ elem ->
         eval eva elem
       end Value.Unit exprs
@@ -82,7 +83,9 @@ and funcall eva pos func args =
       begin try
         begin
           List.iter2 (Env.add_var env) params args;
-          eval eva body
+          List.fold_left begin fun _ elem ->
+            eval eva elem
+          end Value.Unit body
         end
       with
         | Invalid_argument _ ->
