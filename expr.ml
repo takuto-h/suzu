@@ -8,7 +8,7 @@ type t = {
 
 and raw = 
   | Const of Literal.t
-  | Get of get
+  | Get of string list * get
   | Lambda of string list * t list
   | FunCall of t * t list
   | Block of t list
@@ -28,10 +28,10 @@ let rec show {raw} =
   begin match raw with
     | Const lit ->
       sprintf "(Const %s)" (Literal.show lit)
-    | Get (Var x) ->
-      sprintf "(GetVar %s)" x
-    | Get (Method (mods, klass, sel)) ->
-      sprintf "(GetMethod (%s %s) %s)" (SnString.concat " " mods) klass sel
+    | Get (mods, Var x) ->
+      sprintf "(GetVar %s %s)" (SnString.concat " " mods) x
+    | Get (mods1, Method (mods2, klass, sel)) ->
+      sprintf "(Get %s (Method (%s %s) %s))" (SnString.concat " " mods1) (SnString.concat " " mods2) klass sel
     | Lambda (params, body) ->
       sprintf "(Lambda (%s) %s)" (SnString.concat " " params) (SnString.concat_map " " show body)
     | FunCall (func, args) ->

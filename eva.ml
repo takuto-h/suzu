@@ -31,28 +31,29 @@ let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Const lit ->
       value_of_literal lit
-    | Expr.Get (Expr.Var x) ->
+    | Expr.Get (mods, Expr.Var x) ->
       begin try
-        Env.find_var eva.env [] x
+        Env.find_var eva.env mods x
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "variable not found: %s\n" x))
+          failwith (Pos.show_error pos (sprintf "variable not found: %s\n" (SnString.concat ":" (mods @ [x]))))
       end
-    | Expr.Get (Expr.Method (mods, klass, sel)) ->
+    | Expr.Get (mods1, Expr.Method (mods2, klass, sel)) ->
       let klass = begin try
-        Env.find_var eva.env mods klass
+        Env.find_var eva.env mods2 klass
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat ":" (mods @ [klass]))))
+          failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat ":" (mods2 @ [klass]))))
       end
       in
       begin match klass with
         | Value.Class klass ->
           begin try
-            Env.find_method eva.env [] klass sel
+            Env.find_method eva.env mods1 klass sel
           with
             | Not_found ->
-              failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass sel))
+              let pair = sprintf "(%s#%s)" klass sel in
+              failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
           end
         | _ ->
           failwith (Pos.show_error pos (sprintf "class required, but got: %s\n" (Value.show klass)))
