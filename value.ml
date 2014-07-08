@@ -94,7 +94,7 @@ module Env = struct
   let create_global () = Global (Frame.create initial_global_table_size)
   let create_local outer = Local (Frame.create initial_local_table_size, outer)
     
-  let rec find_name proc env =
+  let rec lookup proc env =
     begin match env with
       | Global frame ->
         proc frame 
@@ -103,17 +103,25 @@ module Env = struct
           proc frame
         with
           | Not_found ->
-            find_name proc outer
+            lookup proc outer
         end
     end
 
-  let rec find_path proc env mods =
+  let with_current_frame proc env =
+    begin match env with
+      | Global frame ->
+        proc frame 
+      | Local (frame, _) ->
+        proc frame
+    end
+
+  let rec find_module_binding proc modl mods =
     begin match mods with
       | [] ->
-        find_name proc env
+        with_current_frame proc modl
       | mod_name::mods ->
         let modl = begin try
-          find_name (fun frame -> Frame.find_var frame mod_name) env
+          with_current_frame (fun frame -> Frame.find_var frame mod_name) modl
         with
           | Not_found ->
             raise (Module_not_found mod_name)
@@ -121,29 +129,41 @@ module Env = struct
         in
         begin match modl with
           | Module modl ->
-            find_path proc modl mods
+            find_module_binding proc modl mods
           | _ ->
             raise (Not_a_module (mod_name, modl))
         end
     end
 
-  let add_name proc env =
-    begin match env with
-      | Global frame ->
-        proc frame
-      | Local (frame, _) ->
-        proc frame
+  let find_binding proc env mods =
+    begin match mods with
+      | [] ->
+        lookup proc env
+      | mod_name::mods ->
+        let modl = begin try
+          lookup (fun frame -> Frame.find_var frame mod_name) env
+        with
+          | Not_found ->
+            raise (Module_not_found mod_name)
+        end
+        in
+        begin match modl with
+          | Module modl ->
+            find_module_binding proc modl mods
+          | _ ->
+            raise (Not_a_module (mod_name, modl))
+        end
     end
 
-  let rec find_var env mods x =
-    find_path (fun frame -> Frame.find_var frame x) env mods
+  let find_var env mods x =
+    find_binding (fun frame -> Frame.find_var frame x) env mods
 
   let add_var env x v =
-    add_name (fun frame -> Frame.add_var frame x v) env
+    with_current_frame (fun frame -> Frame.add_var frame x v) env
 
   let find_method env mods klass sel =
-    find_path (fun frame -> Frame.find_method frame klass sel) env mods
+    find_binding (fun frame -> Frame.find_method frame klass sel) env mods
 
   let add_method env klass sel meth =
-    add_name (fun frame -> Frame.add_method frame klass sel meth) env
+    with_current_frame (fun frame -> Frame.add_method frame klass sel meth) env
 end
