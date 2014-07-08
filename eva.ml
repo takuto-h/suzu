@@ -45,8 +45,8 @@ let find_method env pos mods klass sel =
       failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
   end
 
-let wrong_number_of_arguments pos req_num got_num =
-  let message = sprintf "wrong number of arguments: required %d, but got %d\n" req_num got_num in
+let wrong_number_of_arguments pos param_count arg_count =
+  let message = sprintf "wrong number of arguments: required %d, but got %d\n" param_count arg_count in
   failwith (Pos.show_error pos message)
 
 let rec eval eva {Expr.pos;Expr.raw;} =
@@ -112,6 +112,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
   end
 
 and funcall eva pos func args =
+  let arg_count = List.length args in
   begin match func with
     | Value.Closure (env, params, body) ->
       let env = Value.Env.create_local env in
@@ -125,12 +126,14 @@ and funcall eva pos func args =
         end
       with
         | Invalid_argument _ ->
-          let req_num = List.length params in
-          let got_num = List.length args in
-          failwith (wrong_number_of_arguments pos req_num got_num)
+          let param_count = List.length params in
+          failwith (wrong_number_of_arguments pos param_count arg_count)
       end
-    | Value.Subr subr ->
-      subr pos args
+    | Value.Subr (param_count, subr) ->
+      if arg_count <> param_count then
+        failwith (wrong_number_of_arguments pos param_count arg_count)
+      else
+        subr pos args
     | _ ->
       failwith (Pos.show_error pos (sprintf "function required, but got: %s\n" (Value.show func)))
   end
