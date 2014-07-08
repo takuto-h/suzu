@@ -174,13 +174,35 @@ let parse_params parser =
     parse_elems parser comma_or_rparen parse_ident
   end
 
+let parse_selector parser =
+  begin match parser.token with
+    | Token.Reserved "(" ->
+      begin
+        lookahead parser;
+        let sel = begin match Token.string_of_operator parser.token with
+          | Some str ->
+            str
+          | None ->
+            failwith (expected parser "operator")
+        end
+        in
+        lookahead parser;
+        parse_token parser (Token.Reserved ")");
+        sel
+      end
+    | Token.Ident _ ->
+      parse_ident parser
+    | _ ->
+      failwith (expected parser "identifier")
+  end
+
 let parse_var_or_method parser =
   let ident = parse_ident parser in
   begin match parser.token with
     | Token.Reserved "#" ->
       begin
         lookahead parser;
-        let sel = parse_ident parser in
+        let sel = parse_selector parser in
         Expr.Method ([], ident, sel)
       end
     | Token.Reserved ":" ->
@@ -192,7 +214,7 @@ let parse_var_or_method parser =
             | Token.Reserved "#" ->
               begin
                 lookahead parser;
-                let sel = parse_ident parser in
+                let sel = parse_selector parser in
                 Expr.Method (List.rev rev_idents, ident, sel)
               end
             | Token.Reserved ":" ->
@@ -236,7 +258,7 @@ and parse_dot_expr parser =
         let pos = parser.pos in
         begin
           lookahead parser;
-          let sel = parse_ident parser in
+          let sel = parse_selector parser in
           begin match parser.token with
             | Token.Reserved "(" ->
               begin
@@ -302,7 +324,7 @@ and parse_get_expr parser pos rev_idents =
     | Token.Reserved "#" ->
       begin
         lookahead parser;
-        let sel = parse_ident parser in
+        let sel = parse_selector parser in
         Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), Expr.Method ([], List.hd rev_idents, sel)))
       end
     | Token.Reserved ":" ->

@@ -18,7 +18,7 @@ type t =
   | PowOp of string
 
 
-let get_op token =
+let string_of_operator token =
   begin match token with
     | OrOp str | AndOp str | CmpOp str | AddOp str | MulOp str | PowOp str ->
       Some str
