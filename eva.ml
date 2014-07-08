@@ -80,23 +80,18 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | _ ->
           failwith (Pos.show_error pos (sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass)))
       end
-    | Expr.Lambda (params, body) ->
-      Value.Closure (eva.env, params, body)
-    | Expr.FunCall (func, args) ->
-      let func = eval eva func in
-      let args = List.map (eval eva) args in
-      funcall eva pos func args
-    | Expr.Block exprs ->
-      let eva = { eva with env = Value.Env.create_local eva.env } in
-      List.fold_left begin fun _ elem ->
-        eval eva elem
-      end Value.Unit exprs
     | Expr.Define (x, expr) ->
       let value = eval eva expr in
       begin
         Value.Env.add_var eva.env x value;
         value
       end
+    | Expr.Lambda (params, body) ->
+      Value.Closure (eva.env, params, body)
+    | Expr.FunCall (func, args) ->
+      let func = eval eva func in
+      let args = List.map (eval eva) args in
+      funcall eva pos func args
     | Expr.MethodCall (recv, sel, args) ->
       let recv = eval eva recv in
       let klass = Value.class_of recv in
@@ -109,6 +104,26 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       in
       let args = List.map (eval eva) args in
       funcall eva pos meth (recv::args)
+    | Expr.And (lhs, rhs) ->
+      let lhs = eval eva lhs in
+      begin match lhs with
+        | Value.Bool true ->
+          eval eva rhs
+        | Value.Bool false ->
+          lhs
+        | _ ->
+          failwith (required pos "bool" lhs)
+      end
+    | Expr.Or (lhs, rhs) ->
+      let lhs = eval eva lhs in
+      begin match lhs with
+        | Value.Bool true ->
+          lhs
+        | Value.Bool false ->
+          eval eva rhs
+        | _ ->
+          failwith (required pos "bool" lhs)
+      end
   end
 
 and funcall eva pos func args =

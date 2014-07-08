@@ -299,10 +299,32 @@ and parse_def_expr parser =
   end
 
 and parse_or_expr parser =
-  parse_and_expr parser
+  let lhs = parse_and_expr parser in
+  begin match parser.token with
+    | Token.Reserved "||" ->
+      let pos = parser.pos in
+      begin
+        lookahead parser;
+        let rhs = parse_or_expr parser in
+        Expr.at pos (Expr.Or (lhs, rhs))
+      end
+    | _ ->
+      lhs
+  end
 
 and parse_and_expr parser =
-  parse_cmp_expr parser
+  let lhs = parse_cmp_expr parser in
+  begin match parser.token with
+    | Token.Reserved "&&" ->
+      let pos = parser.pos in
+      begin
+        lookahead parser;
+        let rhs = parse_and_expr parser in
+        Expr.at pos (Expr.And (lhs, rhs))
+      end
+    | _ ->
+      lhs
+  end
 
 and parse_cmp_expr parser =
   let get_op token =
@@ -487,13 +509,11 @@ and parse_parens parser pos =
 
 and parse_lambda parser pos =
   let params = parse_params parser in
-  let body = parse_block_like_elems parser parse_expr in
+  let body = parse_block parser in
   Expr.at pos (Expr.Lambda (params, body))
 
 and parse_block parser =
-  let pos = parser.pos in
-  let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.Block exprs)
+  parse_block_like_elems parser parse_expr
 
 let parse_stmt parser =
   let expr = parse_expr parser in
