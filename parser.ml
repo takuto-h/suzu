@@ -325,7 +325,7 @@ and parse_get_expr parser pos rev_idents =
       begin
         lookahead parser;
         let sel = parse_selector parser in
-        Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), Expr.Method ([], List.hd rev_idents, sel)))
+        Expr.at pos (Expr.Get ([], Expr.Method (List.rev (List.tl rev_idents), List.hd rev_idents, sel)))
       end
     | Token.Reserved ":" ->
       begin
