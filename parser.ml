@@ -281,12 +281,12 @@ let parse_var_or_method parser =
   end
 
 let rec parse_expr parser =
-  parse_def_expr parser
+  parse_top_expr parser
 
-and parse_def_expr parser =
+and parse_top_expr parser =
+  let pos = parser.pos in
   begin match parser.token with
     | Token.Reserved "def" ->
-      let pos = parser.pos in
       begin
         lookahead parser;
         let ident = parse_ident parser in
@@ -294,8 +294,25 @@ and parse_def_expr parser =
         let expr = parse_expr parser in
         Expr.at pos (Expr.Define (ident, expr))
       end
+    | Token.Reserved "if" ->
+      begin
+        lookahead parser;
+        parse_if_expr parser pos
+      end
     | _ ->
       parse_or_expr parser
+  end
+
+and parse_if_expr parser pos =
+  begin
+    parse_token parser (Token.Reserved "(");
+    let cond_expr = parse_expr parser in
+    parse_token parser (Token.Reserved ")");
+    let then_expr = parse_block parser in
+    skip parser Token.Newline;
+    parse_token parser (Token.Reserved "else");
+    let else_expr = parse_block parser in
+    Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
   end
 
 and parse_or_expr parser =
@@ -509,11 +526,13 @@ and parse_parens parser pos =
 
 and parse_lambda parser pos =
   let params = parse_params parser in
-  let body = parse_block parser in
+  let body = parse_block_like_elems parser parse_expr in
   Expr.at pos (Expr.Lambda (params, body))
 
 and parse_block parser =
-  parse_block_like_elems parser parse_expr
+  let pos = parser.pos in
+  let exprs = parse_block_like_elems parser parse_expr in
+  Expr.at pos (Expr.FunCall (Expr.at pos (Expr.Lambda ([], exprs)), []))
 
 let parse_stmt parser =
   let expr = parse_expr parser in

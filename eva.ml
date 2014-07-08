@@ -107,22 +107,18 @@ let rec eval eva {Expr.pos;Expr.raw;} =
     | Expr.And (lhs, rhs) ->
       let lhs = eval eva lhs in
       begin match lhs with
-        | Value.Bool true ->
-          eval eva rhs
         | Value.Bool false ->
           lhs
         | _ ->
-          failwith (required pos "bool" lhs)
+          eval eva rhs
       end
     | Expr.Or (lhs, rhs) ->
       let lhs = eval eva lhs in
       begin match lhs with
-        | Value.Bool true ->
-          lhs
         | Value.Bool false ->
           eval eva rhs
         | _ ->
-          failwith (required pos "bool" lhs)
+          lhs
       end
   end
 
