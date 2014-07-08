@@ -7,6 +7,7 @@ SUZU_FILES[] = snPervasives snString pos source token lexer literal expr parser 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)
 
+OCAMLFLAGS = 
 OCAMLCFLAGS += -annot
 
 TOP = suzutop

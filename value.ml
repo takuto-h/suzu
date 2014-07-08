@@ -10,6 +10,7 @@ type t =
   | Closure of env * string list * Expr.t list
   | Class of string
   | Module of env
+  | Subr of (Pos.t -> t list -> t)
 
 and env =
   | Global of frame
@@ -40,6 +41,8 @@ let class_of value =
       "Class:C"
     | Module _ ->
       "Module:C"
+    | Subr _ ->
+      "Subr:C"
   end
 
 let show value =
@@ -60,6 +63,8 @@ let show value =
       sprintf "<class %s>" klass
     | Module _ ->
       "<module>"
+    | Subr _ ->
+      "<subr>"
   end
 
 module Frame = struct

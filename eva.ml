@@ -45,6 +45,10 @@ let find_method env pos mods klass sel =
       failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
   end
 
+let wrong_number_of_arguments pos req_num got_num =
+  let message = sprintf "wrong number of arguments: required %d, but got %d\n" req_num got_num in
+  failwith (Pos.show_error pos message)
+
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Const lit ->
@@ -104,7 +108,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       end
       in
       let args = List.map (eval eva) args in
-      funcall eva pos meth args
+      funcall eva pos meth (recv::args)
   end
 
 and funcall eva pos func args =
@@ -123,9 +127,18 @@ and funcall eva pos func args =
         | Invalid_argument _ ->
           let req_num = List.length params in
           let got_num = List.length args in
-          let message = sprintf "wrong number of arguments: required %d, but got %d\n" req_num got_num in
-          failwith (Pos.show_error pos message)
+          failwith (wrong_number_of_arguments pos req_num got_num)
       end
+    | Value.Subr subr ->
+      subr pos args
     | _ ->
       failwith (Pos.show_error pos (sprintf "function required, but got: %s\n" (Value.show func)))
+  end
+
+let int_of_value pos v =
+  begin match v with
+    | Value.Int i ->
+      i
+    | _ ->
+      failwith (Pos.show_error pos (sprintf "int required, but got: %s\n" (Value.show v)))
   end
