@@ -49,6 +49,54 @@ let parse_token parser token =
      lookahead parser
   end
 
+let parse_non_assoc parser get_op parse_lower =
+  let lhs = parse_lower parser in
+  begin match get_op parser.token with
+    | None ->
+      lhs
+    | Some str ->
+      let pos = parser.pos in
+      let op = Selector.Op str in
+      begin
+        lookahead parser;
+        let rhs = parse_lower parser in
+        Expr.at pos (Expr.MethodCall (lhs, op, [rhs]))
+      end
+  end
+
+let rec parse_right_assoc parser get_op parse_lower =
+  let lhs = parse_lower parser in
+  begin match get_op parser.token with
+    | None ->
+      lhs
+    | Some str ->
+      let pos = parser.pos in
+      let op = Selector.Op str in
+      begin
+        lookahead parser;
+        let rhs = parse_right_assoc parser get_op parse_lower in
+        Expr.at pos (Expr.MethodCall (lhs, op, [rhs]))
+      end
+  end
+
+let rec parse_left_assoc parser get_op parse_lower =
+  let lhs = parse_lower parser in
+  let rec loop lhs =
+    begin match get_op parser.token with
+      | None ->
+        lhs
+      | Some str ->
+        let pos = parser.pos in
+        let op = Selector.Op str in
+        begin
+          lookahead parser;
+          let rhs = parse_lower parser in
+          loop (Expr.at pos (Expr.MethodCall (lhs, op, [rhs])))
+        end
+    end
+  in
+  loop lhs
+
 let parse_elems parser sep_or_term parse_elem =
   let rec loop elems =
     begin match sep_or_term parser.token with
