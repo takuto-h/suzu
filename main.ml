@@ -73,6 +73,7 @@ let () =
   let env = Value.Env.create_global () in
   begin
     ModInt.initialize env;
+    ModBool.initialize env;
     let eva = Eva.create env in
     repl (fun expr -> Value.show (Eva.eval eva expr))
   end

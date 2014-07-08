@@ -25,6 +25,13 @@ let value_of_literal lit =
       Value.Bool b
   end
 
+let wrong_number_of_arguments pos param_count arg_count =
+  let message = sprintf "wrong number of arguments: required %d, but got %d\n" param_count arg_count in
+  failwith (Pos.show_error pos message)
+
+let required pos req_str got_value =
+  Pos.show_error pos (sprintf "%s required, but got: %s\n" req_str (Value.show got_value))
+
 let find_var env pos mods x =
   begin try
     Value.Env.find_var env mods x
@@ -44,10 +51,6 @@ let find_method env pos mods klass sel =
     | Value.Env.Not_a_module (mod_name, value) ->
       failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
   end
-
-let wrong_number_of_arguments pos param_count arg_count =
-  let message = sprintf "wrong number of arguments: required %d, but got %d\n" param_count arg_count in
-  failwith (Pos.show_error pos message)
 
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
@@ -74,7 +77,8 @@ let rec eval eva {Expr.pos;Expr.raw;} =
             find_method eva.env pos mods1 klass (Selector.string_of sel)
           with
             | Not_found ->
-              let pair = sprintf "(%s#%s)" klass (Selector.show sel) in
+              let pair = sprintf "%s#%s" klass (Selector.show sel) in
+              let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
               failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
           end
         | _ ->
@@ -135,7 +139,7 @@ and funcall eva pos func args =
       else
         subr pos args
     | _ ->
-      failwith (Pos.show_error pos (sprintf "function required, but got: %s\n" (Value.show func)))
+      failwith (required pos "function" func)
   end
 
 let int_of_value pos v =
@@ -143,5 +147,13 @@ let int_of_value pos v =
     | Value.Int i ->
       i
     | _ ->
-      failwith (Pos.show_error pos (sprintf "int required, but got: %s\n" (Value.show v)))
+      failwith (required pos "int" v)
+  end
+
+let bool_of_value pos v =
+  begin match v with
+    | Value.Bool b ->
+      b
+    | _ ->
+      failwith (required pos "bool" v)
   end
