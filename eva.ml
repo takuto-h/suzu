@@ -56,12 +56,12 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "variable not found: %s\n" (SnString.concat ":" (mods @ [x]))))
       end
-    | Expr.Get (mods1, Expr.Method (mods2, klass, sel)) ->
+    | Expr.Get (mods1, Expr.Method (mods2, klass_name, sel)) ->
       let klass = begin try
-        find_var eva.env pos mods2 klass
+        find_var eva.env pos mods2 klass_name
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat ":" (mods2 @ [klass]))))
+          failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat ":" (mods2 @ [klass_name]))))
       end
       in
       begin match klass with
@@ -74,7 +74,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
               failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
           end
         | _ ->
-          failwith (Pos.show_error pos (sprintf "class required, but got: %s\n" (Value.show klass)))
+          failwith (Pos.show_error pos (sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass)))
       end
     | Expr.Lambda (params, body) ->
       Value.Closure (eva.env, params, body)
