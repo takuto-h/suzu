@@ -32,9 +32,9 @@ let wrong_number_of_arguments pos param_count arg_count =
 let required pos req_str got_value =
   Pos.show_error pos (sprintf "%s required, but got: %s\n" req_str (Value.show got_value))
 
-let find_var env pos mods x =
+let find_binding thunk pos =
   begin try
-    Value.Env.find_var env mods x
+    thunk ()
   with
     | Value.Env.Module_not_found mod_name ->
       failwith (Pos.show_error pos (sprintf "module not found: %s\n" mod_name))
@@ -42,15 +42,11 @@ let find_var env pos mods x =
       failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
   end
 
+let find_var env pos mods x =
+  find_binding (fun () -> Value.Env.find_var env mods x) pos
+
 let find_method env pos mods klass sel =
-  begin try
-    Value.Env.find_method env mods klass sel
-  with
-    | Value.Env.Module_not_found mod_name ->
-      failwith (Pos.show_error pos (sprintf "module not found: %s\n" mod_name))
-    | Value.Env.Not_a_module (mod_name, value) ->
-      failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
-  end
+  find_binding (fun () -> Value.Env.find_method env mods klass sel) pos
 
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
