@@ -181,7 +181,7 @@ let parse_selector parser =
         lookahead parser;
         let sel = begin match Token.string_of_operator parser.token with
           | Some str ->
-            str
+            Selector.Op str
           | None ->
             failwith (expected parser "operator")
         end
@@ -191,7 +191,7 @@ let parse_selector parser =
         sel
       end
     | Token.Ident _ ->
-      parse_ident parser
+      Selector.Ident (parse_ident parser)
     | _ ->
       failwith (expected parser "identifier")
   end

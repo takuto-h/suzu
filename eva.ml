@@ -71,10 +71,10 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       begin match klass with
         | Value.Class klass ->
           begin try
-            find_method eva.env pos mods1 klass sel
+            find_method eva.env pos mods1 klass (Selector.string_of sel)
           with
             | Not_found ->
-              let pair = sprintf "(%s#%s)" klass sel in
+              let pair = sprintf "(%s#%s)" klass (Selector.show sel) in
               failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
           end
         | _ ->
@@ -101,10 +101,10 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       let recv = eval eva recv in
       let klass = Value.class_of recv in
       let meth = begin try
-        find_method eva.env pos [] klass sel
+        find_method eva.env pos [] klass (Selector.string_of sel)
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass sel))
+          failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
       end
       in
       let args = List.map (eval eva) args in
