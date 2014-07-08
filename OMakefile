@@ -2,7 +2,7 @@
 NATIVE_ENABLED = false
 BYTE_ENABLED = true
 
-SUZU_FILES[] = snPervasives snString pos source token lexer literal expr parser value eva main
+SUZU_FILES[] = snPervasives snString pos source token lexer literal expr parser value eva modInt main
 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)

@@ -6,8 +6,8 @@ type t = {
   dummy : unit;
 }
 
-let create () = {
-  env = Value.Env.create_global ();
+let create env = {
+  env = env;
   dummy = ();
 }
 
