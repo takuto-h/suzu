@@ -295,6 +295,81 @@ and parse_def_expr parser =
         Expr.at pos (Expr.Define (ident, expr))
       end
     | _ ->
+      parse_or_expr parser
+  end
+
+and parse_or_expr parser =
+  parse_and_expr parser
+
+and parse_and_expr parser =
+  parse_cmp_expr parser
+
+and parse_cmp_expr parser =
+  let get_op token =
+    begin match token with
+      | Token.CmpOp str ->
+        Some str
+      | _ ->
+        None
+    end
+  in
+  parse_non_assoc parser get_op parse_add_expr
+
+and parse_add_expr parser =
+  let get_op token =
+    begin match token with
+      | Token.AddOp str ->
+        Some str
+      | _ ->
+        None
+    end
+  in
+  parse_left_assoc parser get_op parse_mul_expr
+
+and parse_mul_expr parser =
+  let get_op token =
+    begin match token with
+      | Token.MulOp str ->
+        Some str
+      | _ ->
+        None
+    end
+  in
+  parse_left_assoc parser get_op parse_pow_expr
+
+and parse_pow_expr parser =
+  let get_op token =
+    begin match token with
+      | Token.PowOp str ->
+        Some str
+      | _ ->
+        None
+    end
+  in
+  parse_right_assoc parser get_op parse_unary_expr
+
+and parse_unary_expr parser =
+  let pos = parser.pos in
+  begin match parser.token with
+    | Token.AddOp "-" ->
+      begin
+        lookahead parser;
+        let expr = parse_unary_expr parser in
+        Expr.at pos (Expr.MethodCall (expr, Selector.Op "~-", []))
+      end
+    | Token.AddOp "+" ->
+      begin
+        lookahead parser;
+        let expr = parse_unary_expr parser in
+        Expr.at pos (Expr.MethodCall (expr, Selector.Op "~+", []))
+      end
+    | Token.CmpOp "!" ->
+      begin
+        lookahead parser;
+        let expr = parse_unary_expr parser in
+        Expr.at pos (Expr.MethodCall (expr, Selector.Op "!", []))
+      end
+    | _ ->
       parse_dot_expr parser
   end
 
