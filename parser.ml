@@ -289,10 +289,7 @@ and parse_top_expr parser =
     | Token.Reserved "def" ->
       begin
         lookahead parser;
-        let ident = parse_ident parser in
-        parse_token parser (Token.CmpOp "=");
-        let expr = parse_expr parser in
-        Expr.at pos (Expr.Def (Expr.Var ident, expr))
+        parse_def_expr parser pos
       end
     | Token.Reserved "if" ->
       begin
@@ -302,6 +299,12 @@ and parse_top_expr parser =
     | _ ->
       parse_or_expr parser
   end
+
+and parse_def_expr parser pos =
+  let var_or_method = parse_var_or_method parser in
+  parse_token parser (Token.CmpOp "=");
+  let expr = parse_expr parser in
+  Expr.at pos (Expr.Def (var_or_method, expr))
 
 and parse_if_expr parser pos =
   begin
