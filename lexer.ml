@@ -18,6 +18,7 @@ let reserved = [
   "false";
   "if";
   "match";
+  "module";
   "mutable";
   "open";
   "try";
