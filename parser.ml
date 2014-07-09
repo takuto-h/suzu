@@ -292,7 +292,7 @@ and parse_top_expr parser =
         let ident = parse_ident parser in
         parse_token parser (Token.CmpOp "=");
         let expr = parse_expr parser in
-        Expr.at pos (Expr.Define (ident, expr))
+        Expr.at pos (Expr.Def (Expr.Var ident, expr))
       end
     | Token.Reserved "if" ->
       begin

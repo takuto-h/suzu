@@ -48,6 +48,21 @@ let find_var env pos mods x =
 let find_method env pos mods klass sel =
   find_binding (fun () -> Value.Env.find_method env mods klass sel) pos
 
+let find_klass env pos mods klass_name =
+  let klass = begin try
+    find_var env pos mods klass_name
+  with
+    | Not_found ->
+      failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat ":" (mods @ [klass_name]))))
+  end
+  in
+  begin match klass with
+    | Value.Class klass ->
+      klass
+    | _ ->
+      failwith (Pos.show_error pos (sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass)))
+  end
+
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Const lit ->
@@ -59,31 +74,27 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "variable not found: %s\n" (SnString.concat ":" (mods @ [x]))))
       end
-    | Expr.Get (mods1, Expr.Method (mods2, klass_name, sel)) ->
-      let klass = begin try
-        find_var eva.env pos mods2 klass_name
+    | Expr.Get (mods1, Expr.Method (mods2, klass, sel)) ->
+      let klass = find_klass eva.env pos mods2 klass in
+      begin try
+        find_method eva.env pos mods1 klass (Selector.string_of sel)
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat ":" (mods2 @ [klass_name]))))
+          let pair = sprintf "%s#%s" klass (Selector.show sel) in
+          let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
+          failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
       end
-      in
-      begin match klass with
-        | Value.Class klass ->
-          begin try
-            find_method eva.env pos mods1 klass (Selector.string_of sel)
-          with
-            | Not_found ->
-              let pair = sprintf "%s#%s" klass (Selector.show sel) in
-              let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
-              failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
-          end
-        | _ ->
-          failwith (Pos.show_error pos (sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass)))
-      end
-    | Expr.Define (x, expr) ->
+    | Expr.Def (Expr.Var x, expr) ->
       let value = eval eva expr in
       begin
         Value.Env.add_var eva.env x value;
+        value
+      end
+    | Expr.Def (Expr.Method (mods, klass, sel), expr) ->
+      let value = eval eva expr in
+      let klass = find_klass eva.env pos mods klass in
+      begin
+        Value.Env.add_method eva.env klass (Selector.string_of sel) value;
         value
       end
     | Expr.Lambda (params, body) ->
