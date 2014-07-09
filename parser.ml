@@ -302,7 +302,7 @@ and parse_top_expr parser =
 
 and parse_def_expr parser pos =
   let var_or_method = parse_var_or_method parser in
-  parse_token parser (Token.CmpOp "=");
+  parse_token parser (Token.Reserved "=");
   let expr = parse_expr parser in
   Expr.at pos (Expr.Def (var_or_method, expr))
 

@@ -208,6 +208,19 @@ let lex_visible_token lexer pos c =
         lex_close_paren lexer pos "{" "}"
       | ']' ->
         lex_close_paren lexer pos "[" "]"
+      | '=' ->
+        begin match Source.peek lexer.source with
+          | Some c2 when is_op_part c2 ->
+            let buf = Buffer.create initial_buffer_size in
+            begin
+              Source.junk lexer.source;
+              Buffer.add_char buf c;
+              Buffer.add_char buf c2;
+              Token.CmpOp (lex_op lexer buf)
+            end
+          | _ ->
+            Token.Reserved "="
+        end
       | '|' ->
         begin match Source.peek lexer.source with
           | Some '|' ->
@@ -236,7 +249,7 @@ let lex_visible_token lexer pos c =
               Token.CmpOp (lex_op lexer buf)
             end
         end
-      | '<' | '=' | '>' | '!' ->
+      | '<' | '>' | '!' ->
         let buf = Buffer.create initial_buffer_size in
         begin
           Buffer.add_char buf c;
