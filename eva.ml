@@ -3,11 +3,13 @@ open Printf
 
 type t = {
   env : Value.Env.t;
+  curr_mod_path : string list;  (* reversed *)
   dummy : unit;
 }
 
 let create env = {
   env = env;
+  curr_mod_path = [];
   dummy = ();
 }
 
@@ -130,6 +132,17 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           eval eva rhs
         | _ ->
           lhs
+      end
+    | Expr.Module (name, exprs) ->
+      let env_in_mod = Value.Env.create_local eva.env in
+      let eva_in_mod = { eva with env = env_in_mod; curr_mod_path = name::eva.curr_mod_path } in
+      let modl = Value.Module env_in_mod in
+      begin
+        Value.Env.add_var eva.env name modl;
+        List.iter begin fun elem ->
+          ignore (eval eva_in_mod elem)
+        end exprs;
+        modl
       end
   end
 

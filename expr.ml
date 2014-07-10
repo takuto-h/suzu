@@ -19,6 +19,7 @@ and raw =
   | MethodCall of t * Selector.t * t list
   | And of t * t
   | Or of t * t
+  | Module of string * t list
 
 let at pos raw = {
   pos = pos;
@@ -51,4 +52,6 @@ let rec show {raw} =
       sprintf "(And %s %s)" (show lhs) (show rhs)
     | Or (lhs, rhs) ->
       sprintf "(Or %s %s)" (show lhs) (show rhs)
+    | Module (name, exprs) ->
+      sprintf "(Module %s %s)" name (SnString.concat_map " " show exprs)
   end
