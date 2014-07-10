@@ -139,17 +139,17 @@ and funcall eva pos func args =
     | Value.Closure (env, params, body) ->
       let env = Value.Env.create_local env in
       let eva = { eva with env = env } in
-      begin try
-        begin
-          List.iter2 (Value.Env.add_var env) params args;
-          List.fold_left begin fun _ elem ->
-            eval eva elem
-          end Value.Unit body
-        end
-      with
-        | Invalid_argument _ ->
-          let param_count = List.length params in
-          failwith (wrong_number_of_arguments pos param_count arg_count)
+      begin
+        begin try
+          List.iter2 (Value.Env.add_var env) params args
+        with
+          | Invalid_argument _ ->
+            let param_count = List.length params in
+            failwith (wrong_number_of_arguments pos param_count arg_count)
+        end;
+        List.fold_left begin fun _ elem ->
+          eval eva elem
+        end Value.Unit body
       end
     | Value.Subr (param_count, subr) ->
       if arg_count <> param_count then
