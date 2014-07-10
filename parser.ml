@@ -309,7 +309,7 @@ and parse_def_expr parser pos =
   let var_or_method = parse_var_or_method parser in
   parse_token parser (Token.Reserved "=");
   let expr = parse_expr parser in
-  Expr.at pos (Expr.Def (var_or_method, expr))
+  Expr.at pos (Expr.Def (false, var_or_method, expr))
 
 and parse_if_expr parser pos =
   begin
@@ -326,7 +326,7 @@ and parse_if_expr parser pos =
 and parse_module parser pos =
   let mod_name = parse_ident parser in
   let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.Module (mod_name, exprs))
+  Expr.at pos (Expr.Module (false, mod_name, exprs))
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in
