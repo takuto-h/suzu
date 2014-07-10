@@ -281,52 +281,41 @@ let parse_var_or_method parser =
   end
 
 let rec parse_expr parser =
-  parse_top_expr parser
+  parse_binding_expr parser
 
-and parse_top_expr parser =
+and parse_binding_expr parser =
+  let export = (parser.token = Token.Reserved "export") in
+  begin if export then
+    lookahead parser
+  end;
   let pos = parser.pos in
   begin match parser.token with
     | Token.Reserved "def" ->
       begin
         lookahead parser;
-        parse_def_expr parser pos
-      end
-    | Token.Reserved "if" ->
-      begin
-        lookahead parser;
-        parse_if_expr parser pos
+        parse_def_expr parser pos export
       end
     | Token.Reserved "module" ->
       begin
         lookahead parser;
-        parse_module parser pos
+        parse_module parser pos export
       end
-    | _ ->
+    | _ when not export ->
       parse_or_expr parser
+    | _ ->
+      failwith (expected parser "'def' or 'module' or 'class'")
   end
 
-and parse_def_expr parser pos =
+and parse_def_expr parser pos export =
   let var_or_method = parse_var_or_method parser in
   parse_token parser (Token.Reserved "=");
   let expr = parse_expr parser in
-  Expr.at pos (Expr.Def (false, var_or_method, expr))
+  Expr.at pos (Expr.Def (export, var_or_method, expr))
 
-and parse_if_expr parser pos =
-  begin
-    parse_token parser (Token.Reserved "(");
-    let cond_expr = parse_expr parser in
-    parse_token parser (Token.Reserved ")");
-    let then_expr = parse_block parser in
-    skip parser Token.Newline;
-    parse_token parser (Token.Reserved "else");
-    let else_expr = parse_block parser in
-    Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
-  end
-
-and parse_module parser pos =
+and parse_module parser pos export =
   let mod_name = parse_ident parser in
   let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.Module (false, mod_name, exprs))
+  Expr.at pos (Expr.Module (export, mod_name, exprs))
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in
@@ -490,6 +479,11 @@ and parse_atomic_expr parser =
         lookahead parser;
         parse_lambda parser pos
       end
+    | Token.Reserved "if" ->
+      begin
+        lookahead parser;
+        parse_if_expr parser pos
+      end
     | _ ->
       failwith (expected parser "expression")
   end
@@ -546,6 +540,18 @@ and parse_block parser =
   let pos = parser.pos in
   let exprs = parse_block_like_elems parser parse_expr in
   Expr.at pos (Expr.FunCall (Expr.at pos (Expr.Lambda ([], exprs)), []))
+
+and parse_if_expr parser pos =
+  begin
+    parse_token parser (Token.Reserved "(");
+    let cond_expr = parse_expr parser in
+    parse_token parser (Token.Reserved ")");
+    let then_expr = parse_block parser in
+    skip parser Token.Newline;
+    parse_token parser (Token.Reserved "else");
+    let else_expr = parse_block parser in
+    Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
+  end
 
 let parse_stmt parser =
   let expr = parse_expr parser in

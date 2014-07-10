@@ -118,8 +118,6 @@ module Frame = struct
     begin
       begin if export then
         frame.exported_vars <- VarSet.add x exported_vars
-      else
-        ()
       end;
       Hashtbl.add var_table x v
     end
@@ -128,8 +126,6 @@ module Frame = struct
     begin
       begin if export then
         frame.exported_methods <- MethodSet.add (klass, sel) exported_methods
-      else
-        ()
       end;
       Hashtbl.add method_table (klass, sel) meth
     end
