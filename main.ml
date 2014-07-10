@@ -22,11 +22,7 @@ let eval proc str =
     loop ()
   with
     | Failure message ->
-      begin
-        eprintf "%s" message;
-        flush stderr;
-        ()
-      end
+      printf "%s" message
   end
 
 let rec read_multiple_lines buf =
