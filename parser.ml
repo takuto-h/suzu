@@ -296,6 +296,11 @@ and parse_top_expr parser =
         lookahead parser;
         parse_if_expr parser pos
       end
+    | Token.Reserved "module" ->
+      begin
+        lookahead parser;
+        parse_module parser pos
+      end
     | _ ->
       parse_or_expr parser
   end
@@ -317,6 +322,11 @@ and parse_if_expr parser pos =
     let else_expr = parse_block parser in
     Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
   end
+
+and parse_module parser pos =
+  let mod_name = parse_ident parser in
+  let exprs = parse_block_like_elems parser parse_expr in
+  Expr.at pos (Expr.Module (mod_name, exprs))
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in
