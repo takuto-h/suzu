@@ -9,6 +9,6 @@ let initialize env =
   let mod_bool = Value.Env.create_local env in
   begin
     Value.Env.add_var env "Bool" (Value.Module mod_bool);
-    Value.Env.add_var mod_bool "C" (Value.Class "Bool:C");
+    Value.Env.add_var mod_bool "C" (Value.Class "Bool:C") ~export:true;
     Value.Env.add_method env "Bool:C" "!" (unary_op not);
   end

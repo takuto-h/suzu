@@ -20,8 +20,8 @@ and env =
   | Local of frame * env
 
 and frame = {
-  exported_vars : VarSet.t;
-  exported_methods : MethodSet.t;
+  mutable exported_vars : VarSet.t;
+  mutable exported_methods : MethodSet.t;
   var_table : (string, t) Hashtbl.t;
   method_table : (string * string, t) Hashtbl.t;
 }
@@ -114,20 +114,20 @@ module Frame = struct
         find_method frame klass sel from
     end
 
-  let add_var {exported_vars;var_table;} x v export =
+  let add_var ({exported_vars;var_table;} as frame) x v export =
     begin
       begin if export then
-        ignore (VarSet.add x exported_vars)
+        frame.exported_vars <- VarSet.add x exported_vars
       else
         ()
       end;
       Hashtbl.add var_table x v
     end
 
-  let add_method {exported_methods;method_table;} klass sel meth export =
+  let add_method ({exported_methods;method_table;} as frame) klass sel meth export =
     begin
       begin if export then
-        ignore (MethodSet.add (klass, sel) exported_methods)
+        frame.exported_methods <- MethodSet.add (klass, sel) exported_methods
       else
         ()
       end;

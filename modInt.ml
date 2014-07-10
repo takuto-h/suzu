@@ -23,8 +23,8 @@ let initialize env =
   let mod_int = Value.Env.create_local env in
   begin
     Value.Env.add_var env "Int" (Value.Module mod_int);
-    Value.Env.add_var mod_int "answer" (Value.Int 42);
-    Value.Env.add_var mod_int "C" (Value.Class "Int:C");
+    Value.Env.add_var mod_int "answer" (Value.Int 42) ~export:true;
+    Value.Env.add_var mod_int "C" (Value.Class "Int:C") ~export:true;
     Value.Env.add_method env "Int:C" "<" (binary_cmp_op ( < ));
     Value.Env.add_method env "Int:C" ">" (binary_cmp_op ( > ));
     Value.Env.add_method env "Int:C" "<=" (binary_cmp_op ( <= ));
