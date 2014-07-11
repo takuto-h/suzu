@@ -13,6 +13,7 @@ let initial_buffer_size = 16
 
 let reserved = [
   "case";
+  "class";
   "def";
   "else";
   "export";
