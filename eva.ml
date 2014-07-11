@@ -65,11 +65,6 @@ let find_klass env pos mods klass_name =
       failwith (Pos.show_error pos (sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass)))
   end
 
-let make_ctor klass name params =
-  Value.Subr begin (List.length params), fun pos args ->
-    Value.Unit
-  end
-
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Const lit ->
@@ -148,16 +143,6 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           ignore (eval eva_in_mod elem)
         end exprs;
         modl
-      end
-    | Expr.Class (export, name, ctors) ->
-      let klass_name = SnString.concat ":" (List.rev (name::eva.curr_mod_path)) in
-      let klass = Value.Class klass_name in
-      begin
-        Value.Env.add_var eva.env name klass ~export:export;
-        List.iter begin fun (export, name, params) ->
-          Value.Env.add_var eva.env name (make_ctor klass name params) ~export:export;
-        end ctors;
-        klass
       end
   end
 
