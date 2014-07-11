@@ -307,10 +307,21 @@ and parse_binding_expr parser =
   end
 
 and parse_def_expr parser pos export =
+  let pos_lambda = parser.pos in
   let var_or_method = parse_var_or_method parser in
-  parse_token parser (Token.Reserved "=");
-  let expr = parse_expr parser in
-  Expr.at pos (Expr.Def (export, var_or_method, expr))
+  begin match parser.token with
+    | Token.Reserved "(" ->
+      let func = parse_lambda parser pos_lambda in
+      Expr.at pos (Expr.Def (export, var_or_method, func))
+    | Token.Reserved "=" ->
+      begin
+        lookahead parser;
+        let expr = parse_expr parser in
+        Expr.at pos (Expr.Def (export, var_or_method, expr))
+      end
+    | _ ->
+      failwith (expected parser "'=' or '('")
+  end
 
 and parse_module parser pos export =
   let mod_name = parse_ident parser in
