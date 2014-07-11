@@ -6,6 +6,8 @@ type var_or_method =
   | Method of string list * string * Selector.t
 
 type export = bool
+type mutabl = bool
+type ctor = export * string * (mutabl * string) list
 
 type t = {
   pos : Pos.t;
@@ -22,6 +24,7 @@ and raw =
   | And of t * t
   | Or of t * t
   | Module of export * string * t list
+  | Class of export * string * ctor list
 
 let at pos raw = {
   pos = pos;
@@ -35,6 +38,12 @@ let show_var_or_method vom =
     | Method (mods, klass, sel) ->
       sprintf "(Method (%s %s) %s)" (SnString.concat " " mods) klass (Selector.show sel)
   end
+
+let show_ctor_param (mutabl, name) =
+  sprintf "(%b %s)" mutabl name
+
+let show_ctor (export, name, params) =
+  sprintf "(Ctor %b %s (%s))" export name (SnString.concat_map " " show_ctor_param params)
 
 let rec show {raw} =
   begin match raw with
@@ -56,4 +65,6 @@ let rec show {raw} =
       sprintf "(Or %s %s)" (show lhs) (show rhs)
     | Module (export, name, exprs) ->
       sprintf "(Module %b %s %s)" export name (SnString.concat_map " " show exprs)
+    | Class (export, name, ctors) ->
+      sprintf "(Module %b %s %s)" export name (SnString.concat_map " " show_ctor ctors)
   end
