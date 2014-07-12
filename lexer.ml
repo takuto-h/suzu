@@ -13,6 +13,7 @@ let initial_buffer_size = 16
 
 let reserved = [
   "case";
+  "class";
   "def";
   "else";
   "export";
@@ -22,10 +23,8 @@ let reserved = [
   "module";
   "mutable";
   "open";
-  "record";
   "try";
   "true";
-  "variant";
   "with"
 ]
 
