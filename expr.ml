@@ -24,6 +24,7 @@ and raw =
   | Module of string * t list
   | Export of var_or_method list
   | Open of string list * string
+  | Record of string * string * (string * bool) list
 
 let at pos raw = {
   pos = pos;
@@ -37,6 +38,12 @@ let show_var_or_method vom =
     | Method (mods, klass, sel) ->
       sprintf "(Method (%s %s) %s)" (SnString.concat " " mods) klass (Selector.show sel)
   end
+
+let show_field (field, mutabl) =
+  if mutabl then
+    sprintf "(mutable %s)" field
+  else
+    field
 
 let rec show {raw} =
   begin match raw with
@@ -62,4 +69,6 @@ let rec show {raw} =
       sprintf "(Export %s)" (SnString.concat_map " " show_var_or_method voms)
     | Open (mods, modl) ->
       sprintf "(Open %s %s)" (SnString.concat " " mods) modl
+    | Record (klass, ctor, fields) ->
+      sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
   end

@@ -13,6 +13,8 @@ let create env = {
   dummy = ();
 }
 
+let initial_field_table_size = 4
+
 let value_of_literal lit =
   begin match lit with
     | Literal.Unit ->
@@ -64,6 +66,53 @@ let find_klass env pos mods klass_name =
     | _ ->
       failwith (Pos.show_error pos (sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass)))
   end
+
+let make_ctor klass fields =
+  Value.Subr begin (List.length fields), fun pos args ->
+    let table = Hashtbl.create initial_field_table_size in
+    begin
+      List.iter2 begin fun (field, _) arg ->
+        Hashtbl.add table field arg
+      end fields args;
+      Value.Record (klass, table)
+    end
+  end
+
+let make_getter klass field =
+  Value.Subr begin 1, fun pos args ->
+    let self = List.nth args 0 in
+    begin match self with
+      | Value.Record (klass2, table) when klass2 = klass ->
+        Hashtbl.find table field
+      | _ ->
+        failwith (required pos (sprintf "some instance of %s" klass) self)
+    end
+  end      
+
+let make_setter klass field =
+  Value.Subr begin 2, fun pos args ->
+    let self = List.nth args 0 in
+    let value = List.nth args 1 in
+    begin match self with
+      | Value.Record (klass2, table) when klass2 = klass ->
+        begin
+          Hashtbl.replace table field value;
+          value
+        end
+      | _ ->
+        failwith (required pos (sprintf "some instance of %s" klass) self)
+    end
+  end      
+
+let add_accessors env klass fields =
+  List.iter begin fun (field, mutabl) ->
+    begin
+      Value.Env.add_method env klass field (make_getter klass field);
+      begin if mutabl then
+        Value.Env.add_method env klass (sprintf "%s=" field) (make_setter klass field)
+      end
+    end
+  end fields
 
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
@@ -180,6 +229,14 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "module not found: %s\n" (SnString.concat ":" (mods @ [mod_name]))))
+      end
+    | Expr.Record (klass_name, ctor_name, fields) ->
+      let klass = SnString.concat ":" (List.rev (klass_name::eva.curr_mod_path)) in
+      begin
+        Value.Env.add_var eva.env klass_name (Value.Class klass);
+        Value.Env.add_var eva.env ctor_name (make_ctor klass fields);
+        add_accessors eva.env klass fields;
+        Value.Class klass
       end
   end
 
