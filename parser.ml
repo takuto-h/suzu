@@ -479,6 +479,12 @@ and parse_dot_expr parser =
                 let args = parse_args parser in
                 loop (Expr.at pos (Expr.MethodCall (recv, sel, args)))
               end
+            | Token.Reserved "=" ->
+              begin
+                lookahead parser;
+                let expr = parse_expr parser in
+                Expr.at pos (Expr.MethodCall (recv, Selector.Op (sprintf "%s=" (Selector.string_of sel)), [expr]))
+              end
             | _ ->
               Expr.at pos (Expr.MethodCall (recv, sel, []))
           end
