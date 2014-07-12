@@ -21,6 +21,7 @@ and raw =
   | MethodCall of t * Selector.t * t list
   | And of t * t
   | Or of t * t
+  | Export of var_or_method list
   | Module of string * t list
 
 let at pos raw = {
@@ -54,6 +55,8 @@ let rec show {raw} =
       sprintf "(And %s %s)" (show lhs) (show rhs)
     | Or (lhs, rhs) ->
       sprintf "(Or %s %s)" (show lhs) (show rhs)
+    | Export voms ->
+      sprintf "(Export %s)" (SnString.concat_map " " show_var_or_method voms)
     | Module (name, exprs) ->
       sprintf "(Module %s %s)" name (SnString.concat_map " " show exprs)
   end

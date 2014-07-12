@@ -133,6 +133,17 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | _ ->
           lhs
       end
+    | Expr.Export voms ->
+      begin
+        List.iter begin function
+          | Expr.Var x ->
+            Value.Env.export_var eva.env x;
+          | Expr.Method (mods, klass, sel) ->
+            let klass = find_klass eva.env pos mods klass in
+            Value.Env.export_method eva.env klass (Selector.string_of sel);
+        end voms;
+        Value.Unit
+      end
     | Expr.Module (name, exprs) ->
       let env_in_mod = Value.Env.create_local eva.env in
       let eva_in_mod = { eva with env = env_in_mod; curr_mod_path = name::eva.curr_mod_path } in

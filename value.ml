@@ -140,14 +140,6 @@ module Frame = struct
       end;
       Hashtbl.add frame.method_table (klass, sel) meth
     end
-
-  let add_binding frame vom value export =
-    begin match vom with
-      | Var x ->
-        add_var frame x value export
-      | Method (klass, sel) ->
-        add_method frame klass sel value export
-    end
 end
 
 module Env = struct
@@ -230,8 +222,14 @@ module Env = struct
     find_binding env mods (Frame.Method (klass, sel))
 
   let add_var ?(export=false) env x v =
-    with_current_frame (fun frame -> Frame.add_binding frame (Frame.Var x) v export) env
+    with_current_frame (fun frame -> Frame.add_var frame x v export) env
 
   let add_method ?(export=false) env klass sel meth =
-    with_current_frame (fun frame -> Frame.add_binding frame (Frame.Method (klass, sel)) meth export) env
+    with_current_frame (fun frame -> Frame.add_method frame klass sel meth export) env
+
+  let export_var env x =
+    with_current_frame (fun frame -> Frame.export_var frame x) env
+
+  let export_method env klass sel =
+    with_current_frame (fun frame -> Frame.export_method frame klass sel) env
 end
