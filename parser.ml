@@ -227,14 +227,28 @@ let parse_selector parser =
     | Token.Reserved "(" ->
       begin
         lookahead parser;
-        let sel = begin match Token.string_of_operator parser.token with
-          | Some str ->
-            Selector.Op str
-          | None ->
+        let sel = begin match (parser.token, Token.string_of_operator parser.token) with
+          | (Token.Ident str, _) ->
+            begin
+              lookahead parser;
+              begin if parser.token = Token.Reserved "=" then
+                begin
+                  lookahead parser;
+                  Selector.Op (sprintf "%s=" str)
+                end
+              else
+                Selector.Ident str
+              end
+            end
+          | (_, Some str) ->
+            begin
+              lookahead parser;
+              Selector.Op str
+            end
+          | (_, None) ->
             failwith (expected parser "operator")
         end
         in
-        lookahead parser;
         parse_token parser (Token.Reserved ")");
         sel
       end
