@@ -15,6 +15,7 @@ let reserved = [
   "case";
   "def";
   "else";
+  "export";
   "false";
   "if";
   "match";

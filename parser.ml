@@ -296,6 +296,11 @@ and parse_binding_expr parser =
         lookahead parser;
         parse_module parser pos
       end
+    | Token.Reserved "export" ->
+      begin
+        lookahead parser;
+        parse_export_expr parser pos []
+      end
     | _ ->
       parse_or_expr parser
   end
@@ -321,6 +326,16 @@ and parse_module parser pos =
   let mod_name = parse_ident parser in
   let exprs = parse_block_like_elems parser parse_expr in
   Expr.at pos (Expr.Module (mod_name, exprs))
+
+and parse_export_expr parser pos rev_voms =
+  let vom = parse_var_or_method parser in
+  if parser.token <> Token.Reserved "," then
+    Expr.at pos (Expr.Export (List.rev (vom::rev_voms)))
+  else
+    begin
+      lookahead parser;
+      parse_export_expr parser pos (vom::rev_voms)
+    end
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in

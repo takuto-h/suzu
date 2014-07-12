@@ -137,10 +137,20 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       begin
         List.iter begin function
           | Expr.Var x ->
-            Value.Env.export_var eva.env x;
+            begin try
+              Value.Env.export_var eva.env x;
+            with
+              | Not_found ->
+                failwith (Pos.show_error pos (sprintf "variable not found: %s\n" x))
+            end
           | Expr.Method (mods, klass, sel) ->
             let klass = find_klass eva.env pos mods klass in
-            Value.Env.export_method eva.env klass (Selector.string_of sel);
+            begin try
+              Value.Env.export_method eva.env klass (Selector.string_of sel);
+            with
+              | Not_found ->
+                failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+            end
         end voms;
         Value.Unit
       end
