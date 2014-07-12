@@ -133,6 +133,17 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | _ ->
           lhs
       end
+    | Expr.Module (name, exprs) ->
+      let env_in_mod = Value.Env.create_local eva.env in
+      let eva_in_mod = { eva with env = env_in_mod; curr_mod_path = name::eva.curr_mod_path } in
+      let modl = Value.Module env_in_mod in
+      begin
+        Value.Env.add_var eva.env name modl;
+        List.iter begin fun elem ->
+          ignore (eval eva_in_mod elem)
+        end exprs;
+        modl
+      end
     | Expr.Export voms ->
       begin
         List.iter begin function
@@ -154,16 +165,12 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         end voms;
         Value.Unit
       end
-    | Expr.Module (name, exprs) ->
-      let env_in_mod = Value.Env.create_local eva.env in
-      let eva_in_mod = { eva with env = env_in_mod; curr_mod_path = name::eva.curr_mod_path } in
-      let modl = Value.Module env_in_mod in
-      begin
-        Value.Env.add_var eva.env name modl;
-        List.iter begin fun elem ->
-          ignore (eval eva_in_mod elem)
-        end exprs;
-        modl
+    | Expr.Open (mods, modl) ->
+      begin try
+        find_var eva.env pos mods modl
+      with
+        | Not_found ->
+          failwith (Pos.show_error pos (sprintf "module not found: %s\n" (SnString.concat ":" (mods @ [modl]))))
       end
   end
 
