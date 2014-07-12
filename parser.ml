@@ -294,6 +294,16 @@ let parse_var_or_method parser =
       Expr.Var ident
   end
 
+let parse_field_decl parser =
+  let mutabl = (parser.token = Token.Reserved "mutable") in
+  begin
+    begin if mutabl then
+      lookahead parser
+    end;
+    let field = parse_ident parser in
+    (field, mutabl)
+  end
+
 let rec parse_expr parser =
   parse_binding_expr parser
 
@@ -319,6 +329,11 @@ and parse_binding_expr parser =
       begin
         lookahead parser;
         parse_open_expr parser pos []
+      end
+    | Token.Reserved "class" ->
+      begin
+        lookahead parser;
+        parse_class parser pos
       end
     | _ ->
       parse_or_expr parser
@@ -365,6 +380,15 @@ and parse_open_expr parser pos rev_mods =
       lookahead parser;
       parse_open_expr parser pos (modl::rev_mods)
     end
+
+and parse_class parser pos =
+  let klass = parse_ident parser in
+  begin
+    parse_token parser (Token.Reserved "=");
+    let ctor = parse_ident parser in
+    let fields = parse_block_like_elems parser parse_field_decl in
+    Expr.at pos (Expr.Record (klass, ctor, fields))
+  end
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in
