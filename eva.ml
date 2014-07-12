@@ -165,12 +165,21 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         end voms;
         Value.Unit
       end
-    | Expr.Open (mods, modl) ->
+    | Expr.Open (mods, mod_name) ->
       begin try
-        find_var eva.env pos mods modl
+        let value = find_var eva.env pos mods mod_name in
+        begin match value with
+          | Value.Module modl ->
+            begin
+              Value.Env.open_module eva.env modl;
+              value
+            end
+          | _ ->
+            failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
+        end
       with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "module not found: %s\n" (SnString.concat ":" (mods @ [modl]))))
+          failwith (Pos.show_error pos (sprintf "module not found: %s\n" (SnString.concat ":" (mods @ [mod_name]))))
       end
   end
 

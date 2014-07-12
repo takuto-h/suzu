@@ -301,6 +301,11 @@ and parse_binding_expr parser =
         lookahead parser;
         parse_export_expr parser pos []
       end
+    | Token.Reserved "open" ->
+      begin
+        lookahead parser;
+        parse_open_expr parser pos []
+      end
     | _ ->
       parse_or_expr parser
   end
@@ -335,6 +340,16 @@ and parse_export_expr parser pos rev_voms =
     begin
       lookahead parser;
       parse_export_expr parser pos (vom::rev_voms)
+    end
+
+and parse_open_expr parser pos rev_mods =
+  let modl = parse_ident parser in
+  if parser.token <> Token.Reserved ":" then
+    Expr.at pos (Expr.Open (List.rev rev_mods, modl))
+  else
+    begin
+      lookahead parser;
+      parse_open_expr parser pos (modl::rev_mods)
     end
 
 and parse_or_expr parser =
