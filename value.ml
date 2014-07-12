@@ -11,9 +11,10 @@ type t =
   | Char of char
   | Bool of bool
   | Closure of env * string list * Expr.t list
-  | Class of string
-  | Module of env
   | Subr of int * (Pos.t -> t list -> t)
+  | Module of env
+  | Class of string
+  | Record of string * (string, t) Hashtbl.t
 
 and env =
   | Global of frame
@@ -42,12 +43,14 @@ let class_of value =
       "Bool:C"
     | Closure (_,  _, _) ->
       "Closure:C"
-    | Class _ ->
-      "Class:C"
-    | Module _ ->
-      "Module:C"
     | Subr (_, _) ->
       "Subr:C"
+    | Module _ ->
+      "Module:C"
+    | Class _ ->
+      "Class:C"
+    | Record (klass, _) ->
+      klass
   end
 
 let show value =
@@ -64,12 +67,14 @@ let show value =
       sprintf "%B" b
     | Closure (_,  _, _) ->
       "<closure>"
-    | Class klass ->
-      sprintf "<class %s>" klass
-    | Module _ ->
-      "<module>"
     | Subr (_, _) ->
       "<subr>"
+    | Module _ ->
+      "<module>"
+    | Class klass ->
+      sprintf "<class %s>" klass
+    | Record (klass, _) ->
+      sprintf "<record %s>" klass
   end
 
 module Frame = struct

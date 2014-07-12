@@ -22,7 +22,7 @@ let reserved = [
   "module";
   "mutable";
   "open";
-  "record"
+  "record";
   "try";
   "true";
   "variant";
