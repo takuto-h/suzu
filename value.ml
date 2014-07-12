@@ -148,6 +148,16 @@ module Frame = struct
         export_method frame klass sel
       end
     end
+
+  let open_module frame modl =
+    begin
+      VarSet.iter begin fun x ->
+        add_var frame x (find_var modl x Outside) false
+      end modl.exported_vars;
+      MethodSet.iter begin fun (klass, sel) ->
+        add_method frame klass sel (find_method modl klass sel Outside) false
+      end modl.exported_methods
+    end
 end
 
 module Env = struct
@@ -240,4 +250,11 @@ module Env = struct
 
   let export_method env klass sel =
     with_current_frame (fun frame -> Frame.export_method frame klass sel) env
+
+  let open_module env modl =
+    with_current_frame begin fun frame_env ->
+      with_current_frame begin fun frame_mod ->
+        Frame.open_module frame_env frame_mod
+      end modl
+    end env
 end
