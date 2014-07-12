@@ -15,13 +15,13 @@ type t = {
 and raw = 
   | Const of Literal.t
   | Get of string list * var_or_method
-  | Def of export * var_or_method * t
+  | Def of var_or_method * t
   | Lambda of string list * t list
   | FunCall of t * t list
   | MethodCall of t * Selector.t * t list
   | And of t * t
   | Or of t * t
-  | Module of export * string * t list
+  | Module of string * t list
 
 let at pos raw = {
   pos = pos;
@@ -42,8 +42,8 @@ let rec show {raw} =
       sprintf "(Const %s)" (Literal.show lit)
     | Get (mods, vom) ->
       sprintf "(Get %s %s)" (SnString.concat " " mods) (show_var_or_method vom)
-    | Def (export, vom, expr) ->
-      sprintf "(Def %b %s %s)" export (show_var_or_method vom) (show expr)
+    | Def (vom, expr) ->
+      sprintf "(Def %s %s)" (show_var_or_method vom) (show expr)
     | Lambda (params, body) ->
       sprintf "(Lambda (%s) %s)" (SnString.concat " " params) (SnString.concat_map " " show body)
     | FunCall (func, args) ->
@@ -54,6 +54,6 @@ let rec show {raw} =
       sprintf "(And %s %s)" (show lhs) (show rhs)
     | Or (lhs, rhs) ->
       sprintf "(Or %s %s)" (show lhs) (show rhs)
-    | Module (export, name, exprs) ->
-      sprintf "(Module %b %s %s)" export name (SnString.concat_map " " show exprs)
+    | Module (name, exprs) ->
+      sprintf "(Module %s %s)" name (SnString.concat_map " " show exprs)
   end

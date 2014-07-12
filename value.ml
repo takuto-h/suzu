@@ -119,20 +119,26 @@ module Frame = struct
         find_method frame klass sel from
     end
 
-  let add_var ({exported_vars;var_table;} as frame) x v export =
+  let export_var frame x =
+    frame.exported_vars <- VarSet.add x frame.exported_vars
+
+  let export_method frame klass sel =
+    frame.exported_methods <- MethodSet.add (klass, sel) frame.exported_methods
+
+  let add_var frame x v export =
     begin
       begin if export then
-        frame.exported_vars <- VarSet.add x exported_vars
+        export_var frame x
       end;
-      Hashtbl.add var_table x v
+      Hashtbl.add frame.var_table x v
     end
 
-  let add_method ({exported_methods;method_table;} as frame) klass sel meth export =
+  let add_method frame klass sel meth export =
     begin
       begin if export then
-        frame.exported_methods <- MethodSet.add (klass, sel) exported_methods
+        export_method frame klass sel
       end;
-      Hashtbl.add method_table (klass, sel) meth
+      Hashtbl.add frame.method_table (klass, sel) meth
     end
 
   let add_binding frame vom value export =

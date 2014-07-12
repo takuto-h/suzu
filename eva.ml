@@ -86,17 +86,17 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
           failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
       end
-    | Expr.Def (export, Expr.Var x, expr) ->
+    | Expr.Def (Expr.Var x, expr) ->
       let value = eval eva expr in
       begin
-        Value.Env.add_var eva.env x value ~export:export;
+        Value.Env.add_var eva.env x value;
         value
       end
-    | Expr.Def (export, Expr.Method (mods, klass, sel), expr) ->
+    | Expr.Def (Expr.Method (mods, klass, sel), expr) ->
       let value = eval eva expr in
       let klass = find_klass eva.env pos mods klass in
       begin
-        Value.Env.add_method eva.env klass (Selector.string_of sel) value ~export:export;
+        Value.Env.add_method eva.env klass (Selector.string_of sel) value;
         value
       end
     | Expr.Lambda (params, body) ->
@@ -133,12 +133,12 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | _ ->
           lhs
       end
-    | Expr.Module (export, name, exprs) ->
+    | Expr.Module (name, exprs) ->
       let env_in_mod = Value.Env.create_local eva.env in
       let eva_in_mod = { eva with env = env_in_mod; curr_mod_path = name::eva.curr_mod_path } in
       let modl = Value.Module env_in_mod in
       begin
-        Value.Env.add_var eva.env name modl ~export:export;
+        Value.Env.add_var eva.env name modl;
         List.iter begin fun elem ->
           ignore (eval eva_in_mod elem)
         end exprs;

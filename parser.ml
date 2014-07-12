@@ -284,49 +284,43 @@ let rec parse_expr parser =
   parse_binding_expr parser
 
 and parse_binding_expr parser =
-  let export = (parser.token = Token.Reserved "export") in
-  begin if export then
-    lookahead parser
-  end;
   let pos = parser.pos in
   begin match parser.token with
     | Token.Reserved "def" ->
       begin
         lookahead parser;
-        parse_def_expr parser pos export
+        parse_def_expr parser pos
       end
     | Token.Reserved "module" ->
       begin
         lookahead parser;
-        parse_module parser pos export
+        parse_module parser pos
       end
-    | _ when not export ->
-      parse_or_expr parser
     | _ ->
-      failwith (expected parser "'def' or 'module' or 'class'")
+      parse_or_expr parser
   end
 
-and parse_def_expr parser pos export =
+and parse_def_expr parser pos =
   let pos_lambda = parser.pos in
   let var_or_method = parse_var_or_method parser in
   begin match parser.token with
     | Token.Reserved "(" ->
       let func = parse_lambda parser pos_lambda in
-      Expr.at pos (Expr.Def (export, var_or_method, func))
+      Expr.at pos (Expr.Def (var_or_method, func))
     | Token.Reserved "=" ->
       begin
         lookahead parser;
         let expr = parse_expr parser in
-        Expr.at pos (Expr.Def (export, var_or_method, expr))
+        Expr.at pos (Expr.Def (var_or_method, expr))
       end
     | _ ->
       failwith (expected parser "'=' or '('")
   end
 
-and parse_module parser pos export =
+and parse_module parser pos =
   let mod_name = parse_ident parser in
   let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.Module (export, mod_name, exprs))
+  Expr.at pos (Expr.Module (mod_name, exprs))
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in
