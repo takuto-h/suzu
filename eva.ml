@@ -47,10 +47,20 @@ let find_binding thunk pos =
   end
 
 let find_var env pos mods x =
-  find_binding (fun () -> Value.Env.find_var env mods x) pos
+  begin try
+    find_binding (fun () -> Value.Env.find_var env mods x) pos
+  with
+    | Value.Env.Not_exported ->
+      failwith (Pos.show_error pos (sprintf "'%s' is not exported from '%s'\n" x (SnString.concat ":" mods)))
+  end
 
 let find_method env pos mods klass sel =
-  find_binding (fun () -> Value.Env.find_method env mods klass sel) pos
+  begin try
+    find_binding (fun () -> Value.Env.find_method env mods klass (Selector.string_of sel)) pos
+  with
+    | Value.Env.Not_exported ->
+      failwith (Pos.show_error pos (sprintf "'%s#%s' is not exported from '%s'\n" klass (Selector.show sel) (SnString.concat ":" mods)))
+  end
 
 let find_klass env pos mods klass_name =
   let klass = begin try
@@ -128,7 +138,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
     | Expr.Get (mods1, Expr.Method (mods2, klass, sel)) ->
       let klass = find_klass eva.env pos mods2 klass in
       begin try
-        find_method eva.env pos mods1 klass (Selector.string_of sel)
+        find_method eva.env pos mods1 klass sel
       with
         | Not_found ->
           let pair = sprintf "%s#%s" klass (Selector.show sel) in
@@ -158,7 +168,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       let recv = eval eva recv in
       let klass = Value.class_of recv in
       let meth = begin try
-        find_method eva.env pos [] klass (Selector.string_of sel)
+        find_method eva.env pos [] klass sel
       with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))

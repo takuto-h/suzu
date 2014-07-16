@@ -77,94 +77,95 @@ let show value =
       sprintf "<record %s>" klass
   end
 
-module Frame = struct
-  type t = frame
-
-  type var_or_method =
-    | Var of string
-    | Method of string * string
-
-  type find_from =
-    | Inside
-    | Outside
-
-  let create initial_table_size = {
-    exported_vars = VarSet.empty;
-    exported_methods = MethodSet.empty;
-    var_table = Hashtbl.create initial_table_size;
-    method_table = Hashtbl.create initial_table_size;
-  }
-
-  let find_var {exported_vars;var_table;} x from =
-    begin match from with
-      | Outside when not (VarSet.mem x exported_vars) ->
-        raise Not_found
-      | _ ->
-        Hashtbl.find var_table x
-    end
-
-  let find_method {exported_methods;method_table;} klass sel from =
-    begin match from with
-      | Outside when not (MethodSet.mem (klass, sel) exported_methods) ->
-        raise Not_found
-      | _ ->
-        Hashtbl.find method_table (klass, sel)
-    end
-
-  let find_binding frame vom from =
-    begin match vom with
-      | Var x ->
-        find_var frame x from
-      | Method (klass, sel) ->
-        find_method frame klass sel from
-    end
-
-  let export_var frame x =
-    begin if Hashtbl.mem frame.var_table x then
-      frame.exported_vars <- VarSet.add x frame.exported_vars
-    else
-      raise Not_found
-    end
-
-  let export_method frame klass sel =
-    begin if Hashtbl.mem frame.method_table (klass, sel) then
-      frame.exported_methods <- MethodSet.add (klass, sel) frame.exported_methods
-    else
-      raise Not_found
-    end
-
-  let add_var frame x v export =
-    begin
-      Hashtbl.add frame.var_table x v;
-      begin if export then
-        export_var frame x
-      end
-    end
-
-  let add_method frame klass sel meth export =
-    begin
-      Hashtbl.add frame.method_table (klass, sel) meth;
-      begin if export then
-        export_method frame klass sel
-      end
-    end
-
-  let open_module frame modl =
-    begin
-      VarSet.iter begin fun x ->
-        add_var frame x (find_var modl x Outside) false
-      end modl.exported_vars;
-      MethodSet.iter begin fun (klass, sel) ->
-        add_method frame klass sel (find_method modl klass sel Outside) false
-      end modl.exported_methods
-    end
-end
-
 module Env = struct
   type t = env
 
   exception Module_not_found of string
   exception Not_a_module of string * value
+  exception Not_exported
+
+  module Frame = struct
+    type t = frame
+
+    type var_or_method =
+      | Var of string
+      | Method of string * string
+
+    type find_from =
+      | Inside
+      | Outside
+
+    let create initial_table_size = {
+      exported_vars = VarSet.empty;
+      exported_methods = MethodSet.empty;
+      var_table = Hashtbl.create initial_table_size;
+      method_table = Hashtbl.create initial_table_size;
+    }
+
+    let find_var {exported_vars;var_table;} x from =
+      begin match from with
+        | Outside when not (VarSet.mem x exported_vars) ->
+          raise Not_exported
+        | _ ->
+          Hashtbl.find var_table x
+      end
+
+    let find_method {exported_methods;method_table;} klass sel from =
+      begin match from with
+        | Outside when not (MethodSet.mem (klass, sel) exported_methods) ->
+          raise Not_exported
+        | _ ->
+          Hashtbl.find method_table (klass, sel)
+      end
+
+    let find_binding frame vom from =
+      begin match vom with
+        | Var x ->
+          find_var frame x from
+        | Method (klass, sel) ->
+          find_method frame klass sel from
+      end
+
+    let export_var frame x =
+      begin if Hashtbl.mem frame.var_table x then
+        frame.exported_vars <- VarSet.add x frame.exported_vars
+      else
+        raise Not_found
+      end
+
+    let export_method frame klass sel =
+      begin if Hashtbl.mem frame.method_table (klass, sel) then
+        frame.exported_methods <- MethodSet.add (klass, sel) frame.exported_methods
+      else
+        raise Not_found
+      end
+
+    let add_var frame x v export =
+      begin
+        Hashtbl.add frame.var_table x v;
+        begin if export then
+          export_var frame x
+        end
+      end
+
+    let add_method frame klass sel meth export =
+      begin
+        Hashtbl.add frame.method_table (klass, sel) meth;
+        begin if export then
+          export_method frame klass sel
+        end
+      end
+
+    let open_module frame modl =
+      begin
+        VarSet.iter begin fun x ->
+          add_var frame x (find_var modl x Outside) false
+        end modl.exported_vars;
+        MethodSet.iter begin fun (klass, sel) ->
+          add_method frame klass sel (find_method modl klass sel Outside) false
+        end modl.exported_methods
+      end
+  end
 
   let initial_global_table_size = 16
   let initial_local_table_size = 4
