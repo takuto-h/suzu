@@ -23,8 +23,9 @@ let reserved = [
   "module";
   "mutable";
   "open";
-  "try";
+  "trait";
   "true";
+  "try";
   "with"
 ]
 

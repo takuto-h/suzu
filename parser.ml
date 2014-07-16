@@ -294,6 +294,16 @@ let parse_var_or_method parser =
       Expr.Var ident
   end
 
+let rec parse_export_expr parser pos rev_voms =
+  let vom = parse_var_or_method parser in
+  if parser.token <> Token.Reserved "," then
+    Expr.at pos (Expr.Export (List.rev (vom::rev_voms)))
+  else
+    begin
+      lookahead parser;
+      parse_export_expr parser pos (vom::rev_voms)
+    end
+
 let rec parse_expr parser =
   parse_binding_expr parser
 
@@ -305,10 +315,20 @@ and parse_binding_expr parser =
         lookahead parser;
         parse_def_expr parser pos
       end
+    | Token.Reserved "export" ->
+      begin
+        lookahead parser;
+        parse_export_expr parser pos []
+      end
     | Token.Reserved "open" ->
       begin
         lookahead parser;
         parse_open_expr parser pos []
+      end
+    | Token.Reserved "trait" ->
+      begin
+        lookahead parser;
+        parse_trait parser pos
       end
     | _ ->
       parse_or_expr parser
@@ -340,6 +360,11 @@ and parse_open_expr parser pos rev_mods =
       lookahead parser;
       parse_open_expr parser pos (modl::rev_mods)
     end
+
+and parse_trait parser pos =
+  let name = parse_ident parser in
+  let (params, body) = parse_function parser in
+  Expr.at pos (Expr.Def (Expr.Var name, Expr.at pos (Expr.Trait (params, body))))
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in
@@ -562,9 +587,13 @@ and parse_parens parser pos =
     end
 
 and parse_lambda parser pos =
+  let (params, body) = parse_function parser in
+  Expr.at pos (Expr.Lambda (params, body))
+
+and parse_function parser =
   let params = parse_params parser in
   let body = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.Lambda (params, body))
+  (params, body)
 
 and parse_block parser =
   let pos = parser.pos in
@@ -583,16 +612,6 @@ and parse_if_expr parser pos =
 
     Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
   end
-
-let rec parse_export parser pos rev_voms =
-  let vom = parse_var_or_method parser in
-  if parser.token <> Token.Reserved "," then
-    Expr.at pos (Expr.Export (List.rev (vom::rev_voms)))
-  else
-    begin
-      lookahead parser;
-      parse_export parser pos (vom::rev_voms)
-    end
 
 let parse_field_decl parser =
   let mutabl = (parser.token = Token.Reserved "mutable") in
@@ -620,11 +639,6 @@ let rec parse_toplevel parser =
       begin
         lookahead parser;
         parse_module parser pos
-      end
-    | Token.Reserved "export" ->
-      begin
-        lookahead parser;
-        parse_export parser pos []
       end
     | Token.Reserved "class" ->
       begin
