@@ -323,7 +323,7 @@ and parse_binding_expr parser =
     | Token.Reserved "open" ->
       begin
         lookahead parser;
-        parse_open_expr parser pos []
+        parse_open_expr parser pos
       end
     | Token.Reserved "trait" ->
       begin
@@ -351,15 +351,9 @@ and parse_def_expr parser pos =
       failwith (expected parser "'=' or '('")
   end
 
-and parse_open_expr parser pos rev_mods =
-  let modl = parse_ident parser in
-  if parser.token <> Token.Reserved ":" then
-    Expr.at pos (Expr.Open (List.rev rev_mods, modl))
-  else
-    begin
-      lookahead parser;
-      parse_open_expr parser pos (modl::rev_mods)
-    end
+and parse_open_expr parser pos =
+  let expr = parse_expr parser in
+  Expr.at pos (Expr.Open expr)
 
 and parse_trait parser pos =
   let name = parse_ident parser in

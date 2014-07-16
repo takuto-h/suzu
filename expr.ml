@@ -23,7 +23,7 @@ and raw =
   | Or of t * t
   | Module of string * t list
   | Export of var_or_method list
-  | Open of string list * string
+  | Open of t
   | Record of string * string * (string * bool) list
   | Trait of string list * t list
 
@@ -68,8 +68,8 @@ let rec show {raw} =
       sprintf "(Module %s %s)" name (SnString.concat_map " " show exprs)
     | Export voms ->
       sprintf "(Export %s)" (SnString.concat_map " " show_var_or_method voms)
-    | Open (mods, modl) ->
-      sprintf "(Open %s %s)" (SnString.concat " " mods) modl
+    | Open expr ->
+      sprintf "(Open %s)" (show expr)
     | Record (klass, ctor, fields) ->
       sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
     | Trait (params, body) ->

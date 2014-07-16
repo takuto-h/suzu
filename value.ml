@@ -170,6 +170,14 @@ module Env = struct
           add_method frame klass sel (find_method modl klass sel Outside) false
         end modl.exported_methods
       end
+
+    let print_all_bindings frame =
+      Hashtbl.iter begin fun x v ->
+        printf "%s = %s\n" x (show v)
+      end frame.var_table;
+      Hashtbl.iter begin fun (k, s) v ->
+        printf "%s#%s = %s\n" k s (show v)
+      end frame.method_table
   end
 
   let initial_global_table_size = 16
@@ -254,7 +262,22 @@ module Env = struct
   let export_var env x =
     with_current_frame (fun frame -> Frame.export_var frame x) env
 
+  let rec print_all_bindings env =
+    begin match env with
+      | Global frame ->
+        Frame.print_all_bindings frame
+      | Local (frame, outer) ->
+        begin
+          Frame.print_all_bindings frame;
+          printf "---\n";
+          print_all_bindings outer;
+        end
+    end
+
   let export_method env klass sel =
+    printf "********************\n";
+    print_all_bindings env;
+    printf "********************\n";
     with_current_frame (fun frame -> Frame.export_method frame klass sel) env
 
   let open_module env modl =
