@@ -294,16 +294,6 @@ let parse_var_or_method parser =
       Expr.Var ident
   end
 
-let parse_field_decl parser =
-  let mutabl = (parser.token = Token.Reserved "mutable") in
-  begin
-    begin if mutabl then
-      lookahead parser
-    end;
-    let field = parse_ident parser in
-    (field, mutabl)
-  end
-
 let rec parse_expr parser =
   parse_binding_expr parser
 
@@ -315,25 +305,10 @@ and parse_binding_expr parser =
         lookahead parser;
         parse_def_expr parser pos
       end
-    | Token.Reserved "module" ->
-      begin
-        lookahead parser;
-        parse_module parser pos
-      end
-    | Token.Reserved "export" ->
-      begin
-        lookahead parser;
-        parse_export_expr parser pos []
-      end
     | Token.Reserved "open" ->
       begin
         lookahead parser;
         parse_open_expr parser pos []
-      end
-    | Token.Reserved "class" ->
-      begin
-        lookahead parser;
-        parse_class parser pos
       end
     | _ ->
       parse_or_expr parser
@@ -356,21 +331,6 @@ and parse_def_expr parser pos =
       failwith (expected parser "'=' or '('")
   end
 
-and parse_module parser pos =
-  let mod_name = parse_ident parser in
-  let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.Module (mod_name, exprs))
-
-and parse_export_expr parser pos rev_voms =
-  let vom = parse_var_or_method parser in
-  if parser.token <> Token.Reserved "," then
-    Expr.at pos (Expr.Export (List.rev (vom::rev_voms)))
-  else
-    begin
-      lookahead parser;
-      parse_export_expr parser pos (vom::rev_voms)
-    end
-
 and parse_open_expr parser pos rev_mods =
   let modl = parse_ident parser in
   if parser.token <> Token.Reserved ":" then
@@ -380,15 +340,6 @@ and parse_open_expr parser pos rev_mods =
       lookahead parser;
       parse_open_expr parser pos (modl::rev_mods)
     end
-
-and parse_class parser pos =
-  let klass = parse_ident parser in
-  begin
-    parse_token parser (Token.Reserved "=");
-    let ctor = parse_ident parser in
-    let fields = parse_block_like_elems parser parse_field_decl in
-    Expr.at pos (Expr.Record (klass, ctor, fields))
-  end
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in
@@ -629,11 +580,68 @@ and parse_if_expr parser pos =
     skip parser Token.Newline;
     parse_token parser (Token.Reserved "else");
     let else_expr = parse_block parser in
+
     Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
   end
 
+let rec parse_export parser pos rev_voms =
+  let vom = parse_var_or_method parser in
+  if parser.token <> Token.Reserved "," then
+    Expr.at pos (Expr.Export (List.rev (vom::rev_voms)))
+  else
+    begin
+      lookahead parser;
+      parse_export parser pos (vom::rev_voms)
+    end
+
+let parse_field_decl parser =
+  let mutabl = (parser.token = Token.Reserved "mutable") in
+  begin
+    begin if mutabl then
+      lookahead parser
+    end;
+    let field = parse_ident parser in
+    (field, mutabl)
+  end
+
+let parse_class parser pos =
+  let klass = parse_ident parser in
+  begin
+    parse_token parser (Token.Reserved "=");
+    let ctor = parse_ident parser in
+    let fields = parse_block_like_elems parser parse_field_decl in
+    Expr.at pos (Expr.Record (klass, ctor, fields))
+  end
+
+let rec parse_toplevel parser =
+  let pos = parser.pos in
+  begin match parser.token with
+    | Token.Reserved "module" ->
+      begin
+        lookahead parser;
+        parse_module parser pos
+      end
+    | Token.Reserved "export" ->
+      begin
+        lookahead parser;
+        parse_export parser pos []
+      end
+    | Token.Reserved "class" ->
+      begin
+        lookahead parser;
+        parse_class parser pos
+      end
+    | _ ->
+      parse_expr parser
+  end
+
+and parse_module parser pos =
+  let mod_name = parse_ident parser in
+  let exprs = parse_block_like_elems parser parse_toplevel in
+  Expr.at pos (Expr.Module (mod_name, exprs))
+
 let parse_stmt parser =
-  let expr = parse_expr parser in
+  let expr = parse_toplevel parser in
   begin match parser.token with
     | Token.EOF | Token.Newline | Token.Reserved ";" ->
       expr
