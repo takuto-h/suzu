@@ -124,6 +124,16 @@ let add_accessors env klass fields =
     end
   end fields
 
+let bind_params env pos params args =
+  begin try
+    List.iter2 (Value.Env.add_var env) params args
+  with
+    | Invalid_argument _ ->
+      let arg_count = List.length args in
+      let param_count = List.length params in
+      failwith (wrong_number_of_arguments pos param_count arg_count)
+  end
+
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Const lit ->
@@ -248,31 +258,37 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         add_accessors eva.env klass fields;
         Value.Class klass
       end
+    | Expr.Trait (params, body) ->
+      Value.Trait (eva.env, params, body)
   end
 
 and funcall eva pos func args =
-  let arg_count = List.length args in
   begin match func with
     | Value.Closure (env, params, body) ->
       let env = Value.Env.create_local env in
       let eva = { eva with env = env } in
       begin
-        begin try
-          List.iter2 (Value.Env.add_var env) params args
-        with
-          | Invalid_argument _ ->
-            let param_count = List.length params in
-            failwith (wrong_number_of_arguments pos param_count arg_count)
-        end;
+        bind_params env pos params args;
         List.fold_left begin fun _ elem ->
           eval eva elem
         end Value.Unit body
       end
     | Value.Subr (param_count, subr) ->
+      let arg_count = List.length args in
       if arg_count <> param_count then
         failwith (wrong_number_of_arguments pos param_count arg_count)
       else
         subr pos args
+    | Value.Trait (env, params, body) ->
+      let env = Value.Env.create_local env in
+      let eva = { eva with env = env } in
+      begin
+        bind_params env pos params args;
+        List.iter begin fun elem ->
+          ignore (eval eva elem)
+        end body;
+        Value.Module env;
+      end
     | _ ->
       failwith (required pos "function" func)
   end

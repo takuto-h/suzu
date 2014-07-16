@@ -15,6 +15,7 @@ type t =
   | Module of env
   | Class of string
   | Record of string * (string, t) Hashtbl.t
+  | Trait of env * string list * Expr.t list
 
 and env =
   | Global of frame
@@ -51,6 +52,8 @@ let class_of value =
       "Class:C"
     | Record (klass, _) ->
       klass
+    | Trait (_, _, _) ->
+      "Trait:C"
   end
 
 let show value =
@@ -75,6 +78,8 @@ let show value =
       sprintf "<class %s>" klass
     | Record (klass, _) ->
       sprintf "<record %s>" klass
+    | Trait (_,  _, _) ->
+      "<trait>"
   end
 
 module Env = struct
