@@ -594,11 +594,6 @@ and parse_function parser =
   let body = parse_block_like_elems parser parse_expr in
   (params, body)
 
-and parse_block parser =
-  let pos = parser.pos in
-  let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.FunCall (Expr.at pos (Expr.Lambda ([], exprs)), []))
-
 and parse_if_expr parser pos =
   begin
     parse_token parser (Token.Reserved "(");
@@ -619,6 +614,11 @@ and parse_when_expr parser pos =
     let then_expr = parse_block parser in
     Expr.at pos (Expr.And (cond_expr, then_expr))
   end
+
+and parse_block parser =
+  let pos = parser.pos in
+  let exprs = parse_block_like_elems parser parse_expr in
+  Expr.at pos (Expr.FunCall (Expr.at pos (Expr.Lambda ([], exprs)), []))
 
 let parse_field_decl parser =
   let mutabl = (parser.token = Token.Reserved "mutable") in
