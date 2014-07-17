@@ -171,6 +171,20 @@ module Env = struct
         end modl.exported_methods
       end
 
+    let unexport_var frame x =
+      begin if VarSet.mem x frame.exported_vars then
+        frame.exported_vars <- VarSet.remove x frame.exported_vars
+      else
+        raise Not_found
+      end
+
+    let unexport_method frame klass sel =
+      begin if MethodSet.mem (klass, sel) frame.exported_methods then
+        frame.exported_methods <- MethodSet.remove (klass, sel) frame.exported_methods
+      else
+        raise Not_found
+      end
+
     let print_all_bindings frame =
       Hashtbl.iter begin fun x v ->
         printf "%s = %s\n" x (show v)
@@ -262,6 +276,22 @@ module Env = struct
   let export_var env x =
     with_current_frame (fun frame -> Frame.export_var frame x) env
 
+  let export_method env klass sel =
+    with_current_frame (fun frame -> Frame.export_method frame klass sel) env
+
+  let unexport_var env x =
+    with_current_frame (fun frame -> Frame.unexport_var frame x) env
+
+  let unexport_method env klass sel =
+    with_current_frame (fun frame -> Frame.unexport_method frame klass sel) env
+
+  let open_module env modl =
+    with_current_frame begin fun frame_env ->
+      with_current_frame begin fun frame_mod ->
+        Frame.open_module frame_env frame_mod
+      end modl
+    end env
+
   let rec print_all_bindings env =
     begin match env with
       | Global frame ->
@@ -273,17 +303,4 @@ module Env = struct
           print_all_bindings outer;
         end
     end
-
-  let export_method env klass sel =
-    printf "********************\n";
-    print_all_bindings env;
-    printf "********************\n";
-    with_current_frame (fun frame -> Frame.export_method frame klass sel) env
-
-  let open_module env modl =
-    with_current_frame begin fun frame_env ->
-      with_current_frame begin fun frame_mod ->
-        Frame.open_module frame_env frame_mod
-      end modl
-    end env
 end

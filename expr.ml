@@ -26,6 +26,7 @@ and raw =
   | Open of t
   | Record of string * string * (string * bool) list
   | Trait of string list * t list
+  | Except of t * var_or_method list
 
 let at pos raw = {
   pos = pos;
@@ -74,4 +75,6 @@ let rec show {raw} =
       sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
     | Trait (params, body) ->
       sprintf "(Trait (%s) %s)" (SnString.concat " " params) (SnString.concat_map " " show body)
+    | Except (modl, voms) ->
+      sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " show_var_or_method voms)
   end
