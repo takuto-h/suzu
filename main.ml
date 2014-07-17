@@ -65,11 +65,14 @@ let rec repl proc =
       ()
   end
 
-let () =
+let main () =
   let env = Value.Env.create_global () in
   begin
+    ModPervasives.initialize env;
     ModInt.initialize env;
     ModBool.initialize env;
     let eva = Eva.create env in
     repl (fun expr -> Value.show (Eva.eval eva expr))
   end
+    
+let () = main ()

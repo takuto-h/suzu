@@ -303,3 +303,11 @@ let bool_of_value pos v =
     | _ ->
       failwith (required pos "bool" v)
   end
+
+let string_of_value pos v =
+  begin match v with
+    | Value.String str ->
+      str
+    | _ ->
+      failwith (required pos "string" v)
+  end
