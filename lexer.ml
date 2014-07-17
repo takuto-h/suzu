@@ -26,6 +26,7 @@ let reserved = [
   "trait";
   "true";
   "try";
+  "when";
   "with"
 ]
 

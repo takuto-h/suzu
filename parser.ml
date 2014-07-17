@@ -533,6 +533,11 @@ and parse_atomic_expr parser =
         lookahead parser;
         parse_if_expr parser pos
       end
+    | Token.Reserved "when" ->
+      begin
+        lookahead parser;
+        parse_when_expr parser pos
+      end
     | _ ->
       failwith (expected parser "expression")
   end
@@ -603,8 +608,16 @@ and parse_if_expr parser pos =
     skip parser Token.Newline;
     parse_token parser (Token.Reserved "else");
     let else_expr = parse_block parser in
-
     Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
+  end
+
+and parse_when_expr parser pos =
+  begin
+    parse_token parser (Token.Reserved "(");
+    let cond_expr = parse_expr parser in
+    parse_token parser (Token.Reserved ")");
+    let then_expr = parse_block parser in
+    Expr.at pos (Expr.And (cond_expr, then_expr))
   end
 
 let parse_field_decl parser =
