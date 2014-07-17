@@ -107,6 +107,14 @@ module Env = struct
       method_table = Hashtbl.create initial_table_size;
     }
 
+    let print_all_bindings frame =
+      Hashtbl.iter begin fun x v ->
+        printf "%s = %s\n" x (show v)
+      end frame.var_table;
+      Hashtbl.iter begin fun (k, s) v ->
+        printf "%s#%s = %s\n" k s (show v)
+      end frame.method_table
+
     let find_var {exported_vars;var_table;} x from =
       begin match from with
         | Outside when not (VarSet.mem x exported_vars) ->
@@ -184,14 +192,6 @@ module Env = struct
       else
         raise Not_found
       end
-
-    let print_all_bindings frame =
-      Hashtbl.iter begin fun x v ->
-        printf "%s = %s\n" x (show v)
-      end frame.var_table;
-      Hashtbl.iter begin fun (k, s) v ->
-        printf "%s#%s = %s\n" k s (show v)
-      end frame.method_table
   end
 
   let initial_global_table_size = 16

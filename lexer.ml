@@ -16,6 +16,7 @@ let reserved = [
   "class";
   "def";
   "else";
+  "except";
   "export";
   "false";
   "if";

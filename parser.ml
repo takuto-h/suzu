@@ -294,15 +294,19 @@ let parse_var_or_method parser =
       Expr.Var ident
   end
 
-let rec parse_export_expr parser pos rev_voms =
+let rec parse_var_or_methods parser rev_voms =
   let vom = parse_var_or_method parser in
   if parser.token <> Token.Reserved "," then
-    Expr.at pos (Expr.Export (List.rev (vom::rev_voms)))
+    List.rev (vom::rev_voms)
   else
     begin
       lookahead parser;
-      parse_export_expr parser pos (vom::rev_voms)
+      parse_var_or_methods parser (vom::rev_voms)
     end
+
+let parse_export_expr parser pos rev_voms =
+  let voms = parse_var_or_methods parser [] in
+  Expr.at pos (Expr.Export voms)
 
 let rec parse_expr parser =
   parse_binding_expr parser
@@ -331,7 +335,7 @@ and parse_binding_expr parser =
         parse_trait parser pos
       end
     | _ ->
-      parse_or_expr parser
+      parse_except_expr parser
   end
 
 and parse_def_expr parser pos =
@@ -359,6 +363,20 @@ and parse_trait parser pos =
   let name = parse_ident parser in
   let (params, body) = parse_function parser in
   Expr.at pos (Expr.Def (Expr.Var name, Expr.at pos (Expr.Trait (params, body))))
+
+and parse_except_expr parser =
+  let expr = parse_or_expr parser in
+  begin match parser.token with
+    | Token.Reserved "except" ->
+      let pos = parser.pos in
+      begin
+        lookahead parser;
+        let voms = parse_var_or_methods parser [] in
+        Expr.at pos (Expr.Except (expr, voms))
+      end
+    | _ ->
+      expr
+  end
 
 and parse_or_expr parser =
   let lhs = parse_and_expr parser in
