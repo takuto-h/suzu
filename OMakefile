@@ -4,7 +4,7 @@ BYTE_ENABLED = true
 
 SUZU_FILES[] =\
   snPervasives snString pos source token lexer literal selector expr parser\
-  value eva modPervasives modInt modBool main
+  value eva modPervasives modInt modBool interp main
 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)
