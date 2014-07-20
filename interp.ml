@@ -10,12 +10,10 @@ let initial_buffer_size = 64
 
 let create () =
   let env = Value.Env.create_global () in
-  begin
-    ModPervasives.initialize env;
-    ModInt.initialize env;
-    ModBool.initialize env;
-    { eva = Eva.create env; }
-  end
+  ModPervasives.initialize env;
+  ModInt.initialize env;
+  ModBool.initialize env;
+  { eva = Eva.create env; }
 
 let parse_string proc str =
   let source = Source.of_string "<stdin>" str in
@@ -24,59 +22,49 @@ let parse_string proc str =
   begin try
     let rec loop () =
       begin match Parser.parse parser with
-        | None ->
-          ()
-        | Some expr ->
-          begin
-            printf "%s\n" (proc expr);
-            loop ()
-          end
+      | None ->
+        ()
+      | Some expr ->
+        printf "%s\n" (proc expr);
+        loop ()
       end
     in
     loop ()
   with
-    | Failure message ->
-      printf "%s" message
+  | Failure message ->
+    printf "%s" message
   end
 
 let rec read_multiple_lines buf =
-  begin
-    printf "... ";
-    let line = read_line () in
-    begin if line = "" then
-      Buffer.contents buf
-    else
-      begin
-        Buffer.add_string buf (sprintf "%s\n" line);
-        read_multiple_lines buf
-      end
-    end
-  end
-
-let read () =
+  printf "... ";
   let line = read_line () in
-  let len = String.length line in
-  begin if len <> 0 && (line.[len - 1] = ':' || line.[len - 1] = '{') then
-    let buf = Buffer.create initial_buffer_size in
+  if line = "" then
+    Buffer.contents buf
+  else
     begin
       Buffer.add_string buf (sprintf "%s\n" line);
       read_multiple_lines buf
     end
+
+let read () =
+  let line = read_line () in
+  let len = String.length line in
+  if len <> 0 && (line.[len - 1] = ':' || line.[len - 1] = '{') then
+    let buf = Buffer.create initial_buffer_size in
+    Buffer.add_string buf (sprintf "%s\n" line);
+    read_multiple_lines buf
   else
     line
-  end
 
 let rec rppl proc =
   begin try
-    begin
-      printf ">>> ";
-      let str = read () in
-      parse_string proc str;
-      rppl proc
-    end
+    printf ">>> ";
+    let str = read () in
+    parse_string proc str;
+    rppl proc
   with
-    | End_of_file ->
-      ()
+  | End_of_file ->
+    ()
   end
 
 let repl {eva;} =
@@ -90,18 +78,16 @@ let load_file {eva;} name =
     begin try
       let rec loop () =
         begin match Parser.parse parser with
-          | None ->
-             ()
-          | Some expr ->
-             begin
-               ignore (Eva.eval eva expr);
-               loop ()
-             end
+        | None ->
+          ()
+        | Some expr ->
+          ignore (Eva.eval eva expr);
+          loop ()
         end
       in
       loop ()
     with
-      | Failure message ->
-         printf "%s" message
+    | Failure message ->
+      printf "%s" message
     end
   end
