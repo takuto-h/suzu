@@ -1,4 +1,5 @@
 
+open SnPervasives
 open Printf
 
 type t = {
@@ -80,3 +81,27 @@ let rec rppl proc =
 
 let repl {eva;} =
   rppl (fun expr -> Value.show (Eva.eval eva expr))
+
+let load_file {eva;} name =
+  with_open_in name begin fun chan_in ->
+    let source = Source.of_channel name chan_in in
+    let lexer = Lexer.create source in
+    let parser = Parser.create lexer in
+    begin try
+      let rec loop () =
+        begin match Parser.parse parser with
+          | None ->
+             ()
+          | Some expr ->
+             begin
+               ignore (Eva.eval eva expr);
+               loop ()
+             end
+        end
+      in
+      loop ()
+    with
+      | Failure message ->
+         printf "%s" message
+    end
+  end
