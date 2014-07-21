@@ -22,6 +22,10 @@ OCamlProgram($(PROGRAM), $(PROGRAM_FILES))
 run: $(PROGRAM)
     ./$(PROGRAM)
 
+.PHONY: test
+test: $(PROGRAM)
+    ./$(PROGRAM) test.sn
+
 $(TOP): $(TOP_FILES)
     $(OCAMLMKTOP) -o $(TOP) $(TOP_FILES)
 

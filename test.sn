@@ -1,0 +1,10 @@
+
+write_line("hello, world.")
+
+def fac(n):
+  if(n == 0):
+    1
+  else:
+    n * fac(n - 1)
+
+// write_line("fac(10) = {0}", fac(10))
