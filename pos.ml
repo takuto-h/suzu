@@ -3,8 +3,8 @@ open SnPervasives
 open Printf
 
 type source =
-| File
-| String of string
+  | File
+  | String of string
 
 type t = {
   fname : string;
@@ -33,24 +33,24 @@ let show_source {fname;lnum;cnum;bol;source;} =
   let str_anchor = String.make (offset + 1) ' ' in
   String.set str_anchor offset '^';
   begin match source with
-  | File ->
-    with_open_in fname begin fun chan_in ->
-      begin try
-        seek_in chan_in bol;
-        let str_line = input_line chan_in in
-        sprintf "%s\n%s\n" str_line str_anchor
-      with
-      | End_of_file -> ""
+    | File ->
+      with_open_in fname begin fun chan_in ->
+        begin try
+            seek_in chan_in bol;
+            let str_line = input_line chan_in in
+            sprintf "%s\n%s\n" str_line str_anchor
+          with
+          | End_of_file -> ""
+        end
       end
-    end
-  | String str ->
-    let str = String.sub str bol (String.length str - bol) in
-    let str_line = begin try
-      String.sub str 0 (String.index str '\n')
-    with
-    | Not_found -> str
-    end in
-    sprintf "%s\n%s\n" str_line str_anchor
+    | String str ->
+      let str = String.sub str bol (String.length str - bol) in
+      let str_line = begin try
+          String.sub str 0 (String.index str '\n')
+        with
+        | Not_found -> str
+      end in
+      sprintf "%s\n%s\n" str_line str_anchor
   end
 
 let show_message pos message =

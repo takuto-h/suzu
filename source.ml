@@ -28,14 +28,14 @@ let peek {strm;} =
 
 let junk src =
   begin match peek src with
-  | None ->
-    ()
-  | Some '\n' ->
-    src.lnum <- src.lnum + 1;
-    src.cnum <- src.cnum + 1;
-    src.bol <- src.cnum;
-    Stream.junk src.strm
-  | Some _ ->
-    src.cnum <- src.cnum + 1;
-    Stream.junk src.strm
+    | None ->
+      ()
+    | Some '\n' ->
+      src.lnum <- src.lnum + 1;
+      src.cnum <- src.cnum + 1;
+      src.bol <- src.cnum;
+      Stream.junk src.strm
+    | Some _ ->
+      src.cnum <- src.cnum + 1;
+      Stream.junk src.strm
   end

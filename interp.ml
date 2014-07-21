@@ -20,19 +20,19 @@ let parse_string proc str =
   let lexer = Lexer.create source in
   let parser = Parser.create lexer in
   begin try
-    let rec loop () =
-      begin match Parser.parse parser with
-      | None ->
-        ()
-      | Some expr ->
-        printf "%s\n" (proc expr);
-        loop ()
-      end
-    in
-    loop ()
-  with
-  | Failure message ->
-    printf "%s" message
+      let rec loop () =
+        begin match Parser.parse parser with
+          | None ->
+            ()
+          | Some expr ->
+            printf "%s\n" (proc expr);
+            loop ()
+        end
+      in
+      loop ()
+    with
+    | Failure message ->
+      printf "%s" message
   end
 
 let rec read_multiple_lines buf =
@@ -58,13 +58,13 @@ let read () =
 
 let rec rppl proc =
   begin try
-    printf ">>> ";
-    let str = read () in
-    parse_string proc str;
-    rppl proc
-  with
-  | End_of_file ->
-    ()
+      printf ">>> ";
+      let str = read () in
+      parse_string proc str;
+      rppl proc
+    with
+    | End_of_file ->
+      ()
   end
 
 let repl {eva;} =
@@ -76,18 +76,18 @@ let load_file {eva;} name =
     let lexer = Lexer.create source in
     let parser = Parser.create lexer in
     begin try
-      let rec loop () =
-        begin match Parser.parse parser with
-        | None ->
-          ()
-        | Some expr ->
-          ignore (Eva.eval eva expr);
-          loop ()
-        end
-      in
-      loop ()
-    with
-    | Failure message ->
-      printf "%s" message
+        let rec loop () =
+          begin match Parser.parse parser with
+            | None ->
+              ()
+            | Some expr ->
+              ignore (Eva.eval eva expr);
+              loop ()
+          end
+        in
+        loop ()
+      with
+      | Failure message ->
+        printf "%s" message
     end
   end
