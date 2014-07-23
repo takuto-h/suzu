@@ -46,17 +46,13 @@ let indent lexer =
     let pos = Source.pos lexer.source in
     failwith (Pos.show_error pos "layout inside parentheses\n")
 
-let is_digit c = String.contains "0123456789" c
-
 let is_ident_start c = String.contains "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" c
 
-let is_ident_part c = is_ident_start c || is_digit c
+let is_ident_part c = is_ident_start c || SnChar.is_digit c
 
 let is_op_part c = String.contains "=<>|&+-*/%" c
 
 let is_whitespace c = String.contains " \t\r\n" c
-
-let int_of_digit c = Char.code c - Char.code '0'
 
 let lex_close_paren lexer pos open_paren close_paren =
   if Stack.is_empty lexer.parens || Stack.top lexer.parens <> open_paren then
@@ -79,9 +75,9 @@ let rec lex_op lexer buf =
 
 let rec lex_int lexer n =
   begin match Source.peek lexer.source with
-    | Some c when is_digit c ->
+    | Some c when SnChar.is_digit c ->
       Source.junk lexer.source;
-      lex_int lexer (n * 10 + int_of_digit c)
+      lex_int lexer (n * 10 + SnChar.int_of_digit c)
     | Some _ | None ->
       Token.Int n
   end
@@ -245,8 +241,8 @@ let lex_visible_token lexer pos c =
       lex_string lexer buf
     | '\'' ->
       lex_char lexer
-    | _ when is_digit c ->
-      lex_int lexer (int_of_digit c)
+    | _ when SnChar.is_digit c ->
+      lex_int lexer (SnChar.int_of_digit c)
     | _ when is_ident_start c ->
       let buf = Buffer.create initial_buffer_size in
       Buffer.add_char buf c;
