@@ -82,16 +82,23 @@ and parse_string strm c rev_insns =
   in
   loop ()
 
-let rec execute_format_insns insns args buf =
+let rec execute_format_insns eva pos insns args buf =
   begin match insns with
     | [] ->
       Buffer.contents buf
     | (String str)::insns ->
       Buffer.add_string buf str;
-      execute_format_insns insns args buf
+      execute_format_insns eva pos insns args buf
     | (Placeholder n)::insns ->
-      Buffer.add_string buf (string_of_int n);
-      execute_format_insns insns args buf
+      let str = Eva.string_of_value pos begin try
+          Eva.call_method eva pos (List.nth args n) (Selector.Ident "to_string") []
+        with
+        | Failure "nth" ->
+          failwith (Pos.show_error pos (sprintf "argument not supplied: {%d}\n" n))
+      end
+      in
+      Buffer.add_string buf str;
+      execute_format_insns eva pos insns args buf
   end
 
 let subr_string_format =
@@ -104,8 +111,10 @@ let subr_string_format =
           failwith (Pos.show_error pos (sprintf "illegal format string: %s\n" (Eva.Value.show self)))
       end
       in
-      Eva.String (execute_format_insns insns (List.tl args) (Buffer.create initial_formatted_buffer_size))
+      Eva.String (execute_format_insns eva pos insns (List.tl args) (Buffer.create initial_formatted_buffer_size))
   end
+
+let subr_string_to_string = Eva.make_unary_subr Eva.value_of_string (fun str -> str) Eva.string_of_value
 
 let initialize env =
   let mod_string = Eva.Env.create_local env in
@@ -114,3 +123,6 @@ let initialize env =
   Eva.Env.add_var mod_string "C" (Eva.Class "String:C") ~export:true;
   Eva.Env.add_var mod_string "format" subr_string_format ~export:true;
   Eva.Env.add_var mod_string "Open" (Eva.Module mod_string_open) ~export:true;
+  Eva.Env.add_method mod_string_open "String:C" "to_string" subr_string_to_string ~export:true;
+  Eva.Env.open_module env mod_string_open
+

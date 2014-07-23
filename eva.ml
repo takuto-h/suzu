@@ -455,19 +455,11 @@ let rec eval eva {Expr.pos;Expr.raw;} =
     | Expr.FunCall (func, args) ->
       let func = eval eva func in
       let args = List.map (eval eva) args in
-      funcall eva pos func args
+      call_fun eva pos func args
     | Expr.MethodCall (recv, sel, args) ->
       let recv = eval eva recv in
-      let klass = Value.class_of recv in
-      let meth = begin try
-          find_method eva.env pos [] klass sel
-        with
-        | Not_found ->
-          failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
-      end
-      in
       let args = List.map (eval eva) args in
-      funcall eva pos meth (recv::args)
+      call_method eva pos recv sel args
     | Expr.And (lhs, rhs) ->
       let lhs = eval eva lhs in
       begin match lhs with
@@ -556,7 +548,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       modl
   end
 
-and funcall eva pos func args =
+and call_fun eva pos func args =
   begin match func with
     | Closure (env, params, body) ->
       let env = Env.create_local env in
@@ -583,6 +575,17 @@ and funcall eva pos func args =
       failwith (required pos "function" func)
   end
 
+and call_method eva pos recv sel args =
+  let klass = Value.class_of recv in
+  let meth = begin try
+      find_method eva.env pos [] klass sel
+    with
+    | Not_found ->
+      failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+  end
+  in
+  call_fun eva pos meth (recv::args)
+
 let int_of_value pos v =
   begin match v with
     | Int i ->
@@ -605,4 +608,21 @@ let string_of_value pos v =
       str
     | _ ->
       failwith (required pos "string" v)
+  end
+
+let value_of_int i = Int i
+let value_of_bool b = Bool b
+let value_of_string str = String str
+
+let make_binary_subr proc_out proc_body proc_in =
+  Subr begin 2, false, fun eva pos args ->
+      let arg0 = List.nth args 0 in
+      let arg1 = List.nth args 1 in
+      proc_out (proc_body (proc_in pos arg0) (proc_in pos arg1))
+  end
+
+let make_unary_subr proc_out proc_body proc_in =
+  Subr begin 1, false, fun eva pos args ->
+      let arg0 = List.nth args 0 in
+      proc_out (proc_body (proc_in pos arg0))
   end
