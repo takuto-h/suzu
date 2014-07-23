@@ -13,6 +13,7 @@ let create () =
   ModPervasives.initialize env;
   ModInt.initialize env;
   ModBool.initialize env;
+  ModString.initialize env;
   { eva = Eva.create env; }
 
 let parse_string proc str =

@@ -78,7 +78,7 @@ let find_klass env pos mods klass_name =
   end
 
 let make_ctor klass fields =
-  Value.Subr begin (List.length fields), fun pos args ->
+  Value.Subr begin (List.length fields), false, fun pos args ->
       let table = Hashtbl.create initial_field_table_size in
       List.iter2 begin fun (field, _) arg ->
         Hashtbl.add table field arg
@@ -87,7 +87,7 @@ let make_ctor klass fields =
   end
 
 let make_getter klass field =
-  Value.Subr begin 1, fun pos args ->
+  Value.Subr begin 1, false, fun pos args ->
       let self = List.nth args 0 in
       begin match self with
         | Value.Record (klass2, table) when klass2 = klass ->
@@ -98,7 +98,7 @@ let make_getter klass field =
   end      
 
 let make_setter klass field =
-  Value.Subr begin 2, fun pos args ->
+  Value.Subr begin 2, false, fun pos args ->
       let self = List.nth args 0 in
       let value = List.nth args 1 in
       begin match self with
@@ -272,10 +272,10 @@ and funcall eva pos func args =
       List.fold_left begin fun _ elem ->
         eval eva elem
       end Value.Unit body
-    | Value.Subr (param_count, subr) ->
+    | Value.Subr (required_count, allows_rest, subr) ->
       let arg_count = List.length args in
-      if arg_count <> param_count then
-        failwith (wrong_number_of_arguments pos param_count arg_count)
+      if arg_count < required_count || arg_count > required_count && not allows_rest then
+        failwith (wrong_number_of_arguments pos required_count arg_count)
       else
         subr pos args
     | Value.Trait (env, params, body) ->

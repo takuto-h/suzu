@@ -1,6 +1,6 @@
 
 let unary_op proc =
-  Value.Subr begin 1, fun pos args ->
+  Value.Subr begin 1, false, fun pos args ->
       let self = List.nth args 0 in
       Value.Bool (proc (Eva.bool_of_value pos self))
   end

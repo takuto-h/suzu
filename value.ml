@@ -11,7 +11,7 @@ type t =
   | Char of char
   | Bool of bool
   | Closure of env * string list * Expr.t list
-  | Subr of int * (Pos.t -> t list -> t)
+  | Subr of int * bool * (Pos.t -> t list -> t)
   | Module of env
   | Class of string
   | Record of string * (string, t) Hashtbl.t
@@ -44,7 +44,7 @@ let class_of value =
       "Bool:C"
     | Closure (_,  _, _) ->
       "Closure:C"
-    | Subr (_, _) ->
+    | Subr (_, _, _) ->
       "Subr:C"
     | Module _ ->
       "Module:C"
@@ -70,7 +70,7 @@ let show value =
       sprintf "%B" b
     | Closure (_,  _, _) ->
       "<closure>"
-    | Subr (_, _) ->
+    | Subr (_, _, _) ->
       "<subr>"
     | Module _ ->
       "<module>"
