@@ -1,7 +1,7 @@
 
 let write_line =
-  Eva.Subr begin 1, false, fun eva pos args ->
-      let str = List.nth args 0 in
+  Eva.Subr begin 1, true, fun eva pos args ->
+      let str = Eva.call_fun eva pos ModString.subr_string_format args in
       print_endline (Eva.string_of_value pos str);
       Eva.Unit
   end

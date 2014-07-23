@@ -594,12 +594,28 @@ let int_of_value pos v =
       failwith (required pos "int" v)
   end
 
+let unit_of_value pos v =
+  begin match v with
+    | Unit ->
+      ()
+    | _ ->
+      failwith (required pos "unit" v)
+  end
+
 let bool_of_value pos v =
   begin match v with
     | Bool b ->
       b
     | _ ->
       failwith (required pos "bool" v)
+  end
+
+let char_of_value pos v =
+  begin match v with
+    | Char c ->
+      c
+    | _ ->
+      failwith (required pos "char" v)
   end
 
 let string_of_value pos v =
@@ -611,7 +627,9 @@ let string_of_value pos v =
   end
 
 let value_of_int i = Int i
+let value_of_unit u = Unit
 let value_of_bool b = Bool b
+let value_of_char c = Char c
 let value_of_string str = String str
 
 let make_binary_subr proc_out proc_body proc_in =

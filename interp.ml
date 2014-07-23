@@ -12,7 +12,9 @@ let create () =
   let env = Eva.Env.create_global () in
   ModPervasives.initialize env;
   ModInt.initialize env;
+  ModUnit.initialize env;
   ModBool.initialize env;
+  ModChar.initialize env;
   ModString.initialize env;
   { eva = Eva.create env; }
 

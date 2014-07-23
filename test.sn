@@ -7,4 +7,39 @@ def fac(n):
   else:
     n * fac(n - 1)
 
-// write_line("fac(10) = {0}", fac(10))
+write_line("fac(10) = {0}", fac(10))
+
+class UgradStudent = make_ugrad_student:
+  name
+  college
+  mutable grade
+
+def me = make_ugrad_student("Takuto Hayashi", "College of Information Science", 3)
+write_line("me.name = {0}", me.name)
+write_line("me.college = {0}", me.college)
+write_line("me.grade = {0}", me.grade)
+
+def UgradStudent#promote(self):
+  when(self.grade < 4):
+    self.grade = self.grade + 1
+  self.grade
+
+write_line("me.promote = {0}", me.promote)
+
+trait Student(C, name_of, department_of):
+  def C#introduce_oneself(self):
+    write_line("My name is {0}. I'm a member of {1}.", name_of(self), department_of(self))
+  export C#introduce_oneself
+
+class GradStudent = make_grad_student:
+  name
+  school
+  mutable grade
+
+def taro = make_grad_student("Taro Tsukuba", "Graduate School of Systems and Information Engineering", 1)
+
+open Student(UgradStudent, UgradStudent#name, UgradStudent#college)
+open Student(GradStudent, GradStudent#name, GradStudent#school)
+
+me.introduce_oneself
+taro.introduce_oneself

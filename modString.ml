@@ -114,7 +114,7 @@ let subr_string_format =
       Eva.String (execute_format_insns eva pos insns (List.tl args) (Buffer.create initial_formatted_buffer_size))
   end
 
-let subr_string_to_string = Eva.make_unary_subr Eva.value_of_string (fun str -> str) Eva.string_of_value
+let subr_string_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%s") Eva.string_of_value
 
 let initialize env =
   let mod_string = Eva.Env.create_local env in
