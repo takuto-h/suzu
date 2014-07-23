@@ -9,7 +9,7 @@ type t = {
 let initial_buffer_size = 64
 
 let create () =
-  let env = Value.Env.create_global () in
+  let env = Eva.Env.create_global () in
   ModPervasives.initialize env;
   ModInt.initialize env;
   ModBool.initialize env;
@@ -69,7 +69,7 @@ let rec rppl proc =
   end
 
 let repl {eva;} =
-  rppl (fun expr -> Value.show (Eva.eval eva expr))
+  rppl (fun expr -> Eva.Value.show (Eva.eval eva expr))
 
 let load_file {eva;} name =
   with_open_in name begin fun chan_in ->

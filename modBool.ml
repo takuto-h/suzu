@@ -1,15 +1,15 @@
 
 let unary_op proc =
-  Value.Subr begin 1, false, fun pos args ->
+  Eva.Subr begin 1, false, fun pos args ->
       let self = List.nth args 0 in
-      Value.Bool (proc (Eva.bool_of_value pos self))
+      Eva.Bool (proc (Eva.bool_of_value pos self))
   end
 
 let initialize env =
-  let mod_bool = Value.Env.create_local env in
-  let mod_bool_open = Value.Env.create_local mod_bool in
-  Value.Env.add_var env "Bool" (Value.Module mod_bool);
-  Value.Env.add_var mod_bool "C" (Value.Class "Bool:C") ~export:true;
-  Value.Env.add_var mod_bool "Open" (Value.Module mod_bool_open) ~export:true;
-  Value.Env.add_method mod_bool_open "Bool:C" "!" (unary_op not) ~export:true;
-  Value.Env.open_module env mod_bool_open
+  let mod_bool = Eva.Env.create_local env in
+  let mod_bool_open = Eva.Env.create_local mod_bool in
+  Eva.Env.add_var env "Bool" (Eva.Module mod_bool);
+  Eva.Env.add_var mod_bool "C" (Eva.Class "Bool:C") ~export:true;
+  Eva.Env.add_var mod_bool "Open" (Eva.Module mod_bool_open) ~export:true;
+  Eva.Env.add_method mod_bool_open "Bool:C" "!" (unary_op not) ~export:true;
+  Eva.Env.open_module env mod_bool_open

@@ -95,22 +95,22 @@ let rec execute_format_insns insns args buf =
   end
 
 let subr_string_format =
-  Value.Subr begin 1, true, fun pos args ->
+  Eva.Subr begin 1, true, fun pos args ->
       let self = List.nth args 0 in
       let insns = begin try
           parse_format_insns (Stream.of_string (Eva.string_of_value pos self)) []
         with
         | Illigal_format ->
-          failwith (Pos.show_error pos (sprintf "illegal format string: %s\n" (Value.show self)))
+          failwith (Pos.show_error pos (sprintf "illegal format string: %s\n" (Eva.Value.show self)))
       end
       in
-      Value.String (execute_format_insns insns (List.tl args) (Buffer.create initial_formatted_buffer_size))
+      Eva.String (execute_format_insns insns (List.tl args) (Buffer.create initial_formatted_buffer_size))
   end
 
 let initialize env =
-  let mod_string = Value.Env.create_local env in
-  let mod_string_open = Value.Env.create_local mod_string in
-  Value.Env.add_var env "String" (Value.Module mod_string);
-  Value.Env.add_var mod_string "C" (Value.Class "String:C") ~export:true;
-  Value.Env.add_var mod_string "format" subr_string_format ~export:true;
-  Value.Env.add_var mod_string "Open" (Value.Module mod_string_open) ~export:true;
+  let mod_string = Eva.Env.create_local env in
+  let mod_string_open = Eva.Env.create_local mod_string in
+  Eva.Env.add_var env "String" (Eva.Module mod_string);
+  Eva.Env.add_var mod_string "C" (Eva.Class "String:C") ~export:true;
+  Eva.Env.add_var mod_string "format" subr_string_format ~export:true;
+  Eva.Env.add_var mod_string "Open" (Eva.Module mod_string_open) ~export:true;
