@@ -17,7 +17,7 @@ and value =
   | Char of char
   | Bool of bool
   | Closure of env * string list * Expr.t list
-  | Subr of int * bool * (Pos.t -> value list -> value)
+  | Subr of int * bool * (t -> Pos.t -> value list -> value)
   | Module of env
   | Class of string
   | Record of string * (string, value) Hashtbl.t
@@ -371,7 +371,7 @@ let find_klass env pos mods klass_name =
   end
 
 let make_ctor klass fields =
-  Subr begin (List.length fields), false, fun pos args ->
+  Subr begin (List.length fields), false, fun eva pos args ->
       let table = Hashtbl.create initial_field_table_size in
       List.iter2 begin fun (field, _) arg ->
         Hashtbl.add table field arg
@@ -380,7 +380,7 @@ let make_ctor klass fields =
   end
 
 let make_getter klass field =
-  Subr begin 1, false, fun pos args ->
+  Subr begin 1, false, fun eva pos args ->
       let self = List.nth args 0 in
       begin match self with
         | Record (klass2, table) when klass2 = klass ->
@@ -391,7 +391,7 @@ let make_getter klass field =
   end      
 
 let make_setter klass field =
-  Subr begin 2, false, fun pos args ->
+  Subr begin 2, false, fun eva pos args ->
       let self = List.nth args 0 in
       let value = List.nth args 1 in
       begin match self with
@@ -570,7 +570,7 @@ and funcall eva pos func args =
       if arg_count < required_count || arg_count > required_count && not allows_rest then
         failwith (wrong_number_of_arguments pos required_count arg_count)
       else
-        subr pos args
+        subr eva pos args
     | Trait (env, params, body) ->
       let env = Env.create_local env in
       let eva = { eva with env = env } in

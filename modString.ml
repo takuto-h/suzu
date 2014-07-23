@@ -95,7 +95,7 @@ let rec execute_format_insns insns args buf =
   end
 
 let subr_string_format =
-  Eva.Subr begin 1, true, fun pos args ->
+  Eva.Subr begin 1, true, fun eva pos args ->
       let self = List.nth args 0 in
       let insns = begin try
           parse_format_insns (Stream.of_string (Eva.string_of_value pos self)) []

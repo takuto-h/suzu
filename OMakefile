@@ -9,7 +9,7 @@ SUZU_FILES[] =\
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)
 
-OCAMLCFLAGS += -annot
+# OCAMLCFLAGS += -annot
 
 TOP = suzutop
 TOP_FILES[] = $(addsuffix .cmo, $(SUZU_FILES))

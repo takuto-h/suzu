@@ -1,20 +1,20 @@
 
 let binary_cmp_op proc =
-  Eva.Subr begin 2, false, fun pos args ->
+  Eva.Subr begin 2, false, fun eva pos args ->
       let self = List.nth args 0 in
       let i = List.nth args 1 in
       Eva.Bool (proc (Eva.int_of_value pos self) (Eva.int_of_value pos i))
   end
 
 let binary_arith_op proc =
-  Eva.Subr begin 2, false, fun pos args ->
+  Eva.Subr begin 2, false, fun eva pos args ->
       let self = List.nth args 0 in
       let i = List.nth args 1 in
       Eva.Int (proc (Eva.int_of_value pos self) (Eva.int_of_value pos i))
   end
 
 let unary_arith_op proc =
-  Eva.Subr begin 1, false, fun pos args ->
+  Eva.Subr begin 1, false, fun eva pos args ->
       let self = List.nth args 0 in
       Eva.Int (proc (Eva.int_of_value pos self))
   end

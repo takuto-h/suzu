@@ -1,13 +1,13 @@
 
 let write_line =
-  Eva.Subr begin 1, false, fun pos args ->
+  Eva.Subr begin 1, false, fun eva pos args ->
       let str = List.nth args 0 in
       print_endline (Eva.string_of_value pos str);
       Eva.Unit
   end
 
 let read_line =
-  Eva.Subr begin 0, false, fun pos args ->
+  Eva.Subr begin 0, false, fun eva pos args ->
       Eva.String (read_line ())
   end
 
