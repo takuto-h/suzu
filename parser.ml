@@ -21,6 +21,9 @@ let create lexer = {
 let expected parser str_token =
   Pos.show_error parser.pos (sprintf "unexpected %s, expected %s\n" (Token.show parser.token) str_token)
 
+let expected_at pos str_unexpected str_expected =
+  Pos.show_error pos (sprintf "unexpected %s, expected %s\n" str_unexpected str_expected)
+
 let lookahead parser =
   begin match Lexer.next parser.lexer with
     | (None, pos) ->
@@ -277,11 +280,24 @@ and parse_atomic_pattern parser =
     | Token.Ident _ ->
       let pos = parser.pos in
       let vom = parse_var_or_method parser in
-      Pattern.at pos (Pattern.Bind vom)
+      if parser.token = Token.Reserved "(" then
+        parse_variant_pattern parser pos vom
+      else
+        Pattern.at pos (Pattern.Bind vom)
     | Token.Reserved "(" ->
       parse_parens_pattern parser
     | _ ->
       failwith (expected parser "pattern")
+  end
+
+and parse_variant_pattern parser pos_vom vom =
+  begin match vom with
+    | VarOrMethod.Var ctor ->
+      let pos = parser.pos in
+      let pats = parse_params parser in
+      Pattern.at pos (Pattern.Variant (ctor, pats))
+    | VarOrMethod.Method (_, _, _) ->
+      failwith (expected_at pos_vom "method pattern" "variant constructor")
   end
 
 and parse_parens_pattern parser =
