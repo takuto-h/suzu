@@ -617,12 +617,25 @@ let parse_field_decl parser =
   let field = parse_ident parser in
   (field, mutabl)
 
+let parse_ctor_decl parser =
+  parse_token parser (Token.Reserved "def");
+  let ctor = parse_ident parser in
+  let params = parse_params parser in
+  (ctor, List.length params)
+
 let parse_class parser pos =
   let klass = parse_ident parser in
-  parse_token parser (Token.Reserved "=");
-  let ctor = parse_ident parser in
-  let fields = parse_block_like_elems parser parse_field_decl in
-  Expr.at pos (Expr.Record (klass, ctor, fields))
+  begin match parser.token with
+    | Token.Reserved "=" ->
+      let ctor = parse_ident parser in
+      let fields = parse_block_like_elems parser parse_field_decl in
+      Expr.at pos (Expr.Record (klass, ctor, fields))
+    | Token.Reserved ":" | Token.Reserved "{" ->
+      let ctors = parse_block_like_elems parser parse_ctor_decl in
+      Expr.at pos (Expr.Variant (klass, ctors))
+    | _ ->
+      failwith (expected parser "'=' or ':' or '{'")
+  end
 
 let rec parse_toplevel parser =
   let pos = parser.pos in
