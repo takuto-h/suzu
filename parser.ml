@@ -182,10 +182,6 @@ let parse_ident parser =
       failwith (expected parser "identifier")
   end
 
-let parse_params parser =
-  parse_token parser (Token.Reserved "(");
-  parse_elems parser comma_or_rparen parse_ident
-
 let parse_selector parser =
   begin match parser.token with
     | Token.Reserved "(" ->
@@ -243,6 +239,15 @@ let parse_var_or_method parser =
       VarOrMethod.Var ident
   end
 
+let parse_pattern parser =
+  let pos = parser.pos in
+  let vom = parse_var_or_method parser in
+  Pattern.at pos (Pattern.Bind vom)
+
+let parse_params parser =
+  parse_token parser (Token.Reserved "(");
+  parse_elems parser comma_or_rparen parse_pattern
+
 let rec parse_var_or_methods parser rev_voms =
   let vom = parse_var_or_method parser in
   if parser.token <> Token.Reserved "," then
@@ -281,15 +286,15 @@ and parse_binding_expr parser =
 
 and parse_def_expr parser pos =
   let pos_lambda = parser.pos in
-  let var_or_method = parse_var_or_method parser in
+  let pat = parse_pattern parser in
   begin match parser.token with
     | Token.Reserved "(" ->
       let func = parse_lambda parser pos_lambda in
-      Expr.at pos (Expr.Def (var_or_method, func))
+      Expr.at pos (Expr.Def (pat, func))
     | Token.Reserved "=" ->
       lookahead parser;
       let expr = parse_expr parser in
-      Expr.at pos (Expr.Def (var_or_method, expr))
+      Expr.at pos (Expr.Def (pat, expr))
     | _ ->
       failwith (expected parser "'=' or '('")
   end
@@ -299,9 +304,9 @@ and parse_open_expr parser pos =
   Expr.at pos (Expr.Open expr)
 
 and parse_trait parser pos =
-  let name = parse_ident parser in
+  let pat = parse_pattern parser in
   let (params, body) = parse_function parser in
-  Expr.at pos (Expr.Def (VarOrMethod.Var name, Expr.at pos (Expr.Trait (params, body))))
+  Expr.at pos (Expr.Def (pat, Expr.at pos (Expr.Trait (params, body))))
 
 and parse_except_expr parser =
   let expr = parse_or_expr parser in

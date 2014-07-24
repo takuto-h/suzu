@@ -11,8 +11,8 @@ type t = {
 and raw = 
   | Const of Literal.t
   | Get of string list * VarOrMethod.t
-  | Def of VarOrMethod.t * t
-  | Lambda of string list * t list
+  | Def of Pattern.t * t
+  | Lambda of Pattern.t list * t list
   | FunCall of t * t list
   | MethodCall of t * Selector.t * t list
   | And of t * t
@@ -21,7 +21,7 @@ and raw =
   | Export of VarOrMethod.t list
   | Open of t
   | Record of string * string * (string * bool) list
-  | Trait of string list * t list
+  | Trait of Pattern.t list * t list
   | Except of t * VarOrMethod.t list
 
 let at pos raw = {
@@ -42,10 +42,10 @@ let rec show {raw} =
       sprintf "(Const %s)" (Literal.show lit)
     | Get (mods, vom) ->
       sprintf "(Get %s %s)" (SnString.concat " " mods) (VarOrMethod.show vom)
-    | Def (vom, expr) ->
-      sprintf "(Def %s %s)" (VarOrMethod.show vom) (show expr)
+    | Def (pat, expr) ->
+      sprintf "(Def %s %s)" (Pattern.show pat) (show expr)
     | Lambda (params, body) ->
-      sprintf "(Lambda (%s) %s)" (SnString.concat " " params) (SnString.concat_map " " show body)
+      sprintf "(Lambda (%s) %s)" (SnString.concat_map " " Pattern.show params) (SnString.concat_map " " show body)
     | FunCall (func, args) ->
       sprintf "(FunCall %s %s)" (show func) (SnString.concat_map " " show args)
     | MethodCall (recv, sel, args) ->
@@ -63,7 +63,7 @@ let rec show {raw} =
     | Record (klass, ctor, fields) ->
       sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
     | Trait (params, body) ->
-      sprintf "(Trait (%s) %s)" (SnString.concat " " params) (SnString.concat_map " " show body)
+      sprintf "(Trait (%s) %s)" (SnString.concat_map " " Pattern.show params) (SnString.concat_map " " show body)
     | Except (modl, voms) ->
       sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " VarOrMethod.show voms)
   end

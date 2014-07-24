@@ -8,7 +8,10 @@ type t =
 let show vom =
   begin match vom with
     | Var x ->
-      sprintf "(Var %s)" x
+      x
     | Method (mods, klass, sel) ->
-      sprintf "(Method (%s %s) %s)" (SnString.concat " " mods) klass (Selector.show sel)
+      if mods = [] then
+        sprintf "%s#%s" klass (Selector.show sel)
+      else
+        sprintf "%s:%s#%s" (SnString.concat ":" mods) klass (Selector.show sel)
   end

@@ -16,12 +16,12 @@ and value =
   | String of string
   | Char of char
   | Bool of bool
-  | Closure of env * string list * Expr.t list
+  | Closure of env * Pattern.t list * Expr.t list
   | Subr of int * bool * (t -> Pos.t -> value list -> value)
   | Module of env
   | Class of string
   | Record of string * (string, value) Hashtbl.t
-  | Trait of env * string list * Expr.t list
+  | Trait of env * Pattern.t list * Expr.t list
 
 and env =
   | Global of frame
@@ -322,12 +322,17 @@ let value_of_literal lit =
       Bool b
   end
 
+let required pos req_str got_value =
+  Pos.show_error pos (sprintf "%s required, but got: %s\n" req_str (Value.show got_value))
+
 let wrong_number_of_arguments pos param_count arg_count =
   let message = sprintf "wrong number of arguments: required %d, but got %d\n" param_count arg_count in
   failwith (Pos.show_error pos message)
 
-let required pos req_str got_value =
-  Pos.show_error pos (sprintf "%s required, but got: %s\n" req_str (Value.show got_value))
+let match_failure pos pat value =
+  let message = Pos.show_error pos (sprintf "match failure: %s\n" (Value.show value)) in
+  let message = sprintf "%s%s\n" message (Pos.show_message pat.Pattern.pos (sprintf "pattern: %s\n" (Pattern.show pat))) in
+  failwith (Pos.show_error pos message)
 
 let find_binding thunk pos =
   begin try
@@ -410,9 +415,35 @@ let add_accessors env klass fields =
       Env.add_method env klass (sprintf "%s=" field) (make_setter klass field)
   end fields
 
+let rec unify env pos pat value =
+  begin match pat.Pattern.raw with
+    | Pattern.WildCard ->
+      ()
+    | Pattern.Const lit ->
+      if value = value_of_literal lit then
+        ()
+      else
+        failwith (match_failure pos pat value)
+    | Pattern.Bind (VarOrMethod.Var x) ->
+      Env.add_var env x value
+    | Pattern.Bind (VarOrMethod.Method (mods, klass, sel)) ->
+      let klass = find_klass env pos mods klass in
+      Env.add_method env klass (Selector.string_of sel) value
+    | Pattern.Or (lhs, rhs) ->
+      begin try
+          unify env pos lhs value
+        with
+        | Failure message ->
+          unify env pos rhs value
+      end
+    | Pattern.As (pat, x) ->
+      unify env pos pat value;
+      Env.add_var env x value
+  end
+
 let bind_params env pos params args =
   begin try
-      List.iter2 (Env.add_var env) params args
+      List.iter2 (unify env pos) params args
     with
     | Invalid_argument _ ->
       let arg_count = List.length args in
@@ -441,14 +472,9 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
           failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
       end
-    | Expr.Def (VarOrMethod.Var x, expr) ->
+    | Expr.Def (pat, expr) ->
       let value = eval eva expr in
-      Env.add_var eva.env x value;
-      value
-    | Expr.Def (VarOrMethod.Method (mods, klass, sel), expr) ->
-      let value = eval eva expr in
-      let klass = find_klass eva.env pos mods klass in
-      Env.add_method eva.env klass (Selector.string_of sel) value;
+      unify eva.env pos pat value;
       value
     | Expr.Lambda (params, body) ->
       Closure (eva.env, params, body)

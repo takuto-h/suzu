@@ -21,11 +21,11 @@ let at pos raw = {
 let rec show {raw} =
   begin match raw with
     | WildCard ->
-      "(WildCard)"
+      "_"
     | Const lit ->
-      sprintf "(Const %s)" (Literal.show lit)
+      Literal.show lit
     | Bind vom ->
-      sprintf "(Bind %s)" (VarOrMethod.show vom)
+      VarOrMethod.show vom
     | Or (lhs, rhs) ->
       sprintf "(Or %s %s)" (show lhs) (show rhs)
     | As (pat, x) ->
