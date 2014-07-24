@@ -239,12 +239,63 @@ let parse_var_or_method parser =
       VarOrMethod.Var ident
   end
 
-let parse_pattern parser =
-  let pos = parser.pos in
-  let vom = parse_var_or_method parser in
-  Pattern.at pos (Pattern.Bind vom)
+let rec parse_pattern parser =
+  parse_as_pattern parser
 
-let parse_params parser =
+and parse_as_pattern parser =
+  let pat = parse_or_pattern parser in
+  if parser.token = Token.Reserved "as" then
+    let pos = parser.pos in
+    lookahead parser;
+    let ident = parse_ident parser in
+    Pattern.at pos (Pattern.As (pat, ident))
+  else
+    pat
+
+and parse_or_pattern parser =
+  let lhs = parse_atomic_pattern parser in
+  let rec loop lhs =
+    if parser.token = Token.Reserved "|" then
+      let pos = parser.pos in
+      lookahead parser;
+      let rhs = parse_atomic_pattern parser in
+      loop (Pattern.at pos (Pattern.Or (lhs, rhs)))
+    else
+      lhs
+  in
+  loop lhs
+
+and parse_atomic_pattern parser =
+  let pos = parser.pos in
+  begin match parser.token with
+    | Token.Int _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
+      let lit = parse_literal parser in
+      Pattern.at pos (Pattern.Const lit)
+    | Token.Ident "_" ->
+      lookahead parser;
+      Pattern.at pos Pattern.WildCard
+    | Token.Ident _ ->
+      let pos = parser.pos in
+      let vom = parse_var_or_method parser in
+      Pattern.at pos (Pattern.Bind vom)
+    | Token.Reserved "(" ->
+      parse_parens_pattern parser
+    | _ ->
+      failwith (expected parser "pattern")
+  end
+
+and parse_parens_pattern parser =
+  let pos = parser.pos in
+  begin match parse_params parser with
+    | [] ->
+      Pattern.at pos (Pattern.Const Literal.Unit)
+    | pat::[] ->
+      pat
+    | pat_list ->
+      failwith "TODO: Implement tuple pattern"
+  end
+
+and parse_params parser =
   parse_token parser (Token.Reserved "(");
   parse_elems parser comma_or_rparen parse_pattern
 

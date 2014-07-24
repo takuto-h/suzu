@@ -331,8 +331,8 @@ let wrong_number_of_arguments pos param_count arg_count =
 
 let match_failure pos pat value =
   let message = Pos.show_error pos (sprintf "match failure: %s\n" (Value.show value)) in
-  let message = sprintf "%s%s\n" message (Pos.show_message pat.Pattern.pos (sprintf "pattern: %s\n" (Pattern.show pat))) in
-  failwith (Pos.show_error pos message)
+  let message = message ^ Pos.show_message pat.Pattern.pos (sprintf "with pattern %s\n" (Pattern.show pat)) in
+  failwith message
 
 let find_binding thunk pos =
   begin try
