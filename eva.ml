@@ -35,6 +35,8 @@ and frame = {
   method_table : (string * string, value) Hashtbl.t;
 }
 
+exception Match_success of value
+
 module Value = struct
   type t = value
 
@@ -532,9 +534,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       let eva_in_mod = { eva with env = env_in_mod; curr_mod_path = name::eva.curr_mod_path } in
       let modl = Module env_in_mod in
       Env.add_var eva.env name modl;
-      List.iter begin fun elem ->
-        ignore (eval eva_in_mod elem)
-      end exprs;
+      ignore (eval_exprs eva_in_mod exprs);
       modl
     | Expr.Export voms ->
       List.iter begin function
@@ -602,7 +602,31 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           failwith (required pos "module" modl)
       end;
       modl
+    | Expr.Match (target, cases) ->
+      let target = eval eva target in
+      begin try
+          List.iter begin fun (pat, guard, body) ->
+            begin try
+                let env = Env.create_local eva.env in
+                let eva = { eva with env = env } in
+                bind_param env pos pat target;
+                raise (Match_success (eval_exprs eva body))
+              with
+              | Failure message ->
+                ()
+            end
+          end cases;
+          failwith (Pos.show_error pos (sprintf "match failure of %s\n" (Value.show target)))
+        with
+        | Match_success result ->
+          result
+      end
   end
+
+and eval_exprs eva exprs =
+  List.fold_left begin fun _ elem ->
+    eval eva elem
+  end Unit exprs
 
 and call_fun eva pos func args =
   begin match func with
@@ -610,9 +634,7 @@ and call_fun eva pos func args =
       let env = Env.create_local env in
       let eva = { eva with env = env } in
       bind_params env pos params args;
-      List.fold_left begin fun _ elem ->
-        eval eva elem
-      end Unit body
+      eval_exprs eva body
     | Subr (required_count, allows_rest, subr) ->
       let arg_count = List.length args in
       if arg_count < required_count || arg_count > required_count && not allows_rest then
@@ -623,9 +645,7 @@ and call_fun eva pos func args =
       let env = Env.create_local env in
       let eva = { eva with env = env } in
       bind_params env pos params args;
-      List.iter begin fun elem ->
-        ignore (eval eva elem)
-      end body;
+      ignore (eval_exprs eva body);
       Module env;
     | _ ->
       failwith (required pos "function" func)

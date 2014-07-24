@@ -24,12 +24,12 @@ and raw =
   | Variant of string * (string * int) list
   | Trait of Pattern.t list * t list
   | Except of t * VarOrMethod.t list
+  | Match of t * (Pattern.t * t option * t list) list
 
 let at pos raw = {
   pos = pos;
   raw = raw;
 }
-
 
 let show_field (field, mutabl) =
   if mutabl then
@@ -72,4 +72,14 @@ let rec show {raw} =
       sprintf "(Trait (%s) %s)" (SnString.concat_map " " Pattern.show params) (SnString.concat_map " " show body)
     | Except (modl, voms) ->
       sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " VarOrMethod.show voms)
+    | Match (target, cases) ->
+      sprintf "(Match %s %s)" (show target) (SnString.concat_map " " show_case cases)
+  end
+
+and show_case (pat, guard, body) =
+  begin match guard with
+    | Some cond ->
+      sprintf "(Case %s (Some %s) %s)" (Pattern.show pat) (show cond) (SnString.concat_map " " show body)
+    | None ->
+      sprintf "(Case %s None %s)" (Pattern.show pat) (SnString.concat_map " " show body)
   end
