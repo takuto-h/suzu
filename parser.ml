@@ -652,11 +652,8 @@ let parse_field_decl parser =
 let parse_ctor_decl parser =
   parse_token parser (Token.Reserved "def");
   let ctor = parse_ident parser in
-  if parser.token = Token.Reserved "(" then
-    let params = parse_params parser in
-    (ctor, List.length params)
-  else
-    (ctor, -1)
+  let params = parse_params parser in
+  (ctor, List.length params)
 
 let parse_class parser pos =
   let klass = parse_ident parser in

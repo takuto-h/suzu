@@ -423,12 +423,9 @@ let add_accessors env klass fields =
   end fields
 
 let make_variant_ctor klass ctor_name param_count =
-  if param_count < 0 then
-    Variant (klass, ctor_name, [])
-  else
-    Subr begin param_count, false, fun eva pos args ->
-        Variant (klass, ctor_name, args)
-    end
+  Subr begin param_count, false, fun eva pos args ->
+      Variant (klass, ctor_name, args)
+  end
 
 let add_ctors env klass ctors =
   List.iter begin fun (ctor_name, param_count) ->
