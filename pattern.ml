@@ -9,7 +9,7 @@ type t = {
 and raw = 
   | WildCard
   | Const of Literal.t
-  | Var of string
+  | Bind of VarOrMethod.t
   | Or of t * t
   | As of t * string
 
@@ -24,8 +24,8 @@ let rec show {raw} =
       "(WildCard)"
     | Const lit ->
       sprintf "(Const %s)" (Literal.show lit)
-    | Var x ->
-      sprintf "(Var %s)" x
+    | Bind vom ->
+      sprintf "(Bind %s)" (VarOrMethod.show vom)
     | Or (lhs, rhs) ->
       sprintf "(Or %s %s)" (show lhs) (show rhs)
     | As (pat, x) ->
