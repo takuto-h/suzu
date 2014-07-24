@@ -330,7 +330,7 @@ let wrong_number_of_arguments pos param_count arg_count =
   failwith (Pos.show_error pos message)
 
 let match_failure pos pat value =
-  let message = Pos.show_error pos (sprintf "match failure: %s\n" (Value.show value)) in
+  let message = Pos.show_error pos (sprintf "match failure of %s\n" (Value.show value)) in
   let message = message ^ Pos.show_message pat.Pattern.pos (sprintf "with pattern %s\n" (Pattern.show pat)) in
   failwith message
 

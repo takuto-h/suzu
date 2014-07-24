@@ -27,7 +27,7 @@ let rec show {raw} =
     | Bind vom ->
       VarOrMethod.show vom
     | Or (lhs, rhs) ->
-      sprintf "(Or %s %s)" (show lhs) (show rhs)
+      sprintf "(%s | %s)" (show lhs) (show rhs)
     | As (pat, x) ->
-      sprintf "(As %s %s)" (show pat) x
+      sprintf "(%s as %s)" (show pat) x
   end
