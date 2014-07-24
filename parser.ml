@@ -352,11 +352,12 @@ and parse_binding_expr parser =
   end
 
 and parse_def_expr parser pos =
-  let pos_lambda = parser.pos in
-  let pat = parse_pattern parser in
+  let pos_vom = parser.pos in
+  let vom = parse_var_or_method parser in
+  let pat = Pattern.at pos_vom (Pattern.Bind vom) in
   begin match parser.token with
     | Token.Reserved "(" ->
-      let func = parse_lambda parser pos_lambda in
+      let func = parse_lambda parser pos_vom in
       Expr.at pos (Expr.Def (pat, func))
     | Token.Reserved "=" ->
       lookahead parser;
@@ -371,7 +372,9 @@ and parse_open_expr parser pos =
   Expr.at pos (Expr.Open expr)
 
 and parse_trait parser pos =
-  let pat = parse_pattern parser in
+  let pos_vom = parser.pos in
+  let vom = parse_var_or_method parser in
+  let pat = Pattern.at pos_vom (Pattern.Bind vom) in
   let (params, body) = parse_function parser in
   Expr.at pos (Expr.Def (pat, Expr.at pos (Expr.Trait (params, body))))
 
@@ -539,6 +542,9 @@ and parse_atomic_expr parser =
     | Token.Reserved "when" ->
       lookahead parser;
       parse_when_expr parser pos
+    | Token.Reserved "match" ->
+      lookahead parser;
+      parse_match_expr parser pos
     | _ ->
       failwith (expected parser "expression")
   end
@@ -609,6 +615,32 @@ and parse_block parser =
   let exprs = parse_block_like_elems parser parse_expr in
   Expr.at pos (Expr.FunCall (Expr.at pos (Expr.Lambda ([], exprs)), []))
 
+and parse_match_expr parser pos =
+  parse_token parser (Token.Reserved "(");
+  let target_expr = parse_expr parser in
+  parse_token parser (Token.Reserved ")");
+  let case_clauses = parse_block_like_elems parser parse_case_clause in
+  Expr.at pos (Expr.Match (target_expr, case_clauses))
+
+and parse_case_clause parser =
+  parse_token parser (Token.Reserved "case");
+  parse_token parser (Token.Reserved "(");
+  let pat = parse_pattern parser in
+  parse_token parser (Token.Reserved ")");
+  let guard = if parser.token = Token.Reserved "when" then
+    begin
+      lookahead parser;
+      parse_token parser (Token.Reserved "(");
+      let cond = parse_expr parser in
+      parse_token parser (Token.Reserved ")");
+      Some cond
+    end
+  else
+    None
+  in
+  let body = parse_block_like_elems parser parse_expr in
+  (pat, guard, body)
+
 let parse_field_decl parser =
   let mutabl = (parser.token = Token.Reserved "mutable") in
   begin if mutabl then
@@ -630,6 +662,7 @@ let parse_class parser pos =
   let klass = parse_ident parser in
   begin match parser.token with
     | Token.Reserved "=" ->
+      lookahead parser;
       let ctor = parse_ident parser in
       let fields = parse_block_like_elems parser parse_field_decl in
       Expr.at pos (Expr.Record (klass, ctor, fields))
