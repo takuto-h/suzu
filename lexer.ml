@@ -12,6 +12,7 @@ type t = {
 let initial_buffer_size = 16
 
 let reserved = [
+  "as";
   "case";
   "class";
   "def";
@@ -199,20 +200,24 @@ let lex_visible_token lexer pos c =
         | Some '|' ->
           Source.junk lexer.source;
           Token.Reserved "||"
-        | Some _ | None ->
+        | Some c when is_op_part c ->
           let buf = Buffer.create initial_buffer_size in
-          Buffer.add_char buf c;
+          Buffer.add_char buf '|';
           Token.CmpOp (lex_op lexer buf)
+        | Some _ | None ->
+          Token.Reserved "|"
       end
     | '&' ->
       begin match Source.peek lexer.source with
         | Some '&' ->
           Source.junk lexer.source;
           Token.Reserved "&&"
-        | Some _ | None ->
+        | Some c when is_op_part c ->
           let buf = Buffer.create initial_buffer_size in
           Buffer.add_char buf c;
           Token.CmpOp (lex_op lexer buf)
+        | Some _ | None ->
+          Token.Reserved "&"
       end
     | '<' | '>' | '!' ->
       let buf = Buffer.create initial_buffer_size in
