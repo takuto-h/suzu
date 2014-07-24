@@ -21,6 +21,7 @@ and raw =
   | Export of VarOrMethod.t list
   | Open of t
   | Record of string * string * (string * bool) list
+  | Variant of string * (string * int) list
   | Trait of Pattern.t list * t list
   | Except of t * VarOrMethod.t list
 
@@ -35,6 +36,9 @@ let show_field (field, mutabl) =
     sprintf "(mutable %s)" field
   else
     field
+
+let show_ctor (ctor_name, param_count) =
+  sprintf "(%s %d)" ctor_name param_count
 
 let rec show {raw} =
   begin match raw with
@@ -62,6 +66,8 @@ let rec show {raw} =
       sprintf "(Open %s)" (show expr)
     | Record (klass, ctor, fields) ->
       sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
+    | Variant (klass, ctors) ->
+      sprintf "(Variant %s %s)" klass (SnString.concat_map " " show_ctor ctors)
     | Trait (params, body) ->
       sprintf "(Trait (%s) %s)" (SnString.concat_map " " Pattern.show params) (SnString.concat_map " " show body)
     | Except (modl, voms) ->

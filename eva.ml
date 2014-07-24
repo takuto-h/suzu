@@ -21,6 +21,7 @@ and value =
   | Module of env
   | Class of string
   | Record of string * (string, value) Hashtbl.t
+  | Variant of string * string * value list
   | Trait of env * Pattern.t list * Expr.t list
 
 and env =
@@ -59,6 +60,8 @@ module Value = struct
         "Class:C"
       | Record (klass, _) ->
         klass
+      | Variant (klass, _, _) ->
+        klass
       | Trait (_, _, _) ->
         "Trait:C"
     end
@@ -85,6 +88,8 @@ module Value = struct
         sprintf "<class %s>" klass
       | Record (klass, _) ->
         sprintf "<record %s>" klass
+      | Variant (klass, _, _) ->
+        sprintf "<variant %s>" klass
       | Trait (_,  _, _) ->
         "<trait>"
     end
@@ -375,7 +380,7 @@ let find_klass env pos mods klass_name =
       failwith (Pos.show_error pos (sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass)))
   end
 
-let make_ctor klass fields =
+let make_record_ctor klass fields =
   Subr begin (List.length fields), false, fun eva pos args ->
       let table = Hashtbl.create initial_field_table_size in
       List.iter2 begin fun (field, _) arg ->
@@ -414,6 +419,16 @@ let add_accessors env klass fields =
     if mutabl then
       Env.add_method env klass (sprintf "%s=" field) (make_setter klass field)
   end fields
+
+let make_variant_ctor klass ctor_name param_count =
+  Subr begin param_count, false, fun eva pos args ->
+      Variant (klass, ctor_name, args)
+  end
+
+let add_ctors env klass ctors =
+  List.iter begin fun (ctor_name, param_count) ->
+    Env.add_var env ctor_name (make_variant_ctor klass ctor_name param_count);
+  end ctors
 
 let rec unify env pos pat value =
   begin match pat.Pattern.raw with
@@ -542,8 +557,13 @@ let rec eval eva {Expr.pos;Expr.raw;} =
     | Expr.Record (klass_name, ctor_name, fields) ->
       let klass = SnString.concat ":" (List.rev (klass_name::eva.curr_mod_path)) in
       Env.add_var eva.env klass_name (Class klass);
-      Env.add_var eva.env ctor_name (make_ctor klass fields);
+      Env.add_var eva.env ctor_name (make_record_ctor klass fields);
       add_accessors eva.env klass fields;
+      Class klass
+    | Expr.Variant (klass_name, ctors) ->
+      let klass = SnString.concat ":" (List.rev (klass_name::eva.curr_mod_path)) in
+      Env.add_var eva.env klass_name (Class klass);
+      add_ctors eva.env klass ctors;
       Class klass
     | Expr.Trait (params, body) ->
       Trait (eva.env, params, body)
