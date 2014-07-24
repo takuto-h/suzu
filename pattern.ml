@@ -12,6 +12,7 @@ and raw =
   | Bind of VarOrMethod.t
   | Or of t * t
   | As of t * string
+  | Variant of string * t list
 
 let at pos raw = {
   pos = pos;
@@ -30,4 +31,6 @@ let rec show {raw} =
       sprintf "(%s | %s)" (show lhs) (show rhs)
     | As (pat, x) ->
       sprintf "(%s as %s)" (show pat) x
+    | Variant (ctor, params) ->
+      sprintf "%s(%s)" ctor (SnString.concat_map " " show params)
   end

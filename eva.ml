@@ -430,7 +430,7 @@ let add_ctors env klass ctors =
     Env.add_var env ctor_name (make_variant_ctor klass ctor_name param_count);
   end ctors
 
-let rec unify env pos pat value =
+let rec bind_param env pos pat value =
   begin match pat.Pattern.raw with
     | Pattern.WildCard ->
       ()
@@ -446,19 +446,26 @@ let rec unify env pos pat value =
       Env.add_method env klass (Selector.string_of sel) value
     | Pattern.Or (lhs, rhs) ->
       begin try
-          unify env pos lhs value
+          bind_param env pos lhs value
         with
         | Failure message ->
-          unify env pos rhs value
+          bind_param env pos rhs value
       end
     | Pattern.As (pat, x) ->
-      unify env pos pat value;
+      bind_param env pos pat value;
       Env.add_var env x value
+    | Pattern.Variant (ctor_req, params) ->
+      begin match value with
+        | Variant (_, ctor_got, values) when ctor_got = ctor_req ->
+          bind_params env pos params values
+        | _ ->
+          failwith (match_failure pos pat value)
+      end
   end
 
-let bind_params env pos params args =
+and bind_params env pos params args =
   begin try
-      List.iter2 (unify env pos) params args
+      List.iter2 (bind_param env pos) params args
     with
     | Invalid_argument _ ->
       let arg_count = List.length args in
@@ -489,7 +496,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       end
     | Expr.Def (pat, expr) ->
       let value = eval eva expr in
-      unify eva.env pos pat value;
+      bind_param eva.env pos pat value;
       value
     | Expr.Lambda (params, body) ->
       Closure (eva.env, params, body)
