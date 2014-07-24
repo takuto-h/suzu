@@ -424,14 +424,14 @@ let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Const lit ->
       value_of_literal lit
-    | Expr.Get (mods, Expr.Var x) ->
+    | Expr.Get (mods, VarOrMethod.Var x) ->
       begin try
           find_var eva.env pos mods x
         with
         | Not_found ->
           failwith (Pos.show_error pos (sprintf "variable not found: %s\n" (SnString.concat ":" (mods @ [x]))))
       end
-    | Expr.Get (mods1, Expr.Method (mods2, klass, sel)) ->
+    | Expr.Get (mods1, VarOrMethod.Method (mods2, klass, sel)) ->
       let klass = find_klass eva.env pos mods2 klass in
       begin try
           find_method eva.env pos mods1 klass sel
@@ -441,11 +441,11 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
           failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
       end
-    | Expr.Def (Expr.Var x, expr) ->
+    | Expr.Def (VarOrMethod.Var x, expr) ->
       let value = eval eva expr in
       Env.add_var eva.env x value;
       value
-    | Expr.Def (Expr.Method (mods, klass, sel), expr) ->
+    | Expr.Def (VarOrMethod.Method (mods, klass, sel), expr) ->
       let value = eval eva expr in
       let klass = find_klass eva.env pos mods klass in
       Env.add_method eva.env klass (Selector.string_of sel) value;
@@ -487,14 +487,14 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       modl
     | Expr.Export voms ->
       List.iter begin function
-        | Expr.Var x ->
+        | VarOrMethod.Var x ->
           begin try
               Env.export_var eva.env x;
             with
             | Not_found ->
               failwith (Pos.show_error pos (sprintf "variable not found: %s\n" x))
           end
-        | Expr.Method (mods, klass, sel) ->
+        | VarOrMethod.Method (mods, klass, sel) ->
           let klass = find_klass eva.env pos mods klass in
           begin try
               Env.export_method eva.env klass (Selector.string_of sel);
@@ -526,14 +526,14 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       begin match modl with
         | Module modl ->
           List.iter begin function
-            | Expr.Var x ->
+            | VarOrMethod.Var x ->
               begin try
                   Env.unexport_var modl x;
                 with
                 | Not_found ->
                   failwith (Pos.show_error pos (sprintf "variable not found: %s\n" x))
               end
-            | Expr.Method (mods, klass, sel) ->
+            | VarOrMethod.Method (mods, klass, sel) ->
               let klass = find_klass eva.env pos mods klass in
               begin try
                   Env.unexport_method modl klass (Selector.string_of sel);

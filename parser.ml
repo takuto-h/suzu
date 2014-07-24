@@ -221,7 +221,7 @@ let parse_var_or_method parser =
     | Token.Reserved "#" ->
       lookahead parser;
       let sel = parse_selector parser in
-      Expr.Method ([], ident, sel)
+      VarOrMethod.Method ([], ident, sel)
     | Token.Reserved ":" ->
       lookahead parser;
       let rec loop rev_idents =
@@ -230,7 +230,7 @@ let parse_var_or_method parser =
           | Token.Reserved "#" ->
             lookahead parser;
             let sel = parse_selector parser in
-            Expr.Method (List.rev rev_idents, ident, sel)
+            VarOrMethod.Method (List.rev rev_idents, ident, sel)
           | Token.Reserved ":" ->
             lookahead parser;
             loop (ident::rev_idents)
@@ -240,7 +240,7 @@ let parse_var_or_method parser =
       in
       loop [ident]
     | _ ->
-      Expr.Var ident
+      VarOrMethod.Var ident
   end
 
 let rec parse_var_or_methods parser rev_voms =
@@ -301,7 +301,7 @@ and parse_open_expr parser pos =
 and parse_trait parser pos =
   let name = parse_ident parser in
   let (params, body) = parse_function parser in
-  Expr.at pos (Expr.Def (Expr.Var name, Expr.at pos (Expr.Trait (params, body))))
+  Expr.at pos (Expr.Def (VarOrMethod.Var name, Expr.at pos (Expr.Trait (params, body))))
 
 and parse_except_expr parser =
   let expr = parse_or_expr parser in
@@ -476,7 +476,7 @@ and parse_get_expr parser pos rev_idents =
     | Token.Reserved "#" ->
       lookahead parser;
       let sel = parse_selector parser in
-      Expr.at pos (Expr.Get ([], Expr.Method (List.rev (List.tl rev_idents), List.hd rev_idents, sel)))
+      Expr.at pos (Expr.Get ([], VarOrMethod.Method (List.rev (List.tl rev_idents), List.hd rev_idents, sel)))
     | Token.Reserved ":" ->
       lookahead parser;
       begin match parser.token with
@@ -492,7 +492,7 @@ and parse_get_expr parser pos rev_idents =
           failwith (expected parser "identifier or '('")
       end
     | _ ->
-      Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), Expr.Var (List.hd rev_idents)))
+      Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), VarOrMethod.Var (List.hd rev_idents)))
   end
 
 and parse_parens parser pos =
