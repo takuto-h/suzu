@@ -83,3 +83,64 @@ def lst2 = cons(4, cons(5, cons(6, nil)))
 write_line("{0}", lst1)
 write_line("{0}", lst2)
 write_line("{0}", lst1 + lst2)
+
+
+trait Account(C):
+  def C#deposit(self, x):
+    self.balance = self.balance + x
+
+  def C#withdraw(self, x):
+    self.balance = self.balance - x
+    when(self.balance < 0):
+      self.balance = 0
+
+  export C#deposit, C#withdraw
+
+class BankAccount = make_bank_account:
+  mutable balance
+
+open Account(BankAccount)
+
+def create_bank_account():
+  make_bank_account(0)
+
+def account = create_bank_account()
+
+account.balance = 200
+write_line("{0}(200)", account.balance)
+account.deposit(50)
+write_line("{0}(250)", account.balance)
+account.withdraw(100)
+write_line("{0}(150)", account.balance)
+account.withdraw(200)
+write_line("{0}(0)", account.balance)
+
+class StockAccount = make_stock_account:
+  mutable num_shares
+  mutable price_per_share
+
+open Account(StockAccount)
+
+def StockAccount#balance(self):
+  self.num_shares * self.price_per_share
+
+def StockAccount#(balance=)(self, x):
+  self.num_shares = x / self.price_per_share
+
+def create_stock_account():
+  make_stock_account(10, 30)
+
+def stock = create_stock_account()
+
+write_line("{0}(10)", stock.num_shares)
+write_line("{0}(30)", stock.price_per_share)
+write_line("{0}(300)", stock.balance)
+stock.balance = 150
+write_line("{0}(5)", stock.num_shares)
+
+stock.balance = 600
+write_line("{0}(600)", stock.balance)
+write_line("{0}(20)", stock.num_shares)
+stock.deposit(60)
+write_line("{0}(660)", stock.balance)
+write_line("{0}(22)", stock.num_shares)
