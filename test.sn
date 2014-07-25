@@ -28,9 +28,9 @@ def UgradStudent#promote(self):
 
 write_line("me.promote = {0}", me.promote)
 
-trait Student(C, name_of, department_of):
+trait Student(C, C#name, C#department):
   def C#introduce_oneself(self):
-    write_line("My name is {0}. I'm a member of {1}.", name_of(self), department_of(self))
+    write_line("My name is {0}. I'm a member of {1}.", self.name, self.department)
   export C#introduce_oneself
 
 class GradStudent = make_grad_student:
@@ -85,7 +85,7 @@ write_line("{0}", lst2)
 write_line("{0}", lst1 + lst2)
 
 
-trait Account(C):
+trait Account(C, C#balance, C#(balance=)):
   def C#deposit(self, x):
     self.balance = self.balance + x
 
@@ -99,7 +99,7 @@ trait Account(C):
 class BankAccount = make_bank_account:
   mutable balance
 
-open Account(BankAccount)
+open Account(BankAccount, BankAccount#balance, BankAccount#(balance=))
 
 def create_bank_account():
   make_bank_account(0)
@@ -119,13 +119,13 @@ class StockAccount = make_stock_account:
   mutable num_shares
   mutable price_per_share
 
-open Account(StockAccount)
-
 def StockAccount#balance(self):
   self.num_shares * self.price_per_share
 
 def StockAccount#(balance=)(self, x):
   self.num_shares = x / self.price_per_share
+
+open Account(StockAccount, StockAccount#balance, StockAccount#(balance=))
 
 def create_stock_account():
   make_stock_account(10, 30)
