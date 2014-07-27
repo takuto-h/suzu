@@ -17,16 +17,17 @@ class UgradStudent = make_ugrad_student:
   mutable grade
 
 def me = make_ugrad_student("Takuto Hayashi", "College of Information Science", 3)
-write_line("me.name = {0}", me.name)
-write_line("me.college = {0}", me.college)
-write_line("me.grade = {0}", me.grade)
+write_line("{0}", me.name) //=> Takuto Hayashi
+write_line("{0}", me.college) //=> College of Information Science
+write_line("{0}", me.grade) //=> 3
 
 def UgradStudent#promote(self):
   when(self.grade < 4):
     self.grade = self.grade + 1
   self.grade
 
-write_line("me.promote = {0}", me.promote)
+me.promote
+write_line("{0}", me.grade) //=> 4
 
 trait Student(C, C#name, C#department):
   def C#introduce_oneself(self):
@@ -43,8 +44,8 @@ def taro = make_grad_student("Taro Tsukuba", "Graduate School of Systems and Inf
 open Student(UgradStudent, UgradStudent#name, UgradStudent#college)
 open Student(GradStudent, GradStudent#name, GradStudent#school)
 
-me.introduce_oneself
-taro.introduce_oneself
+me.introduce_oneself //=> My name is Takuto Hayashi. I'm a member of College of Information Science.
+taro.introduce_oneself //=> My name is Taro Tsukuba. I'm a member of Graduate School of Systems and Information Engineering.
 
 
 module List:
@@ -80,9 +81,9 @@ def cons = List:Cons
 def lst1 = cons(1, cons(2, cons(3, nil)))
 def lst2 = cons(4, cons(5, cons(6, nil)))
 
-write_line("{0}", lst1)
-write_line("{0}", lst2)
-write_line("{0}", lst1 + lst2)
+write_line("{0}", lst1) //=> 1::2::3::[]
+write_line("{0}", lst2) //=> 4::5::6::[]
+write_line("{0}", lst1 + lst2) //=> 1::2::3::4::5::6::[]
 
 
 trait Account(C, C#balance, C#(balance=)):
