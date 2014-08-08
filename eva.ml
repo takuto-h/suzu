@@ -17,7 +17,7 @@ and value =
   | Char of char
   | Bool of bool
   | Closure of env * Expr.Params.t * Expr.t list
-  | Subr of int * bool * (t -> Pos.t -> args -> value)
+  | Subr of int * bool * string list * string list * (t -> Pos.t -> args -> value)
   | Module of env
   | Class of string
   | Record of string * (string, value) Hashtbl.t
@@ -59,7 +59,7 @@ module Value = struct
         "Bool:C"
       | Closure (_,  _, _) ->
         "Closure:C"
-      | Subr (_, _, _) ->
+      | Subr (_, _, _, _, _) ->
         "Subr:C"
       | Module _ ->
         "Module:C"
@@ -87,7 +87,7 @@ module Value = struct
         sprintf "%B" b
       | Closure (_,  _, _) ->
         "<closure>"
-      | Subr (_, _, _) ->
+      | Subr (_, _, _, _, _) ->
         "<subr>"
       | Module _ ->
         "<module>"
@@ -330,8 +330,8 @@ let create env = {
   dummy = ();
 }
 
-let create_subr req_count ?(allows_rest=false) proc =
-  Subr (req_count, allows_rest, proc)
+let create_subr req_count ?(allows_rest=false) ?(req_keys=[]) ?(opt_keys=[]) proc =
+  Subr (req_count, allows_rest, req_keys, opt_keys, proc)
 
 let initial_field_table_size = 4
 let initial_param_table_size = 4
@@ -355,6 +355,14 @@ let required pos req_str got_value =
 
 let wrong_number_of_arguments pos param_count arg_count =
   let message = sprintf "wrong number of arguments: required %d, but got %d\n" param_count arg_count in
+  failwith (Pos.show_error pos message)
+
+let lack_of_keyword_argument pos key =
+  let message = sprintf "lack of keyword argument: %s\n" key in
+  failwith (Pos.show_error pos message)
+
+let extra_keyword_arguments pos rest_keyword_args =
+  let message = sprintf "extra keyword arguments: %s\n" (SnString.concat_map ", " fst rest_keyword_args) in
   failwith (Pos.show_error pos message)
 
 let match_failure pos pat value =
@@ -658,12 +666,26 @@ and call_fun eva pos func args =
       let eva = { eva with env = env } in
       bind_params env pos params args;
       eval_exprs eva body
-    | Subr (required_count, allows_rest, subr) ->
+    | Subr (required_count, allows_rest, req_keys, opt_keys, subr) ->
       let arg_count = List.length args.normal_args in
-      if arg_count < required_count || arg_count > required_count && not allows_rest then
-        failwith (wrong_number_of_arguments pos required_count arg_count)
-      else
-        subr eva pos args
+      begin if arg_count < required_count || arg_count > required_count && not allows_rest then
+          failwith (wrong_number_of_arguments pos required_count arg_count)
+      end;
+      let rest_keyword_args = List.fold_left begin fun keyword_args req_key ->
+          if not (List.mem_assoc req_key keyword_args) then
+            failwith (lack_of_keyword_argument pos req_key)
+          else
+            List.remove_assoc req_key keyword_args
+        end args.keyword_args req_keys
+      in
+      let rest_keyword_args = List.fold_left begin fun keyword_args opt_key ->
+          List.remove_assoc opt_key keyword_args
+        end rest_keyword_args opt_keys
+      in
+      begin if List.length rest_keyword_args <> 0 then
+          failwith (extra_keyword_arguments pos rest_keyword_args)
+      end;
+      subr eva pos args
     | Trait (env, params, body) ->
       let env = Env.create_local env in
       let eva = { eva with env = env } in
