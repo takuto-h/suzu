@@ -91,7 +91,7 @@ let rec execute_format_insns eva pos insns args buf =
       execute_format_insns eva pos insns args buf
     | (Placeholder n)::insns ->
       let str = Eva.string_of_value pos begin try
-          Eva.call_method eva pos (List.nth args n) (Selector.Ident "to_string") []
+          Eva.call_method eva pos (List.nth args n) (Selector.Ident "to_string") (Eva.Args.make [] [])
         with
         | Failure "nth" ->
           failwith (Pos.show_error pos (sprintf "argument not supplied: {%d}\n" n))
@@ -103,7 +103,7 @@ let rec execute_format_insns eva pos insns args buf =
 
 let subr_string_format =
   Eva.Subr begin 1, true, fun eva pos args ->
-      let self = List.nth args 0 in
+      let self = Eva.Args.nth args 0 in
       let insns = begin try
           parse_format_insns (Stream.of_string (Eva.string_of_value pos self)) []
         with
@@ -111,7 +111,7 @@ let subr_string_format =
           failwith (Pos.show_error pos (sprintf "illegal format string: %s\n" (Eva.Value.show self)))
       end
       in
-      Eva.String (execute_format_insns eva pos insns (List.tl args) (Buffer.create initial_formatted_buffer_size))
+      Eva.String (execute_format_insns eva pos insns (List.tl args.Eva.normal_args) (Buffer.create initial_formatted_buffer_size))
   end
 
 let subr_string_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%s") Eva.string_of_value

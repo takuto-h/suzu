@@ -17,12 +17,17 @@ and value =
   | Char of char
   | Bool of bool
   | Closure of env * Expr.Params.t * Expr.t list
-  | Subr of int * bool * (t -> Pos.t -> value list -> value)
+  | Subr of int * bool * (t -> Pos.t -> args -> value)
   | Module of env
   | Class of string
   | Record of string * (string, value) Hashtbl.t
-  | Variant of string * string * value list
+  | Variant of string * string * args
   | Trait of env * Expr.Params.t * Expr.t list
+
+and args = {
+  normal_args : value list;
+  keyword_args : (string * value) list;
+}
 
 and env =
   | Global of frame
@@ -95,6 +100,18 @@ module Value = struct
       | Trait (_,  _, _) ->
         "<trait>"
     end
+end
+
+module Args = struct
+  type t = args
+
+  let make normals keywords = {
+    normal_args = normals;
+    keyword_args = keywords;
+  }
+
+  let nth {normal_args} n =
+    List.nth normal_args n
 end
 
 module Frame = struct
@@ -388,13 +405,13 @@ let make_record_ctor klass fields =
       let table = Hashtbl.create initial_field_table_size in
       List.iter2 begin fun (field, _) arg ->
         Hashtbl.add table field arg
-      end fields args;
+      end fields args.normal_args;
       Record (klass, table)
   end
 
 let make_getter klass field =
   Subr begin 1, false, fun eva pos args ->
-      let self = List.nth args 0 in
+      let self = Args.nth args 0 in
       begin match self with
         | Record (klass2, table) when klass2 = klass ->
           Hashtbl.find table field
@@ -405,8 +422,8 @@ let make_getter klass field =
 
 let make_setter klass field =
   Subr begin 2, false, fun eva pos args ->
-      let self = List.nth args 0 in
-      let value = List.nth args 1 in
+      let self = Args.nth args 0 in
+      let value = Args.nth args 1 in
       begin match self with
         | Record (klass2, table) when klass2 = klass ->
           Hashtbl.replace table field value;
@@ -468,10 +485,10 @@ let rec bind_param env pos pat value =
 
 and bind_params env pos params args =
   begin try
-      List.iter2 (bind_param env pos) params.Expr.normal_params args
+      List.iter2 (bind_param env pos) params.Expr.normal_params args.normal_args
     with
     | Invalid_argument _ ->
-      let arg_count = List.length args in
+      let arg_count = List.length args.normal_args in
       let param_count = List.length params.Expr.normal_params in
       failwith (wrong_number_of_arguments pos param_count arg_count)
   end
@@ -621,8 +638,10 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       end
   end
 
-and eval_args eva {Expr.normal_args;Expr.keyword_args;} =
-  List.map (eval eva) normal_args
+and eval_args eva {Expr.normal_args;Expr.keyword_args;} = {
+  normal_args = List.map (eval eva) normal_args;
+  keyword_args = List.map (fun (key, expr) -> (key, eval eva expr)) keyword_args;
+}
 
 and eval_exprs eva exprs =
   List.fold_left begin fun _ elem ->
@@ -637,7 +656,7 @@ and call_fun eva pos func args =
       bind_params env pos params args;
       eval_exprs eva body
     | Subr (required_count, allows_rest, subr) ->
-      let arg_count = List.length args in
+      let arg_count = List.length args.normal_args in
       if arg_count < required_count || arg_count > required_count && not allows_rest then
         failwith (wrong_number_of_arguments pos required_count arg_count)
       else
@@ -661,7 +680,7 @@ and call_method eva pos recv sel args =
       failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
   end
   in
-  call_fun eva pos meth (recv::args)
+  call_fun eva pos meth {args with normal_args = recv::args.normal_args}
 
 let int_of_value pos v =
   begin match v with
@@ -711,13 +730,13 @@ let value_of_string str = String str
 
 let make_binary_subr proc_out proc_body proc_in =
   Subr begin 2, false, fun eva pos args ->
-      let arg0 = List.nth args 0 in
-      let arg1 = List.nth args 1 in
+      let arg0 = Args.nth args 0 in
+      let arg1 = Args.nth args 1 in
       proc_out (proc_body (proc_in pos arg0) (proc_in pos arg1))
   end
 
 let make_unary_subr proc_out proc_body proc_in =
   Subr begin 1, false, fun eva pos args ->
-      let arg0 = List.nth args 0 in
+      let arg0 = Args.nth args 0 in
       proc_out (proc_body (proc_in pos arg0))
   end
