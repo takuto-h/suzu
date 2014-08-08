@@ -102,16 +102,16 @@ let rec execute_format_insns eva pos insns args buf =
   end
 
 let subr_string_format =
-  Eva.Subr begin 1, true, fun eva pos args ->
-      let self = Eva.Args.nth args 0 in
-      let insns = begin try
-          parse_format_insns (Stream.of_string (Eva.string_of_value pos self)) []
-        with
-        | Illigal_format ->
-          failwith (Pos.show_error pos (sprintf "illegal format string: %s\n" (Eva.Value.show self)))
-      end
-      in
-      Eva.String (execute_format_insns eva pos insns (List.tl args.Eva.normal_args) (Buffer.create initial_formatted_buffer_size))
+  Eva.create_subr 1 ~allows_rest:true begin fun eva pos args ->
+    let self = Eva.Args.nth args 0 in
+    let insns = begin try
+        parse_format_insns (Stream.of_string (Eva.string_of_value pos self)) []
+      with
+      | Illigal_format ->
+        failwith (Pos.show_error pos (sprintf "illegal format string: %s\n" (Eva.Value.show self)))
+    end
+    in
+    Eva.String (execute_format_insns eva pos insns (List.tl args.Eva.normal_args) (Buffer.create initial_formatted_buffer_size))
   end
 
 let subr_string_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%s") Eva.string_of_value

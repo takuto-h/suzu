@@ -330,6 +330,9 @@ let create env = {
   dummy = ();
 }
 
+let create_subr req_count ?(allows_rest=false) proc =
+  Subr (req_count, allows_rest, proc)
+
 let initial_field_table_size = 4
 let initial_param_table_size = 4
 
@@ -401,37 +404,37 @@ let find_klass env pos mods klass_name =
   end
 
 let make_record_ctor klass fields =
-  Subr begin (List.length fields), false, fun eva pos args ->
-      let table = Hashtbl.create initial_field_table_size in
-      List.iter2 begin fun (field, _) arg ->
-        Hashtbl.add table field arg
-      end fields args.normal_args;
-      Record (klass, table)
+  create_subr (List.length fields) begin fun eva pos args ->
+    let table = Hashtbl.create initial_field_table_size in
+    List.iter2 begin fun (field, _) arg ->
+      Hashtbl.add table field arg
+    end fields args.normal_args;
+    Record (klass, table)
   end
 
 let make_getter klass field =
-  Subr begin 1, false, fun eva pos args ->
-      let self = Args.nth args 0 in
-      begin match self with
-        | Record (klass2, table) when klass2 = klass ->
-          Hashtbl.find table field
-        | _ ->
-          failwith (required pos (sprintf "some instance of %s" klass) self)
-      end
+  create_subr 1 begin fun eva pos args ->
+    let self = Args.nth args 0 in
+    begin match self with
+      | Record (klass2, table) when klass2 = klass ->
+        Hashtbl.find table field
+      | _ ->
+        failwith (required pos (sprintf "some instance of %s" klass) self)
+    end
   end      
 
 let make_setter klass field =
-  Subr begin 2, false, fun eva pos args ->
-      let self = Args.nth args 0 in
-      let value = Args.nth args 1 in
-      begin match self with
-        | Record (klass2, table) when klass2 = klass ->
-          Hashtbl.replace table field value;
-          value
-        | _ ->
-          failwith (required pos (sprintf "some instance of %s" klass) self)
-      end
-  end      
+  create_subr 2 begin fun eva pos args ->
+    let self = Args.nth args 0 in
+    let value = Args.nth args 1 in
+    begin match self with
+      | Record (klass2, table) when klass2 = klass ->
+        Hashtbl.replace table field value;
+        value
+      | _ ->
+        failwith (required pos (sprintf "some instance of %s" klass) self)
+    end
+  end     
 
 let add_accessors env klass fields =
   List.iter begin fun (field, mutabl) ->
@@ -441,8 +444,8 @@ let add_accessors env klass fields =
   end fields
 
 let make_variant_ctor klass ctor_name params =
-  Subr begin List.length params.Expr.normal_params, false, fun eva pos args ->
-      Variant (klass, ctor_name, args)
+  create_subr (List.length params.Expr.normal_params) begin fun eva pos args ->
+    Variant (klass, ctor_name, args)
   end
 
 let add_ctors env klass ctors =
@@ -729,14 +732,14 @@ let value_of_char c = Char c
 let value_of_string str = String str
 
 let make_binary_subr proc_out proc_body proc_in =
-  Subr begin 2, false, fun eva pos args ->
-      let arg0 = Args.nth args 0 in
-      let arg1 = Args.nth args 1 in
-      proc_out (proc_body (proc_in pos arg0) (proc_in pos arg1))
+  create_subr 2 begin fun eva pos args ->
+    let arg0 = Args.nth args 0 in
+    let arg1 = Args.nth args 1 in
+    proc_out (proc_body (proc_in pos arg0) (proc_in pos arg1))
   end
 
 let make_unary_subr proc_out proc_body proc_in =
-  Subr begin 1, false, fun eva pos args ->
-      let arg0 = Args.nth args 0 in
-      proc_out (proc_body (proc_in pos arg0))
+  create_subr 1 begin fun eva pos args ->
+    let arg0 = Args.nth args 0 in
+    proc_out (proc_body (proc_in pos arg0))
   end

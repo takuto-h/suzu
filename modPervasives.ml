@@ -1,13 +1,13 @@
 
 let subr_write_line =
-  Eva.Subr begin 1, true, fun eva pos args ->
-      let str = Eva.call_fun eva pos ModString.subr_string_format args in
-      print_endline (Eva.string_of_value pos str);
-      Eva.Unit
+  Eva.create_subr 1 ~allows_rest:true begin fun eva pos args ->
+    let str = Eva.call_fun eva pos ModString.subr_string_format args in
+    print_endline (Eva.string_of_value pos str);
+    Eva.Unit
   end
 
 let subr_read_line =
-  Eva.Subr begin 0, false, fun eva pos args ->
+  Eva.create_subr 0 begin fun eva pos args ->
       Eva.String (read_line ())
   end
 
