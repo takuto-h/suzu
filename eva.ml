@@ -461,49 +461,6 @@ let add_ctors env klass ctors =
     Env.add_var env ctor_name (make_variant_ctor klass ctor_name params);
   end ctors
 
-let rec bind_param env pos pat value =
-  begin match pat.Expr.pat_raw with
-    | Expr.PatWildCard ->
-      ()
-    | Expr.PatConst lit ->
-      if value = value_of_literal lit then
-        ()
-      else
-        failwith (match_failure pos pat value)
-    | Expr.PatBind (VarOrMethod.Var x) ->
-      Env.add_var env x value
-    | Expr.PatBind (VarOrMethod.Method (mods, klass, sel)) ->
-      let klass = find_klass env pos mods klass in
-      Env.add_method env klass (Selector.string_of sel) value
-    | Expr.PatOr (lhs, rhs) ->
-      begin try
-          bind_param env pos lhs value
-        with
-        | Failure message ->
-          bind_param env pos rhs value
-      end
-    | Expr.PatAs (pat, x) ->
-      bind_param env pos pat value;
-      Env.add_var env x value
-    | Expr.PatVariant (ctor_req, params) ->
-      begin match value with
-        | Variant (_, ctor_got, values) when ctor_got = ctor_req ->
-          bind_params env pos params values
-        | _ ->
-          failwith (match_failure pos pat value)
-      end
-  end
-
-and bind_params env pos params args =
-  begin try
-      List.iter2 (bind_param env pos) params.Expr.normal_params args.normal_args
-    with
-    | Invalid_argument _ ->
-      let arg_count = List.length args.normal_args in
-      let param_count = List.length params.Expr.normal_params in
-      failwith (wrong_number_of_arguments pos param_count arg_count)
-  end
-
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
     | Expr.Const lit ->
@@ -527,7 +484,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       end
     | Expr.Def (pat, expr) ->
       let value = eval eva expr in
-      bind_param eva.env pos pat value;
+      bind_param eva pos pat value;
       value
     | Expr.Lambda (params, body) ->
       Closure (eva.env, params, body)
@@ -635,7 +592,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
             begin try
                 let env = Env.create_local eva.env in
                 let eva = { eva with env = env } in
-                bind_param env pos pat target;
+                bind_param eva pos pat target;
                 raise (Match_success (eval_exprs eva body))
               with
               | Failure message ->
@@ -664,7 +621,7 @@ and call_fun eva pos func args =
     | Closure (env, params, body) ->
       let env = Env.create_local env in
       let eva = { eva with env = env } in
-      bind_params env pos params args;
+      bind_params eva pos params args;
       eval_exprs eva body
     | Subr (required_count, allows_rest, req_keys, opt_keys, subr) ->
       let arg_count = List.length args.normal_args in
@@ -672,10 +629,10 @@ and call_fun eva pos func args =
           failwith (wrong_number_of_arguments pos required_count arg_count)
       end;
       let rest_keyword_args = List.fold_left begin fun keyword_args req_key ->
-          if not (List.mem_assoc req_key keyword_args) then
-            failwith (lack_of_keyword_argument pos req_key)
-          else
+          if List.mem_assoc req_key keyword_args then
             List.remove_assoc req_key keyword_args
+          else
+            failwith (lack_of_keyword_argument pos req_key)
         end args.keyword_args req_keys
       in
       let rest_keyword_args = List.fold_left begin fun keyword_args opt_key ->
@@ -689,7 +646,7 @@ and call_fun eva pos func args =
     | Trait (env, params, body) ->
       let env = Env.create_local env in
       let eva = { eva with env = env } in
-      bind_params env pos params args;
+      bind_params eva pos params args;
       ignore (eval_exprs eva body);
       Module env;
     | _ ->
@@ -706,6 +663,66 @@ and call_method eva pos recv sel args =
   end
   in
   call_fun eva pos meth {args with normal_args = recv::args.normal_args}
+
+and bind_params eva pos params args =
+  begin try
+      List.iter2 (bind_param eva pos) params.Expr.normal_params args.normal_args
+    with
+    | Invalid_argument _ ->
+      let arg_count = List.length args.normal_args in
+      let param_count = List.length params.Expr.normal_params in
+      failwith (wrong_number_of_arguments pos param_count arg_count)
+  end;
+  let rest_keyword_args = List.fold_left begin fun keyword_args (key, (param, opt_expr)) ->
+      begin match opt_expr with
+        | _ when List.mem_assoc key keyword_args ->
+          let arg = List.assoc key keyword_args in
+          bind_param eva pos param arg;
+          List.remove_assoc key keyword_args
+        | Some expr ->
+          let arg = eval eva expr in
+          bind_param eva pos param arg;
+          keyword_args
+        | None ->
+          failwith (lack_of_keyword_argument pos key)
+      end
+    end args.keyword_args params.Expr.keyword_params
+  in
+  if List.length rest_keyword_args <> 0 then
+    failwith (extra_keyword_arguments pos rest_keyword_args)
+
+and bind_param eva pos pat value =
+  begin match pat.Expr.pat_raw with
+    | Expr.PatWildCard ->
+      ()
+    | Expr.PatConst lit ->
+      if value = value_of_literal lit then
+        ()
+      else
+        failwith (match_failure pos pat value)
+    | Expr.PatBind (VarOrMethod.Var x) ->
+      Env.add_var eva.env x value
+    | Expr.PatBind (VarOrMethod.Method (mods, klass, sel)) ->
+      let klass = find_klass eva.env pos mods klass in
+      Env.add_method eva.env klass (Selector.string_of sel) value
+    | Expr.PatOr (lhs, rhs) ->
+      begin try
+          bind_param eva pos lhs value
+        with
+        | Failure message ->
+          bind_param eva pos rhs value
+      end
+    | Expr.PatAs (pat, x) ->
+      bind_param eva pos pat value;
+      Env.add_var eva.env x value
+    | Expr.PatVariant (ctor_req, params) ->
+      begin match value with
+        | Variant (_, ctor_got, values) when ctor_got = ctor_req ->
+          bind_params eva pos params values
+        | _ ->
+          failwith (match_failure pos pat value)
+      end
+  end
 
 let int_of_value pos v =
   begin match v with
