@@ -3,7 +3,7 @@ NATIVE_ENABLED = false
 BYTE_ENABLED = true
 
 SUZU_FILES[] =\
-  snPervasives snString snChar pos source token lexer literal selector varOrMethod pattern expr parser\
+  snPervasives snString snChar pos source token lexer literal selector varOrMethod expr parser\
   eva modPervasives modInt modUnit modBool modChar modString interp main
 
 PROGRAM = suzu

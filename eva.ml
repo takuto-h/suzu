@@ -16,13 +16,13 @@ and value =
   | String of string
   | Char of char
   | Bool of bool
-  | Closure of env * Pattern.t list * Expr.t list
+  | Closure of env * Expr.Params.t * Expr.t list
   | Subr of int * bool * (t -> Pos.t -> value list -> value)
   | Module of env
   | Class of string
   | Record of string * (string, value) Hashtbl.t
   | Variant of string * string * value list
-  | Trait of env * Pattern.t list * Expr.t list
+  | Trait of env * Expr.Params.t * Expr.t list
 
 and env =
   | Global of frame
@@ -314,6 +314,7 @@ let create env = {
 }
 
 let initial_field_table_size = 4
+let initial_param_table_size = 4
 
 let value_of_literal lit =
   begin match lit with
@@ -338,7 +339,7 @@ let wrong_number_of_arguments pos param_count arg_count =
 
 let match_failure pos pat value =
   let message = Pos.show_error pos (sprintf "match failure of %s\n" (Value.show value)) in
-  let message = message ^ Pos.show_message pat.Pattern.pos (sprintf "with pattern %s\n" (Pattern.show pat)) in
+  let message = message ^ Pos.show_message pat.Expr.pat_pos (sprintf "with pattern %s\n" (Expr.Pattern.show pat)) in
   failwith message
 
 let find_binding thunk pos =
@@ -422,41 +423,41 @@ let add_accessors env klass fields =
       Env.add_method env klass (sprintf "%s=" field) (make_setter klass field)
   end fields
 
-let make_variant_ctor klass ctor_name param_count =
-  Subr begin param_count, false, fun eva pos args ->
+let make_variant_ctor klass ctor_name params =
+  Subr begin List.length params.Expr.normal_params, false, fun eva pos args ->
       Variant (klass, ctor_name, args)
   end
 
 let add_ctors env klass ctors =
-  List.iter begin fun (ctor_name, param_count) ->
-    Env.add_var env ctor_name (make_variant_ctor klass ctor_name param_count);
+  List.iter begin fun (ctor_name, params) ->
+    Env.add_var env ctor_name (make_variant_ctor klass ctor_name params);
   end ctors
 
 let rec bind_param env pos pat value =
-  begin match pat.Pattern.raw with
-    | Pattern.WildCard ->
+  begin match pat.Expr.pat_raw with
+    | Expr.PatWildCard ->
       ()
-    | Pattern.Const lit ->
+    | Expr.PatConst lit ->
       if value = value_of_literal lit then
         ()
       else
         failwith (match_failure pos pat value)
-    | Pattern.Bind (VarOrMethod.Var x) ->
+    | Expr.PatBind (VarOrMethod.Var x) ->
       Env.add_var env x value
-    | Pattern.Bind (VarOrMethod.Method (mods, klass, sel)) ->
+    | Expr.PatBind (VarOrMethod.Method (mods, klass, sel)) ->
       let klass = find_klass env pos mods klass in
       Env.add_method env klass (Selector.string_of sel) value
-    | Pattern.Or (lhs, rhs) ->
+    | Expr.PatOr (lhs, rhs) ->
       begin try
           bind_param env pos lhs value
         with
         | Failure message ->
           bind_param env pos rhs value
       end
-    | Pattern.As (pat, x) ->
+    | Expr.PatAs (pat, x) ->
       bind_param env pos pat value;
       Env.add_var env x value
-    | Pattern.Variant (ctor_req, params) ->
+    | Expr.PatVariant (ctor_req, params) ->
       begin match value with
         | Variant (_, ctor_got, values) when ctor_got = ctor_req ->
           bind_params env pos params values
@@ -467,11 +468,11 @@ let rec bind_param env pos pat value =
 
 and bind_params env pos params args =
   begin try
-      List.iter2 (bind_param env pos) params args
+      List.iter2 (bind_param env pos) params.Expr.normal_params args
     with
     | Invalid_argument _ ->
       let arg_count = List.length args in
-      let param_count = List.length params in
+      let param_count = List.length params.Expr.normal_params in
       failwith (wrong_number_of_arguments pos param_count arg_count)
   end
 

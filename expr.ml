@@ -11,8 +11,8 @@ type t = {
 and raw = 
   | Const of Literal.t
   | Get of string list * VarOrMethod.t
-  | Def of Pattern.t * t
-  | Lambda of Pattern.t list * t list
+  | Def of pat * t
+  | Lambda of params * t list
   | FunCall of t * t list
   | MethodCall of t * Selector.t * t list
   | And of t * t
@@ -21,10 +21,77 @@ and raw =
   | Export of VarOrMethod.t list
   | Open of t
   | Record of string * string * (string * bool) list
-  | Variant of string * (string * int) list
-  | Trait of Pattern.t list * t list
+  | Variant of string * (string * params) list
+  | Trait of params * t list
   | Except of t * VarOrMethod.t list
-  | Match of t * (Pattern.t * t option * t list) list
+  | Match of t * (pat * t option * t list) list
+
+and pat = {
+  pat_pos : Pos.t;
+  pat_raw : pat_raw;
+}
+
+and pat_raw = 
+  | PatWildCard
+  | PatConst of Literal.t
+  | PatBind of VarOrMethod.t
+  | PatOr of pat * pat
+  | PatAs of pat * string
+  | PatVariant of string * params
+
+and params = {
+  normal_params : pat list;
+  keyword_params : (string * (pat * t)) list;
+}
+
+let rec show_pattern {pat_raw} =
+  begin match pat_raw with
+    | PatWildCard ->
+      "_"
+    | PatConst lit ->
+      Literal.show lit
+    | PatBind vom ->
+      VarOrMethod.show vom
+    | PatOr (lhs, rhs) ->
+      sprintf "(%s | %s)" (show_pattern lhs) (show_pattern rhs)
+    | PatAs (pat, x) ->
+      sprintf "(%s as %s)" (show_pattern pat) x
+    | PatVariant (ctor, params) ->
+      sprintf "%s%s" ctor (show_params params)
+  end
+
+and show_params {normal_params;keyword_params;} =
+  let str_normals = SnString.concat_map ", " show_pattern normal_params in
+  let str_keywords = SnString.concat_map ", " show_keyword_param keyword_params in
+  if List.length normal_params <> 0 && List.length keyword_params <> 0 then
+    sprintf "(%s, %s)" str_normals str_keywords
+  else
+    sprintf "(%s%s)" str_normals str_keywords
+
+and show_keyword_param (key, (pat, _)) =
+  sprintf ":%s %s = <expr>" key (show_pattern pat)
+
+module Pattern = struct
+  type t = pat
+
+  let at pos raw = {
+    pat_pos = pos;
+    pat_raw = raw;
+  }
+
+  let show = show_pattern
+end
+
+module Params = struct
+  type t = params
+
+  let make normals keywords = {
+    normal_params = normals;
+    keyword_params = keywords;
+  }
+  
+  let show = show_params
+end
 
 let at pos raw = {
   pos = pos;
@@ -37,8 +104,8 @@ let show_field (field, mutabl) =
   else
     field
 
-let show_ctor (ctor_name, param_count) =
-  sprintf "(%s %d)" ctor_name param_count
+let show_ctor (ctor_name, params) =
+  sprintf "(%s %s)" ctor_name (Params.show params)
 
 let rec show {raw} =
   begin match raw with
@@ -49,7 +116,7 @@ let rec show {raw} =
     | Def (pat, expr) ->
       sprintf "(Def %s %s)" (Pattern.show pat) (show expr)
     | Lambda (params, body) ->
-      sprintf "(Lambda (%s) %s)" (SnString.concat_map " " Pattern.show params) (SnString.concat_map " " show body)
+      sprintf "(Lambda %s %s)" (Params.show params) (SnString.concat_map " " show body)
     | FunCall (func, args) ->
       sprintf "(FunCall %s %s)" (show func) (SnString.concat_map " " show args)
     | MethodCall (recv, sel, args) ->
@@ -69,7 +136,7 @@ let rec show {raw} =
     | Variant (klass, ctors) ->
       sprintf "(Variant %s %s)" klass (SnString.concat_map " " show_ctor ctors)
     | Trait (params, body) ->
-      sprintf "(Trait (%s) %s)" (SnString.concat_map " " Pattern.show params) (SnString.concat_map " " show body)
+      sprintf "(Trait %s %s)" (Params.show params) (SnString.concat_map " " show body)
     | Except (modl, voms) ->
       sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " VarOrMethod.show voms)
     | Match (target, cases) ->
