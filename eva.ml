@@ -505,11 +505,11 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       Closure (eva.env, params, body)
     | Expr.FunCall (func, args) ->
       let func = eval eva func in
-      let args = List.map (eval eva) args in
+      let args = eval_args eva args in
       call_fun eva pos func args
     | Expr.MethodCall (recv, sel, args) ->
       let recv = eval eva recv in
-      let args = List.map (eval eva) args in
+      let args = eval_args eva args in
       call_method eva pos recv sel args
     | Expr.And (lhs, rhs) ->
       let lhs = eval eva lhs in
@@ -620,6 +620,9 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           result
       end
   end
+
+and eval_args eva {Expr.normal_args;Expr.keyword_args;} =
+  List.map (eval eva) normal_args
 
 and eval_exprs eva exprs =
   List.fold_left begin fun _ elem ->

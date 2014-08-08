@@ -56,7 +56,7 @@ let parse_non_assoc parser get_op parse_lower =
       let op = Selector.Op str in
       lookahead parser;
       let rhs = parse_lower parser in
-      Expr.at pos (Expr.MethodCall (lhs, op, [rhs]))
+      Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] []))
   end
 
 let rec parse_right_assoc parser get_op parse_lower =
@@ -69,7 +69,7 @@ let rec parse_right_assoc parser get_op parse_lower =
       let op = Selector.Op str in
       lookahead parser;
       let rhs = parse_right_assoc parser get_op parse_lower in
-      Expr.at pos (Expr.MethodCall (lhs, op, [rhs]))
+      Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] []))
   end
 
 let rec parse_left_assoc parser get_op parse_lower =
@@ -83,7 +83,7 @@ let rec parse_left_assoc parser get_op parse_lower =
         let op = Selector.Op str in
         lookahead parser;
         let rhs = parse_lower parser in
-        loop (Expr.at pos (Expr.MethodCall (lhs, op, [rhs])))
+        loop (Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] [])))
     end
   in
   loop lhs
@@ -470,15 +470,15 @@ and parse_unary_expr parser =
     | Token.AddOp "-" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~-", []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~-", Expr.Args.make [] []))
     | Token.AddOp "+" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~+", []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~+", Expr.Args.make [] []))
     | Token.CmpOp "!" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "!", []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.Op "!", Expr.Args.make [] []))
     | _ ->
       parse_dot_expr parser
   end
@@ -499,9 +499,9 @@ and parse_dot_expr parser =
           | Token.Reserved "=" ->
             lookahead parser;
             let expr = parse_expr parser in
-            Expr.at pos (Expr.MethodCall (recv, Selector.Op (sprintf "%s=" (Selector.string_of sel)), [expr]))
+            Expr.at pos (Expr.MethodCall (recv, Selector.Op (sprintf "%s=" (Selector.string_of sel)), Expr.Args.make [expr] []))
           | _ ->
-            Expr.at pos (Expr.MethodCall (recv, sel, []))
+            Expr.at pos (Expr.MethodCall (recv, sel, Expr.Args.make [] []))
         end
       | _ ->
         recv
@@ -525,7 +525,8 @@ and parse_prim_expr parser =
   loop expr
 
 and parse_args parser =
-  parse_elems parser comma_or_rparen parse_expr
+  let normals = parse_elems parser comma_or_rparen parse_expr in
+  Expr.Args.make normals []
 
 and parse_atomic_expr parser =
   let pos = parser.pos in
@@ -619,7 +620,8 @@ and parse_if_expr parser pos =
 and parse_block parser =
   let pos = parser.pos in
   let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.FunCall (Expr.at pos (Expr.Lambda (Expr.Params.make [] [], exprs)), []))
+  let lambda = Expr.at pos (Expr.Lambda (Expr.Params.make [] [], exprs)) in
+  Expr.at pos (Expr.FunCall (lambda, Expr.Args.make [] []))
 
 and parse_match_expr parser pos =
   parse_token parser (Token.Reserved "(");

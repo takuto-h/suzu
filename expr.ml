@@ -13,8 +13,8 @@ and raw =
   | Get of string list * VarOrMethod.t
   | Def of pat * t
   | Lambda of params * t list
-  | FunCall of t * t list
-  | MethodCall of t * Selector.t * t list
+  | FunCall of t * args
+  | MethodCall of t * Selector.t * args
   | And of t * t
   | Or of t * t
   | Module of string * t list
@@ -44,6 +44,16 @@ and params = {
   keyword_params : (string * (pat * t option)) list;
 }
 
+and args = {
+  normal_args : t list;
+  keyword_args : (string * t) list;
+}
+
+let at pos raw = {
+  pos = pos;
+  raw = raw;
+}
+
 let rec show_pattern {pat_raw} =
   begin match pat_raw with
     | PatWildCard ->
@@ -71,6 +81,70 @@ and show_params {normal_params;keyword_params;} =
 and show_keyword_param (key, (pat, _)) =
   sprintf ":%s %s = <expr>" key (show_pattern pat)
 
+let show_field (field, mutabl) =
+  if mutabl then
+    sprintf "(mutable %s)" field
+  else
+    field
+
+let show_ctor (ctor_name, params) =
+  sprintf "(%s %s)" ctor_name (show_params params)
+
+let rec show {raw} =
+  begin match raw with
+    | Const lit ->
+      sprintf "(Const %s)" (Literal.show lit)
+    | Get (mods, vom) ->
+      sprintf "(Get %s %s)" (SnString.concat " " mods) (VarOrMethod.show vom)
+    | Def (pat, expr) ->
+      sprintf "(Def %s %s)" (show_pattern pat) (show expr)
+    | Lambda (params, body) ->
+      sprintf "(Lambda %s %s)" (show_params params) (SnString.concat_map " " show body)
+    | FunCall (func, args) ->
+      sprintf "(FunCall %s %s)" (show func) (show_args args)
+    | MethodCall (recv, sel, args) ->
+      sprintf "(MethodCall %s %s %s)" (show recv) (Selector.show sel) (show_args args)
+    | And (lhs, rhs) ->
+      sprintf "(And %s %s)" (show lhs) (show rhs)
+    | Or (lhs, rhs) ->
+      sprintf "(Or %s %s)" (show lhs) (show rhs)
+    | Module (name, exprs) ->
+      sprintf "(Module %s %s)" name (SnString.concat_map " " show exprs)
+    | Export voms ->
+      sprintf "(Export %s)" (SnString.concat_map " " VarOrMethod.show voms)
+    | Open expr ->
+      sprintf "(Open %s)" (show expr)
+    | Record (klass, ctor, fields) ->
+      sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
+    | Variant (klass, ctors) ->
+      sprintf "(Variant %s %s)" klass (SnString.concat_map " " show_ctor ctors)
+    | Trait (params, body) ->
+      sprintf "(Trait %s %s)" (show_params params) (SnString.concat_map " " show body)
+    | Except (modl, voms) ->
+      sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " VarOrMethod.show voms)
+    | Match (target, cases) ->
+      sprintf "(Match %s %s)" (show target) (SnString.concat_map " " show_case cases)
+  end
+
+and show_case (pat, guard, body) =
+  begin match guard with
+    | Some cond ->
+      sprintf "(Case %s (Some %s) %s)" (show_pattern pat) (show cond) (SnString.concat_map " " show body)
+    | None ->
+      sprintf "(Case %s None %s)" (show_pattern pat) (SnString.concat_map " " show body)
+  end
+
+and show_args {normal_args;keyword_args;} =
+  let str_normals = SnString.concat_map ", " show normal_args in
+  let str_keywords = SnString.concat_map ", " show_keyword_arg keyword_args in
+  if List.length normal_args <> 0 && List.length keyword_args <> 0 then
+    sprintf "(%s, %s)" str_normals str_keywords
+  else
+    sprintf "(%s%s)" str_normals str_keywords
+
+and show_keyword_arg (key, value) =
+  sprintf ":%s %s" key (show value)
+
 module Pattern = struct
   type t = pat
 
@@ -93,60 +167,13 @@ module Params = struct
   let show = show_params
 end
 
-let at pos raw = {
-  pos = pos;
-  raw = raw;
-}
+module Args = struct
+  type t = args
 
-let show_field (field, mutabl) =
-  if mutabl then
-    sprintf "(mutable %s)" field
-  else
-    field
-
-let show_ctor (ctor_name, params) =
-  sprintf "(%s %s)" ctor_name (Params.show params)
-
-let rec show {raw} =
-  begin match raw with
-    | Const lit ->
-      sprintf "(Const %s)" (Literal.show lit)
-    | Get (mods, vom) ->
-      sprintf "(Get %s %s)" (SnString.concat " " mods) (VarOrMethod.show vom)
-    | Def (pat, expr) ->
-      sprintf "(Def %s %s)" (Pattern.show pat) (show expr)
-    | Lambda (params, body) ->
-      sprintf "(Lambda %s %s)" (Params.show params) (SnString.concat_map " " show body)
-    | FunCall (func, args) ->
-      sprintf "(FunCall %s %s)" (show func) (SnString.concat_map " " show args)
-    | MethodCall (recv, sel, args) ->
-      sprintf "(MethodCall %s %s %s)" (show recv) (Selector.show sel) (SnString.concat_map " " show args)
-    | And (lhs, rhs) ->
-      sprintf "(And %s %s)" (show lhs) (show rhs)
-    | Or (lhs, rhs) ->
-      sprintf "(Or %s %s)" (show lhs) (show rhs)
-    | Module (name, exprs) ->
-      sprintf "(Module %s %s)" name (SnString.concat_map " " show exprs)
-    | Export voms ->
-      sprintf "(Export %s)" (SnString.concat_map " " VarOrMethod.show voms)
-    | Open expr ->
-      sprintf "(Open %s)" (show expr)
-    | Record (klass, ctor, fields) ->
-      sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
-    | Variant (klass, ctors) ->
-      sprintf "(Variant %s %s)" klass (SnString.concat_map " " show_ctor ctors)
-    | Trait (params, body) ->
-      sprintf "(Trait %s %s)" (Params.show params) (SnString.concat_map " " show body)
-    | Except (modl, voms) ->
-      sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " VarOrMethod.show voms)
-    | Match (target, cases) ->
-      sprintf "(Match %s %s)" (show target) (SnString.concat_map " " show_case cases)
-  end
-
-and show_case (pat, guard, body) =
-  begin match guard with
-    | Some cond ->
-      sprintf "(Case %s (Some %s) %s)" (Pattern.show pat) (show cond) (SnString.concat_map " " show body)
-    | None ->
-      sprintf "(Case %s None %s)" (Pattern.show pat) (SnString.concat_map " " show body)
-  end
+  let make normals keywords = {
+    normal_args = normals;
+    keyword_args = keywords;
+  }
+  
+  let show = show_args
+end
