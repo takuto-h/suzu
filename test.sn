@@ -25,7 +25,7 @@ write_line("{0}", me.college) //=> College of Information Science
 write_line("{0}", me.grade) //=> 3
 
 def UgradStudent#promote(self):
-  when(self.grade < 4):
+  if(self.grade < 4):
     self.grade = self.grade + 1
   end
   self.grade
@@ -109,7 +109,7 @@ trait Account(C, C#balance, C#(balance=)):
 
   def C#withdraw(self, x):
     self.balance = self.balance - x
-    when(self.balance < 0):
+    if(self.balance < 0):
       self.balance = 0
     end
   end
