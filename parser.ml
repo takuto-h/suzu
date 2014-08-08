@@ -358,6 +358,8 @@ and parse_def_expr parser pos =
   begin match parser.token with
     | Token.Reserved "(" ->
       let func = parse_lambda parser pos_vom in
+      skip parser Token.Newline;
+      parse_token parser (Token.Reserved "end");
       Expr.at pos (Expr.Def (pat, func))
     | Token.Reserved "=" ->
       lookahead parser;
@@ -376,6 +378,8 @@ and parse_trait parser pos =
   let vom = parse_var_or_method parser in
   let pat = Pattern.at pos_vom (Pattern.Bind vom) in
   let (params, body) = parse_function parser in
+  skip parser Token.Newline;
+  parse_token parser (Token.Reserved "end");
   Expr.at pos (Expr.Def (pat, Expr.at pos (Expr.Trait (params, body))))
 
 and parse_except_expr parser =
@@ -601,6 +605,8 @@ and parse_if_expr parser pos =
   skip parser Token.Newline;
   parse_token parser (Token.Reserved "else");
   let else_expr = parse_block parser in
+  skip parser Token.Newline;
+  parse_token parser (Token.Reserved "end");
   Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
 
 and parse_when_expr parser pos =
@@ -608,6 +614,8 @@ and parse_when_expr parser pos =
   let cond_expr = parse_expr parser in
   parse_token parser (Token.Reserved ")");
   let then_expr = parse_block parser in
+  skip parser Token.Newline;
+  parse_token parser (Token.Reserved "end");
   Expr.at pos (Expr.And (cond_expr, then_expr))
 
 and parse_block parser =
@@ -619,8 +627,20 @@ and parse_match_expr parser pos =
   parse_token parser (Token.Reserved "(");
   let target_expr = parse_expr parser in
   parse_token parser (Token.Reserved ")");
-  let case_clauses = parse_block_like_elems parser parse_case_clause in
-  Expr.at pos (Expr.Match (target_expr, case_clauses))
+  parse_token parser (Token.Reserved ":");
+  skip parser Token.Newline;
+  let rec loop rev_case_clauses =
+    if parser.token = Token.Reserved "end" then
+      begin
+        lookahead parser;
+        Expr.at pos (Expr.Match (target_expr, List.rev rev_case_clauses))
+      end
+    else
+      let case_clause = parse_case_clause parser in
+      skip parser Token.Newline;
+      loop (case_clause::rev_case_clauses)
+  in
+  loop []
 
 and parse_case_clause parser =
   parse_token parser (Token.Reserved "case");
@@ -662,9 +682,13 @@ let parse_class parser pos =
       lookahead parser;
       let ctor = parse_ident parser in
       let fields = parse_block_like_elems parser parse_field_decl in
+      skip parser Token.Newline;
+      parse_token parser (Token.Reserved "end");
       Expr.at pos (Expr.Record (klass, ctor, fields))
     | Token.Reserved ":" | Token.Reserved "{" ->
       let ctors = parse_block_like_elems parser parse_ctor_decl in
+      skip parser Token.Newline;
+      parse_token parser (Token.Reserved "end");
       Expr.at pos (Expr.Variant (klass, ctors))
     | _ ->
       failwith (expected parser "'=' or ':' or '{'")
@@ -686,6 +710,8 @@ let rec parse_toplevel parser =
 and parse_module parser pos =
   let mod_name = parse_ident parser in
   let exprs = parse_block_like_elems parser parse_toplevel in
+  skip parser Token.Newline;
+  parse_token parser (Token.Reserved "end");
   Expr.at pos (Expr.Module (mod_name, exprs))
 
 let parse_stmt parser =

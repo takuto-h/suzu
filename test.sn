@@ -7,6 +7,8 @@ def fac(n):
     1
   else:
     n * fac(n - 1)
+  end
+end
 
 write_line("fac(10) = {0}", fac(10))
 
@@ -15,6 +17,7 @@ class UgradStudent = make_ugrad_student:
   name
   college
   mutable grade
+end
 
 def me = make_ugrad_student("Takuto Hayashi", "College of Information Science", 3)
 write_line("{0}", me.name) //=> Takuto Hayashi
@@ -24,7 +27,9 @@ write_line("{0}", me.grade) //=> 3
 def UgradStudent#promote(self):
   when(self.grade < 4):
     self.grade = self.grade + 1
+  end
   self.grade
+end
 
 me.promote
 write_line("{0}", me.grade) //=> 4
@@ -32,12 +37,16 @@ write_line("{0}", me.grade) //=> 4
 trait Student(C, C#name, C#department):
   def C#introduce_oneself(self):
     write_line("My name is {0}. I'm a member of {1}.", self.name, self.department)
+  end
+
   export C#introduce_oneself
+end
 
 class GradStudent = make_grad_student:
   name
   school
   mutable grade
+end
 
 def taro = make_grad_student("Taro Tsukuba", "Graduate School of Systems and Information Engineering", 1)
 
@@ -52,6 +61,7 @@ module List:
   class C:
     def Nil()
     def Cons(x, xs)
+  end
 
   def append(lst1, lst2):
     match(lst1):
@@ -59,6 +69,8 @@ module List:
       lst2
     case(Cons(x, xs)):
       Cons(x, append(xs, lst2))
+    end
+  end
 
   module Open:
     def C#(+) = append
@@ -69,10 +81,14 @@ module List:
         "[]"
       case(Cons(x,xs)):
         String::format("{0}::{1}", x, xs)
+      end
+    end
 
     export C#(+), C#to_string
+  end
 
   export C, Nil, Cons, append, Open
+end
 
 open List::Open
 
@@ -89,21 +105,27 @@ write_line("{0}", lst1 + lst2) //=> 1::2::3::4::5::6::[]
 trait Account(C, C#balance, C#(balance=)):
   def C#deposit(self, x):
     self.balance = self.balance + x
+  end
 
   def C#withdraw(self, x):
     self.balance = self.balance - x
     when(self.balance < 0):
       self.balance = 0
+    end
+  end
 
   export C#deposit, C#withdraw
+end
 
 class BankAccount = make_bank_account:
   mutable balance
+end
 
 open Account(BankAccount, BankAccount#balance, BankAccount#(balance=))
 
 def create_bank_account():
   make_bank_account(0)
+end
 
 def account = create_bank_account()
 
@@ -119,17 +141,21 @@ write_line("{0}(0)", account.balance)
 class StockAccount = make_stock_account:
   mutable num_shares
   mutable price_per_share
+end
 
 def StockAccount#balance(self):
   self.num_shares * self.price_per_share
+end
 
 def StockAccount#(balance=)(self, x):
   self.num_shares = x / self.price_per_share
+end
 
 open Account(StockAccount, StockAccount#balance, StockAccount#(balance=))
 
 def create_stock_account():
   make_stock_account(10, 30)
+end
 
 def stock = create_stock_account()
 
@@ -149,6 +175,7 @@ write_line("{0}(22)", stock.num_shares)
 class Point = make_point:
   x
   y
+end
 
 def p1 = make_point(1, 2)
 def p2 = make_point(1, 2)
@@ -157,8 +184,10 @@ def p3 = make_point(2, 2)
 module Temp:
   def Point#(==)(self, other):
     self.x == other.x && self.y == other.y
+  end
 
   write_line("{0}", p1 == p2) //=> true
   write_line("{0}", p2 == p3) //=> false
+end
 
 //write_line("{0}", p1 == p2) //=> <error>
