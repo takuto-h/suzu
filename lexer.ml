@@ -173,7 +173,7 @@ let rec lex_ident lexer buf =
 let lex_visible_token lexer pos c =
   Source.junk lexer.source;
   begin match c with
-    | ';' | ',' | '^' | '.' | ':' | '#' ->
+    | ';' | ',' | '^' | '.' | '#' ->
       Token.Reserved (sprintf "%c" c)
     | '(' | '{' | '[' ->
       Stack.push (sprintf "%c" c) lexer.parens;
@@ -184,6 +184,14 @@ let lex_visible_token lexer pos c =
       lex_close_paren lexer pos "{" "}"
     | ']' ->
       lex_close_paren lexer pos "[" "]"
+    | ':' ->
+      begin match Source.peek lexer.source with
+        | Some ':' ->
+          Source.junk lexer.source;
+          Token.Reserved "::"
+        | Some _ | None ->
+          Token.Reserved ":"
+      end
     | '=' ->
       begin match Source.peek lexer.source with
         | Some c2 when is_op_part c2 ->

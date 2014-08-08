@@ -221,7 +221,7 @@ let parse_var_or_method parser =
       lookahead parser;
       let sel = parse_selector parser in
       VarOrMethod.Method ([], ident, sel)
-    | Token.Reserved ":" ->
+    | Token.Reserved "::" ->
       lookahead parser;
       let rec loop rev_idents =
         let ident = parse_ident parser in
@@ -230,11 +230,11 @@ let parse_var_or_method parser =
             lookahead parser;
             let sel = parse_selector parser in
             VarOrMethod.Method (List.rev rev_idents, ident, sel)
-          | Token.Reserved ":" ->
+          | Token.Reserved "::" ->
             lookahead parser;
             loop (ident::rev_idents)
           | _ ->
-            failwith (expected parser "'#' or ':'")
+            failwith (expected parser "'#' or '::'")
         end
       in
       loop [ident]
@@ -555,7 +555,7 @@ and parse_get_expr parser pos rev_idents =
       lookahead parser;
       let sel = parse_selector parser in
       Expr.at pos (Expr.Get ([], VarOrMethod.Method (List.rev (List.tl rev_idents), List.hd rev_idents, sel)))
-    | Token.Reserved ":" ->
+    | Token.Reserved "::" ->
       lookahead parser;
       begin match parser.token with
         | Token.Reserved "(" ->
