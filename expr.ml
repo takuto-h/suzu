@@ -41,7 +41,7 @@ and pat_raw =
 
 and params = {
   normal_params : pat list;
-  keyword_params : (string * (pat * t)) list;
+  keyword_params : (string * (pat * t option)) list;
 }
 
 let rec show_pattern {pat_raw} =
