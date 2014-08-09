@@ -1,4 +1,22 @@
 
+let subr_if =
+  Eva.create_subr 2 ~opt_keys:["else"] begin fun eva pos args ->
+    let cond = Eva.Args.nth args 0 in
+    let then_thunk = Eva.Args.nth args 1 in
+    let else_thunk = Eva.Args.get args "else" in
+    begin match else_thunk with
+      | None when Eva.bool_of_value pos cond ->
+        ignore (Eva.call_fun eva pos then_thunk (Eva.Args.make [] []));
+        Eva.Unit
+      | Some _ when Eva.bool_of_value pos cond ->
+        Eva.call_fun eva pos then_thunk (Eva.Args.make [] [])
+      | None ->
+        Eva.Unit
+      | Some else_thunk ->
+        Eva.call_fun eva pos else_thunk (Eva.Args.make [] [])
+    end
+  end
+
 let subr_write_line =
   Eva.create_subr 1 ~allows_rest:true begin fun eva pos args ->
     let str = Eva.call_fun eva pos ModString.subr_string_format args in
@@ -14,6 +32,7 @@ let subr_read_line =
 let initialize env =
   let mod_pervasives = Eva.Env.create_local env in
   Eva.Env.add_var env "Pervasives" (Eva.Module mod_pervasives);
+  Eva.Env.add_var mod_pervasives "if" subr_if ~export:true;
   Eva.Env.add_var mod_pervasives "write_line" subr_write_line ~export:true;
   Eva.Env.add_var mod_pervasives "read_line" subr_read_line ~export:true;
   Eva.Env.open_module env mod_pervasives

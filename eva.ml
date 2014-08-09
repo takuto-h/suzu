@@ -112,6 +112,14 @@ module Args = struct
 
   let nth {normal_args} n =
     List.nth normal_args n
+
+  let get {keyword_args} key =
+    begin try
+        Some (List.assoc key keyword_args)
+      with
+      | Not_found ->
+        None
+    end
 end
 
 module Frame = struct
