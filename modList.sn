@@ -1,0 +1,37 @@
+
+module List:
+  class C:
+    def Nil()
+    def Cons(x, xs)
+  end
+
+  let Nil = Nil()
+
+  def append(lst1, lst2):
+    match(lst1):
+    case([]):
+      lst2
+    case([x | xs]):
+      Cons(x, append(xs, lst2))
+    end
+  end
+
+  module Open:
+    let C#(++) = append
+
+    def C#to_string(self):
+      match(self):
+      case([]):
+        "[]"
+      case([x | xs]):
+        String::format("{0}::{1}", x, xs)
+      end
+    end
+
+    export C#(++), C#to_string
+  end
+
+  export C, Nil, Cons, append, Open
+end
+
+open List::Open

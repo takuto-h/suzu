@@ -5,4 +5,6 @@
 *.cmo
 *.run
 *.annot
-suzu*
+suzu
+suzutop
+sn2ml

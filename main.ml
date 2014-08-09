@@ -11,6 +11,7 @@ let main () =
   ModBool.initialize interp;
   ModChar.initialize interp;
   ModString.initialize interp;
+  ModList.initialize interp;
   Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun file_name ->
     Interp.load_file interp file_name
   end usage_msg;

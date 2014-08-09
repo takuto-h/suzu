@@ -4,19 +4,24 @@ BYTE_ENABLED = true
 
 SUZU_FILES[] =\
   snPervasives snString snChar pos source token lexer literal selector varOrMethod expr parser\
-  eva modPervasives modInt modUnit modBool modChar modString interp main
+  eva interp modPervasives modInt modUnit modBool modChar modString modList main
 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)
 
-# OCAMLCFLAGS += -annot
-
 TOP = suzutop
 TOP_FILES[] = $(addsuffix .cmo, $(SUZU_FILES))
+
+SN2ML = sn2ml
+SN2ML_FILES[] = snPervasives sn2ml
 
 .DEFAULT: $(PROGRAM)
 
 OCamlProgram($(PROGRAM), $(PROGRAM_FILES))
+OCamlProgram($(SN2ML), $(SN2ML_FILES))
+
+%.ml: %.sn $(SN2ML)
+    ./$(SN2ML) $<
 
 .PHONY: run
 run: $(PROGRAM)
