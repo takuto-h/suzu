@@ -650,9 +650,13 @@ and parse_lambda parser pos =
   Expr.at pos (Expr.Lambda (params, body))
 
 and parse_function parser =
-  let params = parse_params parser in
-  let body = parse_block_like_elems parser parse_expr in
-  (params, body)
+  if parser.token = Token.Reserved "(" then
+    let params = parse_params parser in
+    let body = parse_block_like_elems parser parse_expr in
+    (params, body)
+  else
+    let body = parse_block_like_elems parser parse_expr in
+    (Expr.Params.make [] [], body)
 
 and parse_block parser =
   let pos = parser.pos in
