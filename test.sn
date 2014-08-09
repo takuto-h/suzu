@@ -24,14 +24,14 @@ write_line("{0}", me.name) //=> Takuto Hayashi
 write_line("{0}", me.college) //=> College of Information Science
 write_line("{0}", me.grade) //=> 3
 
-def UgradStudent#promote(self):
+def UgradStudent#promote!(self):
   if(self.grade < 4):
     self.grade = self.grade + 1
   end
   self.grade
 end
 
-me.promote
+me.promote!
 write_line("{0}", me.grade) //=> 4
 
 trait Student(C, C#name, C#department):
@@ -103,18 +103,18 @@ write_line("{0}", lst1 + lst2) //=> 1::2::3::4::5::6::[]
 
 
 trait Account(C, C#balance, C#(balance=)):
-  def C#deposit(self, x):
+  def C#deposit!(self, x):
     self.balance = self.balance + x
   end
 
-  def C#withdraw(self, x):
+  def C#withdraw!(self, x):
     self.balance = self.balance - x
     if(self.balance < 0):
       self.balance = 0
     end
   end
 
-  export C#deposit, C#withdraw
+  export C#deposit!, C#withdraw!
 end
 
 class BankAccount = make_bank_account:
@@ -131,11 +131,11 @@ let account = create_bank_account()
 
 account.balance = 200
 write_line("{0}(200)", account.balance)
-account.deposit(50)
+account.deposit!(50)
 write_line("{0}(250)", account.balance)
-account.withdraw(100)
+account.withdraw!(100)
 write_line("{0}(150)", account.balance)
-account.withdraw(200)
+account.withdraw!(200)
 write_line("{0}(0)", account.balance)
 
 class StockAccount = make_stock_account:
@@ -168,7 +168,7 @@ write_line("{0}(5)", stock.num_shares)
 stock.balance = 600
 write_line("{0}(600)", stock.balance)
 write_line("{0}(20)", stock.num_shares)
-stock.deposit(60)
+stock.deposit!(60)
 write_line("{0}(660)", stock.balance)
 write_line("{0}(22)", stock.num_shares)
 
@@ -238,9 +238,9 @@ else:
   write_line("ok!")
 end
 
-my_if2(true):
+my_if2(false):
 then:
-  write_line("ok!")
+  write_line("NG")
 end
 
 my_if2(false):
@@ -257,16 +257,16 @@ class Counter = make_counter:
   mutable count
 end
 
-def Counter#is_zero(self):
+def Counter#zero?(self):
   self.count == 0
 end
 
-def Counter#decr(self):
+def Counter#decr!(self):
   self.count = self.count - 1
 end
 
 let counter = make_counter(5)
-my_while: !counter.is_zero
+my_while: !counter.zero?
 do:
-  write_line("{0}", counter.decr)
+  write_line("{0}", counter.decr!)
 end
