@@ -603,25 +603,25 @@ and parse_if_expr parser pos =
   parse_token parser (Token.Reserved ")");
   let then_expr = parse_block parser in
   skip parser Token.Newline;
+  let if_fun_expr = Expr.at pos (Expr.Get ([], VarOrMethod.Var "if")) in
   if parser.token = Token.Reserved "else" then
     begin
       lookahead parser;
       let else_expr = parse_block parser in
       skip parser Token.Newline;
       parse_token parser (Token.Reserved "end");
-      Expr.at pos (Expr.Or (Expr.at pos (Expr.And (cond_expr, then_expr)), else_expr))
+      Expr.at pos (Expr.FunCall (if_fun_expr, Expr.Args.make [cond_expr; then_expr] ["else", else_expr]))
     end
   else
     begin
       parse_token parser (Token.Reserved "end");
-      Expr.at pos (Expr.And (cond_expr, then_expr))
+      Expr.at pos (Expr.FunCall (if_fun_expr, Expr.Args.make [cond_expr; then_expr] []))
     end
 
 and parse_block parser =
   let pos = parser.pos in
   let exprs = parse_block_like_elems parser parse_expr in
-  let lambda = Expr.at pos (Expr.Lambda (Expr.Params.make [] [], exprs)) in
-  Expr.at pos (Expr.FunCall (lambda, Expr.Args.make [] []))
+  Expr.at pos (Expr.Lambda (Expr.Params.make [] [], exprs))
 
 and parse_match_expr parser pos =
   parse_token parser (Token.Reserved "(");
