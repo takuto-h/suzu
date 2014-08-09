@@ -533,8 +533,18 @@ and parse_args parser =
       let lambda = parse_lambda parser pos_lambda in
       Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
     | Token.Reserved ":" ->
-      let lambda = parse_block parser in
-      Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
+      let pos_lambda = parser.pos in
+      Lexer.indent parser.lexer;
+      lookahead parser;
+      if parser.token = Token.Newline then
+        begin
+          lookahead parser;
+          Expr.Args.make normals (parse_keyword_args parser [])
+        end
+      else
+        let exprs = parse_elems parser semi_or_newline_or_undent parse_expr in
+        let lambda = Expr.at pos_lambda (Expr.Lambda (Expr.Params.make [] [], exprs)) in
+        Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
     | Token.Reserved "{" ->
       let lambda = parse_block parser in
       Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
