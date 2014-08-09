@@ -9,14 +9,14 @@ type t = {
 let initial_buffer_size = 64
 
 let create () =
-  let env = Eva.Env.create_global () in
-  ModPervasives.initialize env;
-  ModInt.initialize env;
-  ModUnit.initialize env;
-  ModBool.initialize env;
-  ModChar.initialize env;
-  ModString.initialize env;
-  { eva = Eva.create env; }
+  let eva = Eva.create () in
+  ModPervasives.initialize eva;
+  ModInt.initialize eva;
+  ModUnit.initialize eva;
+  ModBool.initialize eva;
+  ModChar.initialize eva;
+  ModString.initialize eva;
+  { eva = eva }
 
 let parse_string proc str =
   let source = Source.of_string "<stdin>" str in

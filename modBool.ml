@@ -5,7 +5,7 @@ let make_unary_op proc = Eva.make_unary_subr Eva.value_of_bool proc Eva.bool_of_
 
 let subr_bool_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%B") Eva.bool_of_value
 
-let initialize env =
+let initialize {Eva.env} =
   let mod_bool = Eva.Env.create_local env in
   let mod_bool_open = Eva.Env.create_local mod_bool in
   Eva.Env.add_var env "Bool" (Eva.Module mod_bool);

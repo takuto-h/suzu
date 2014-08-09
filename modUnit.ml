@@ -1,7 +1,7 @@
 
 let subr_unit_to_string = Eva.make_unary_subr Eva.value_of_string (fun () -> "()") Eva.unit_of_value
 
-let initialize env =
+let initialize {Eva.env} =
   let mod_unit = Eva.Env.create_local env in
   let mod_unit_open = Eva.Env.create_local mod_unit in
   Eva.Env.add_var env "Unit" (Eva.Module mod_unit);

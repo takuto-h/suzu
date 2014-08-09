@@ -46,7 +46,7 @@ let subr_read_line =
       Eva.String (read_line ())
   end
 
-let initialize env =
+let initialize {Eva.env} =
   let mod_pervasives = Eva.Env.create_local env in
   Eva.Env.add_var env "Pervasives" (Eva.Module mod_pervasives);
   Eva.Env.add_var mod_pervasives "if" subr_if ~export:true;

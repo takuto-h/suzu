@@ -355,8 +355,8 @@ module Env = struct
     end
 end
 
-let create env = {
-  env = env;
+let create () = {
+  env = Env.create_global ();
   curr_mod_path = [];
   dummy = ();
 }
