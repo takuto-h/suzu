@@ -16,12 +16,10 @@ let reserved = [
   "case";
   "class";
   "def";
-  "else";
   "end";
   "except";
   "export";
   "false";
-  "if";
   "match";
   "module";
   "mutable";

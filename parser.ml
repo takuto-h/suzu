@@ -526,7 +526,54 @@ and parse_prim_expr parser =
 
 and parse_args parser =
   let normals = parse_elems parser comma_or_rparen parse_expr in
-  Expr.Args.make normals []
+  begin match parser.token with
+    | Token.Reserved "^" ->
+      let pos_lambda = parser.pos in
+      lookahead parser;
+      let lambda = parse_lambda parser pos_lambda in
+      Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
+    | Token.Reserved ":" ->
+      let lambda = parse_block parser in
+      Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
+    | Token.Reserved "{" ->
+      let lambda = parse_block parser in
+      Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
+    | _ ->
+      Expr.Args.make normals []
+  end
+
+and parse_keyword_args parser rev_keyword_args =
+  skip parser Token.Newline;
+  if parser.token = Token.Reserved "end" then
+    begin
+      lookahead parser;
+      List.rev rev_keyword_args
+    end
+  else
+    let keyword_arg = parse_keyword_arg parser in
+    parse_keyword_args parser (keyword_arg::rev_keyword_args)
+
+and parse_keyword_arg parser =
+  let key = parse_ident parser in
+  begin match parser.token with
+    | Token.Reserved "(" ->
+      lookahead parser;
+      let value = parse_expr parser in
+      (key, value)
+    | Token.Reserved "^" ->
+      let pos_lambda = parser.pos in
+      lookahead parser;
+      let lambda = parse_lambda parser pos_lambda in
+      (key, lambda)
+    | Token.Reserved ":" ->
+      let lambda = parse_block parser in
+      (key, lambda)
+    | Token.Reserved "{" ->
+      let lambda = parse_block parser in
+      (key, lambda)
+    | _ ->
+      failwith (expected parser "'(' or '^' or ':'")
+  end
 
 and parse_atomic_expr parser =
   let pos = parser.pos in
@@ -543,9 +590,6 @@ and parse_atomic_expr parser =
     | Token.Reserved "^" ->
       lookahead parser;
       parse_lambda parser pos
-    | Token.Reserved "if" ->
-      lookahead parser;
-      parse_if_expr parser pos
     | Token.Reserved "match" ->
       lookahead parser;
       parse_match_expr parser pos
@@ -597,27 +641,6 @@ and parse_function parser =
   let body = parse_block_like_elems parser parse_expr in
   (params, body)
 
-and parse_if_expr parser pos =
-  parse_token parser (Token.Reserved "(");
-  let cond_expr = parse_expr parser in
-  parse_token parser (Token.Reserved ")");
-  let then_expr = parse_block parser in
-  skip parser Token.Newline;
-  let if_fun_expr = Expr.at pos (Expr.Get ([], VarOrMethod.Var "if")) in
-  if parser.token = Token.Reserved "else" then
-    begin
-      lookahead parser;
-      let else_expr = parse_block parser in
-      skip parser Token.Newline;
-      parse_token parser (Token.Reserved "end");
-      Expr.at pos (Expr.FunCall (if_fun_expr, Expr.Args.make [cond_expr; then_expr] ["else", else_expr]))
-    end
-  else
-    begin
-      parse_token parser (Token.Reserved "end");
-      Expr.at pos (Expr.FunCall (if_fun_expr, Expr.Args.make [cond_expr; then_expr] []))
-    end
-
 and parse_block parser =
   let pos = parser.pos in
   let exprs = parse_block_like_elems parser parse_expr in
@@ -627,12 +650,9 @@ and parse_match_expr parser pos =
   parse_token parser (Token.Reserved "(");
   let target_expr = parse_expr parser in
   parse_token parser (Token.Reserved ")");
-  if parser.token = Token.Reserved ":" then
-    begin
-      lookahead parser;
-      skip parser Token.Newline
-    end;
+  skip parser (Token.Reserved ":");
   let rec loop rev_case_clauses =
+    skip parser Token.Newline;
     if parser.token = Token.Reserved "end" then
       begin
         lookahead parser;
@@ -640,7 +660,6 @@ and parse_match_expr parser pos =
       end
     else
       let case_clause = parse_case_clause parser in
-      skip parser Token.Newline;
       loop (case_clause::rev_case_clauses)
   in
   loop []
