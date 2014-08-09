@@ -23,6 +23,7 @@ and value =
   | Record of string * (string, value) Hashtbl.t
   | Variant of string * string * args
   | Trait of env * Expr.Params.t * Expr.t list
+  | Tuple of args
 
 and args = {
   normal_args : value list;
@@ -41,6 +42,47 @@ and frame = {
 }
 
 exception Match_success of value
+
+let rec show_value value =
+  begin match value with
+    | Unit ->
+      "()"
+    | Int i ->
+      sprintf "%d" i
+    | String s ->
+      sprintf "%S" s
+    | Char c ->
+      sprintf "%C" c
+    | Bool b ->
+      sprintf "%B" b
+    | Closure (_,  _, _) ->
+      "<closure>"
+    | Subr (_, _, _, _, _) ->
+      "<subr>"
+    | Module _ ->
+      "<module>"
+    | Class klass ->
+      sprintf "<class %s>" klass
+    | Record (klass, _) ->
+      sprintf "<record %s>" klass
+    | Variant (klass, _, _) ->
+      sprintf "<variant %s>" klass
+    | Trait (_,  _, _) ->
+      "<trait>"
+    | Tuple args ->
+      sprintf "%s" (show_args args)
+  end
+
+and show_args {normal_args;keyword_args;} =
+  let str_normals = SnString.concat_map ", " show_value normal_args in
+  let str_keywords = SnString.concat_map ", " show_keyword_arg keyword_args in
+  if List.length normal_args <> 0 && List.length keyword_args <> 0 then
+    sprintf "(%s, %s)" str_normals str_keywords
+  else
+    sprintf "(%s%s)" str_normals str_keywords
+
+and show_keyword_arg (key, value) =
+  sprintf ":%s %s" key (show_value value)
 
 module Value = struct
   type t = value
@@ -71,35 +113,11 @@ module Value = struct
         klass
       | Trait (_, _, _) ->
         "Trait:C"
+      | Tuple _ ->
+        "Tuple:C"
     end
 
-  let show value =
-    begin match value with
-      | Unit ->
-        "()"
-      | Int i ->
-        sprintf "%d" i
-      | String s ->
-        sprintf "%S" s
-      | Char c ->
-        sprintf "%C" c
-      | Bool b ->
-        sprintf "%B" b
-      | Closure (_,  _, _) ->
-        "<closure>"
-      | Subr (_, _, _, _, _) ->
-        "<subr>"
-      | Module _ ->
-        "<module>"
-      | Class klass ->
-        sprintf "<class %s>" klass
-      | Record (klass, _) ->
-        sprintf "<record %s>" klass
-      | Variant (klass, _, _) ->
-        sprintf "<variant %s>" klass
-      | Trait (_,  _, _) ->
-        "<trait>"
-    end
+  let show = show_value
 end
 
 module Args = struct
@@ -120,6 +138,8 @@ module Args = struct
       | Not_found ->
         None
     end
+
+  let show = show_args
 end
 
 module Frame = struct
@@ -612,6 +632,9 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | Match_success result ->
           result
       end
+    | Expr.Tuple args ->
+      let args = eval_args eva args in
+      Tuple args
   end
 
 and eval_args eva {Expr.normal_args;Expr.keyword_args;} = {
@@ -727,6 +750,13 @@ and bind_param eva pos pat value =
       begin match value with
         | Variant (_, ctor_got, values) when ctor_got = ctor_req ->
           bind_params eva pos params values
+        | _ ->
+          failwith (match_failure pos pat value)
+      end
+    | Expr.PatTuple params ->
+      begin match value with
+        | Tuple args ->
+          bind_params eva pos params args
         | _ ->
           failwith (match_failure pos pat value)
       end

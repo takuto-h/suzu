@@ -309,13 +309,26 @@ and parse_parens_pattern parser =
     | (pat::[], []) ->
       pat
     | _ ->
-      failwith "TODO: Implement tuple pattern"
+      Expr.Pattern.at pos (Expr.PatTuple params)
   end
 
 and parse_params parser =
   parse_token parser (Token.Reserved "(");
   let normals = parse_elems parser comma_or_rparen parse_pattern in
-  Expr.Params.make normals []
+  let rec loop rev_keyword_params =
+    begin match parser.token with
+      | Token.Ident _ ->
+        let key = parse_ident parser in
+        parse_token parser (Token.Reserved "(");
+        let pat = parse_pattern parser in
+        parse_token parser (Token.Reserved ")");
+        let keyword_param = (key, (pat, None)) in
+        loop (keyword_param::rev_keyword_params)
+      | _ ->
+        Expr.Params.make normals (List.rev rev_keyword_params)
+    end
+  in
+  loop []
 
 let rec parse_var_or_methods parser rev_voms =
   let vom = parse_var_or_method parser in
@@ -613,8 +626,7 @@ and parse_atomic_expr parser =
       let ident = parse_ident parser in
       parse_get_expr parser pos [ident];
     | Token.Reserved "(" ->
-      lookahead parser;
-      parse_parens parser pos
+      parse_parens parser
     | Token.Reserved "^" ->
       lookahead parser;
       parse_lambda parser pos
@@ -649,16 +661,17 @@ and parse_get_expr parser pos rev_idents =
       Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), VarOrMethod.Var (List.hd rev_idents)))
   end
 
-and parse_parens parser pos =
-  if parser.token = Token.Reserved ")" then
-    begin
-      lookahead parser;
+and parse_parens parser =
+  let pos = parser.pos in
+  let args = parse_args parser in
+  begin match (args.Expr.normal_args, args.Expr.keyword_args) with
+    | ([], []) ->
       Expr.at pos (Expr.Const Literal.Unit)
-    end
-  else
-    let expr = parse_expr parser in
-    parse_token parser (Token.Reserved ")");
-    expr
+    | (expr::[], []) ->
+      expr
+    | _ ->
+      Expr.at pos (Expr.Tuple args)
+  end
 
 and parse_lambda parser pos =
   let (params, body) = parse_function parser in
