@@ -458,20 +458,54 @@ and parse_prim_expr parser =
   loop expr
 
 and parse_args parser =
-  let normals = if parser.token = Token.Reserved "(" then
+  let rec loop rev_normals rev_keywords =
+    begin match parser.token with
+      | Token.Reserved ")" ->
+        lookahead parser;
+        (rev_normals, rev_keywords)
+      | _ ->
+        let (rev_normals, rev_keywords) = parse_arg parser rev_normals rev_keywords in
+        begin match parser.token with
+          | Token.Reserved ")" ->
+            lookahead parser;
+            (rev_normals, rev_keywords)
+          | Token.Reserved "," ->
+            lookahead parser;
+            loop rev_normals rev_keywords
+          | _ ->
+            failwith (expected parser "',' or ')'")
+        end
+    end
+  in
+  let (rev_normals, rev_keywords) = if parser.token = Token.Reserved "(" then
       begin
         lookahead parser;
-        parse_elems parser comma_or_rparen parse_expr
+        loop [] []
       end
     else
-      []
+      ([], [])
   in
+  parse_extra_args parser rev_normals rev_keywords
+
+and parse_arg parser rev_normals rev_keywords =
+  if parser.token = Token.Reserved ":" then
+    begin
+      lookahead parser;
+      let key = parse_ident parser in
+      let value = parse_expr parser in
+      (rev_normals, (key, value)::rev_keywords)
+    end
+  else
+    let arg = parse_expr parser in
+    (arg::rev_normals, rev_keywords)
+
+and parse_extra_args parser rev_normals rev_keywords =
   begin match parser.token with
     | Token.Reserved "^" ->
       let pos_lambda = parser.pos in
       lookahead parser;
       let lambda = parse_lambda parser pos_lambda in
-      Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
+      Expr.Args.make (List.rev (lambda::rev_normals)) (parse_extra_keyword_args parser rev_keywords)
     | Token.Reserved ":" ->
       let pos_lambda = parser.pos in
       Lexer.indent parser.lexer;
@@ -479,22 +513,22 @@ and parse_args parser =
       if parser.token = Token.Newline then
         begin
           lookahead parser;
-          Expr.Args.make normals (parse_keyword_args parser [])
+          Expr.Args.make (List.rev rev_normals) (parse_extra_keyword_args parser rev_keywords)
         end
       else
         let exprs = parse_elems parser semi_or_newline_or_undent parse_expr in
         let lambda = Expr.at pos_lambda (Expr.Lambda (Expr.Params.make [] [], exprs)) in
-        Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
+        Expr.Args.make (List.rev (lambda::rev_normals)) (parse_extra_keyword_args parser rev_keywords)
     | Token.Reserved "{" ->
       let lambda = parse_block parser in
-      Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
+      Expr.Args.make (List.rev (lambda::rev_normals)) (parse_extra_keyword_args parser rev_keywords)
     | Token.Ident _ ->
-      Expr.Args.make normals (parse_keyword_args parser [])
+      Expr.Args.make (List.rev rev_normals) (parse_extra_keyword_args parser rev_keywords)
     | _ ->
-      Expr.Args.make normals []
+      Expr.Args.make (List.rev rev_normals) (List.rev rev_keywords)
   end
 
-and parse_keyword_args parser rev_keyword_args =
+and parse_extra_keyword_args parser rev_keyword_args =
   skip parser Token.Newline;
   if parser.token = Token.Reserved "end" then
     begin
@@ -502,10 +536,10 @@ and parse_keyword_args parser rev_keyword_args =
       List.rev rev_keyword_args
     end
   else
-    let keyword_arg = parse_keyword_arg parser in
-    parse_keyword_args parser (keyword_arg::rev_keyword_args)
+    let keyword_arg = parse_extra_keyword_arg parser in
+    parse_extra_keyword_args parser (keyword_arg::rev_keyword_args)
 
-and parse_keyword_arg parser =
+and parse_extra_keyword_arg parser =
   let key = parse_ident parser in
   begin match parser.token with
     | Token.Reserved "(" ->
@@ -711,30 +745,69 @@ and parse_parens_pattern parser =
   end
 
 and parse_params parser =
-  parse_token parser (Token.Reserved "(");
-  let normals = parse_elems parser comma_or_rparen parse_pattern in
-  let rec loop rev_keyword_params =
+  let rec loop rev_normals rev_keywords =
     begin match parser.token with
-      | Token.Ident _ ->
-        let key = parse_ident parser in
-        parse_token parser (Token.Reserved "(");
-        let pat = parse_pattern parser in
-        let opt_expr = if parser.token = Token.Reserved "=" then
-            begin
-              lookahead parser;
-              Some (parse_expr parser)
-            end
-          else
-            None
-        in
-        parse_token parser (Token.Reserved ")");
-        let keyword_param = (key, (pat, opt_expr)) in
-        loop (keyword_param::rev_keyword_params)
+      | Token.Reserved ")" ->
+        lookahead parser;
+        (rev_normals, rev_keywords)
       | _ ->
-        Expr.Params.make normals (List.rev rev_keyword_params)
+        let (rev_normals, rev_keywords) = parse_param parser rev_normals rev_keywords in
+        begin match parser.token with
+          | Token.Reserved ")" ->
+            lookahead parser;
+            (rev_normals, rev_keywords)
+          | Token.Reserved "," ->
+            lookahead parser;
+            loop rev_normals rev_keywords
+          | _ ->
+            failwith (expected parser "',' or ')'")
+        end
     end
   in
-  loop []
+  let (rev_normals, rev_keywords) = if parser.token = Token.Reserved "(" then
+      begin
+        lookahead parser;
+        loop [] []
+      end
+    else
+      ([], [])
+  in
+  parse_extra_params parser (List.rev rev_normals) rev_keywords
+
+and parse_param parser rev_normals rev_keywords =
+  if parser.token = Token.Reserved ":" then
+    begin
+      lookahead parser;
+      let key = parse_ident parser in
+      let pattern_and_default = parse_pattern_and_default parser in
+      (rev_normals, (key, pattern_and_default)::rev_keywords)
+    end
+  else
+    let param = parse_pattern parser in
+    (param::rev_normals, rev_keywords)
+
+and parse_extra_params parser normals rev_keyword_params =
+  begin match parser.token with
+    | Token.Ident _ ->
+      let key = parse_ident parser in
+      parse_token parser (Token.Reserved "(");
+      let pattern_and_default = parse_pattern_and_default parser in
+      parse_token parser (Token.Reserved ")");
+      let keyword_param = (key, pattern_and_default) in
+      parse_extra_params parser normals (keyword_param::rev_keyword_params)
+    | _ ->
+      Expr.Params.make normals (List.rev rev_keyword_params)
+    end
+
+and parse_pattern_and_default parser =
+  let pat = parse_pattern parser in
+  if parser.token = Token.Reserved "=" then
+    begin
+      lookahead parser;
+      (pat, Some (parse_expr parser))
+    end
+  else
+    (pat, None)
 
 let parse_field_decl parser =
   let mutabl = (parser.token = Token.Reserved "mutable") in
