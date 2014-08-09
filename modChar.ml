@@ -3,7 +3,7 @@ open Printf
 
 let subr_char_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%c") Eva.char_of_value
 
-let initialize {Eva.env} =
+let initialize {Interp.eva={Eva.env}} =
   let mod_char = Eva.Env.create_local env in
   let mod_char_open = Eva.Env.create_local mod_char in
   Eva.Env.add_var env "Char" (Eva.Module mod_char);

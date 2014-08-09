@@ -116,7 +116,7 @@ let subr_string_format =
 
 let subr_string_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%s") Eva.string_of_value
 
-let initialize {Eva.env} =
+let initialize {Interp.eva={Eva.env}} =
   let mod_string = Eva.Env.create_local env in
   let mod_string_open = Eva.Env.create_local mod_string in
   Eva.Env.add_var env "String" (Eva.Module mod_string);

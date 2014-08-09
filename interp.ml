@@ -8,35 +8,9 @@ type t = {
 
 let initial_buffer_size = 64
 
-let create () =
-  let eva = Eva.create () in
-  ModPervasives.initialize eva;
-  ModInt.initialize eva;
-  ModUnit.initialize eva;
-  ModBool.initialize eva;
-  ModChar.initialize eva;
-  ModString.initialize eva;
-  { eva = eva }
-
-let parse_string proc str =
-  let source = Source.of_string "<stdin>" str in
-  let lexer = Lexer.create source in
-  let parser = Parser.create lexer in
-  begin try
-      let rec loop () =
-        begin match Parser.parse parser with
-          | None ->
-            ()
-          | Some expr ->
-            printf "%s\n" (proc expr);
-            loop ()
-        end
-      in
-      loop ()
-    with
-    | Failure message ->
-      printf "%s" message
-  end
+let create () = {
+  eva = Eva.create ();
+}
 
 let rec read_multiple_lines buf =
   printf "... ";
@@ -59,38 +33,46 @@ let read () =
   else
     line
 
-let rec rppl proc =
+let parse_source proc source =
+  let lexer = Lexer.create source in
+  let parser = Parser.create lexer in
   begin try
-      printf ">>> ";
-      let str = read () in
-      parse_string proc str;
-      rppl proc
+      let rec loop () =
+        begin match Parser.parse parser with
+          | None ->
+            ()
+          | Some expr ->
+            ignore (proc expr);
+            loop ()
+        end
+      in
+      loop ()
     with
-    | End_of_file ->
-      ()
+    | Failure message ->
+      printf "%s" message
   end
 
-let repl {eva;} =
-  rppl (fun expr -> Eva.Value.show (Eva.eval eva expr))
+let parse_string {eva} name str =
+  let source = Source.of_string name str in
+  parse_source (Eva.eval eva) source
 
-let load_file {eva;} name =
+let load_file {eva} name =
   with_open_in name begin fun chan_in ->
     let source = Source.of_channel name chan_in in
-    let lexer = Lexer.create source in
-    let parser = Parser.create lexer in
+    parse_source (Eva.eval eva) source
+  end
+
+let rec repl {eva} =
+  let rec loop () =
     begin try
-        let rec loop () =
-          begin match Parser.parse parser with
-            | None ->
-              ()
-            | Some expr ->
-              ignore (Eva.eval eva expr);
-              loop ()
-          end
-        in
+        printf ">>> ";
+        let str = read () in
+        let source = Source.of_string "<stdin>" str in
+        parse_source (fun expr -> printf "%s\n" (Eva.Value.show (Eva.eval eva expr))) source;
         loop ()
       with
-      | Failure message ->
-        printf "%s" message
+      | End_of_file ->
+        ()
     end
-  end
+  in
+  loop ()

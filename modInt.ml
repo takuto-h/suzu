@@ -8,7 +8,7 @@ let make_unary_op proc = Eva.make_unary_subr Eva.value_of_int proc Eva.int_of_va
 
 let subr_int_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%d") Eva.int_of_value
 
-let initialize {Eva.env} =
+let initialize {Interp.eva={Eva.env}} =
   let mod_int = Eva.Env.create_local env in
   let mod_int_open = Eva.Env.create_local mod_int in
   Eva.Env.add_var env "Int" (Eva.Module mod_int);
