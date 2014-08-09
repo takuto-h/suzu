@@ -60,6 +60,15 @@ taro.introduce_oneself //=> My name is Taro Tsukuba. I'm a member of Graduate Sc
 let lst1 = [1, 2, 3]
 let lst2 = [4, 5, 6]
 
+def List::C#to_string(self):
+  match(self):
+  case([]):
+    "[]"
+  case([x | xs]):
+    String::format("{0}::{1}", x, xs)
+  end
+end
+
 write_line("{0}", lst1) //=> 1::2::3::[]
 write_line("{0}", lst2) //=> 4::5::6::[]
 write_line("{0}", lst1 ++ lst2) //=> 1::2::3::4::5::6::[]

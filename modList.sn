@@ -19,16 +19,7 @@ module List:
   module Open:
     let C#(++) = append
 
-    def C#to_string(self):
-      match(self):
-      case([]):
-        "[]"
-      case([x | xs]):
-        String::format("{0}::{1}", x, xs)
-      end
-    end
-
-    export C#(++), C#to_string
+    export C#(++)
   end
 
   export C, Nil, Cons, append, Open
