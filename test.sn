@@ -247,9 +247,9 @@ my_if2(false):
 end
 
 def my_while(test_thunk, :do body_thunk):
-  if(test_thunk()):
+  while: test_thunk()
+  do:
     body_thunk()
-    my_while(test_thunk, :do body_thunk)
   end
 end
 

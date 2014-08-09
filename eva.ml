@@ -131,9 +131,12 @@ module Args = struct
   let nth {normal_args} n =
     List.nth normal_args n
 
-  let get {keyword_args} key =
+  let find {keyword_args} key =
+    List.assoc key keyword_args
+
+  let get args key =
     begin try
-        Some (List.assoc key keyword_args)
+        Some (find args key)
       with
       | Not_found ->
         None
