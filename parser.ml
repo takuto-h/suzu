@@ -571,6 +571,9 @@ and parse_atomic_expr parser =
     | Token.Ident _ ->
       let ident = parse_ident parser in
       parse_get_expr parser pos [ident];
+    | Token.Reserved "[" ->
+      lookahead parser;
+      parse_list parser pos
     | Token.Reserved "(" ->
       parse_parens parser
     | Token.Reserved "^" ->
@@ -606,6 +609,35 @@ and parse_get_expr parser pos rev_idents =
     | _ ->
       Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), VarOrMethod.Var (List.hd rev_idents)))
   end
+
+and parse_list parser pos =
+  let nil = Expr.at pos (Expr.Get ([], VarOrMethod.Var "Nil")) in
+  let cons = Expr.at pos (Expr.Get ([], VarOrMethod.Var "Cons")) in
+  let rec loop () =
+    begin match parser.token with
+      | Token.Reserved "]" ->
+        lookahead parser;
+        nil
+      | _ ->
+        let head = parse_expr parser in
+        begin match parser.token with
+          | Token.Reserved "]" ->
+            lookahead parser;
+            Expr.at pos (Expr.FunCall (cons, Expr.Args.make [head; nil] []))
+          | Token.Reserved "," ->
+            lookahead parser;
+            Expr.at pos (Expr.FunCall (cons, Expr.Args.make [head; loop ()] []))
+          | Token.Reserved "|" ->
+            lookahead parser;
+            let tail = parse_expr parser in
+            parse_token parser (Token.Reserved "]");
+            Expr.at pos (Expr.FunCall (cons, Expr.Args.make [head; tail] []))
+          | _ ->
+            failwith (expected parser "',' or '|' or ']'")
+        end
+    end
+  in
+  loop ()
 
 and parse_parens parser =
   let pos = parser.pos in
