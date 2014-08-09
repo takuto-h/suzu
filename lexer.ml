@@ -20,15 +20,14 @@ let reserved = [
   "except";
   "export";
   "false";
+  "let";
   "match";
   "module";
   "mutable";
   "open";
   "trait";
   "true";
-  "try";
   "when";
-  "with"
 ]
 
 let create source =

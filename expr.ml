@@ -11,7 +11,7 @@ type t = {
 and raw = 
   | Const of Literal.t
   | Get of string list * VarOrMethod.t
-  | Def of pat * t
+  | Let of pat * t
   | Lambda of params * t list
   | FunCall of t * args
   | MethodCall of t * Selector.t * args
@@ -96,8 +96,8 @@ let rec show {raw} =
       sprintf "(Const %s)" (Literal.show lit)
     | Get (mods, vom) ->
       sprintf "(Get %s %s)" (SnString.concat " " mods) (VarOrMethod.show vom)
-    | Def (pat, expr) ->
-      sprintf "(Def %s %s)" (show_pattern pat) (show expr)
+    | Let (pat, expr) ->
+      sprintf "(Let %s %s)" (show_pattern pat) (show expr)
     | Lambda (params, body) ->
       sprintf "(Lambda %s %s)" (show_params params) (SnString.concat_map " " show body)
     | FunCall (func, args) ->

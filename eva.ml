@@ -490,7 +490,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
           failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
       end
-    | Expr.Def (pat, expr) ->
+    | Expr.Let (pat, expr) ->
       let value = eval eva expr in
       bind_param eva pos pat value;
       value

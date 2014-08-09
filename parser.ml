@@ -340,6 +340,9 @@ and parse_binding_expr parser =
     | Token.Reserved "def" ->
       lookahead parser;
       parse_def_expr parser pos
+    | Token.Reserved "let" ->
+      lookahead parser;
+      parse_let_expr parser pos
     | Token.Reserved "export" ->
       lookahead parser;
       parse_export_expr parser pos []
@@ -362,13 +365,20 @@ and parse_def_expr parser pos =
       let func = parse_lambda parser pos_vom in
       skip parser Token.Newline;
       parse_token parser (Token.Reserved "end");
-      Expr.at pos (Expr.Def (pat, func))
+      Expr.at pos (Expr.Let (pat, func))
+    | _ ->
+      failwith (expected parser "'('")
+  end
+
+and parse_let_expr parser pos =
+  let pat = parse_pattern parser in
+  begin match parser.token with
     | Token.Reserved "=" ->
       lookahead parser;
       let expr = parse_expr parser in
-      Expr.at pos (Expr.Def (pat, expr))
+      Expr.at pos (Expr.Let (pat, expr))
     | _ ->
-      failwith (expected parser "'=' or '('")
+      failwith (expected parser "'='")
   end
 
 and parse_open_expr parser pos =
@@ -382,7 +392,7 @@ and parse_trait parser pos =
   let (params, body) = parse_function parser in
   skip parser Token.Newline;
   parse_token parser (Token.Reserved "end");
-  Expr.at pos (Expr.Def (pat, Expr.at pos (Expr.Trait (params, body))))
+  Expr.at pos (Expr.Let (pat, Expr.at pos (Expr.Trait (params, body))))
 
 and parse_except_expr parser =
   let expr = parse_or_expr parser in
