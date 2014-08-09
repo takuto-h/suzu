@@ -538,6 +538,8 @@ and parse_args parser =
     | Token.Reserved "{" ->
       let lambda = parse_block parser in
       Expr.Args.make (normals @ [lambda]) (parse_keyword_args parser [])
+    | Token.Ident _ ->
+      Expr.Args.make normals (parse_keyword_args parser [])
     | _ ->
       Expr.Args.make normals []
   end
@@ -559,6 +561,7 @@ and parse_keyword_arg parser =
     | Token.Reserved "(" ->
       lookahead parser;
       let value = parse_expr parser in
+      parse_token parser (Token.Reserved ")");
       (key, value)
     | Token.Reserved "^" ->
       let pos_lambda = parser.pos in
