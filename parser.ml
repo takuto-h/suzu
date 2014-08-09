@@ -627,8 +627,11 @@ and parse_match_expr parser pos =
   parse_token parser (Token.Reserved "(");
   let target_expr = parse_expr parser in
   parse_token parser (Token.Reserved ")");
-  parse_token parser (Token.Reserved ":");
-  skip parser Token.Newline;
+  if parser.token = Token.Reserved ":" then
+    begin
+      lookahead parser;
+      skip parser Token.Newline
+    end;
   let rec loop rev_case_clauses =
     if parser.token = Token.Reserved "end" then
       begin
