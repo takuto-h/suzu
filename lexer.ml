@@ -52,6 +52,8 @@ let is_ident_start c = String.contains "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmn
 
 let is_ident_part c = is_ident_start c || SnChar.is_digit c
 
+let is_ident_suffix c = String.contains "!?" c
+
 let is_op_part c = String.contains "=<>|&+-*/%" c
 
 let is_whitespace c = String.contains " \t\r\n" c
@@ -167,6 +169,10 @@ let rec lex_ident lexer buf =
       Source.junk lexer.source;
       Buffer.add_char buf c;
       lex_ident lexer buf
+    | Some c when is_ident_suffix c ->
+      Source.junk lexer.source;
+      Buffer.add_char buf c;
+      ident_or_reserved (Buffer.contents buf)
     | Some _ | None ->
       ident_or_reserved (Buffer.contents buf)
   end
