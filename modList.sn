@@ -12,7 +12,7 @@ module List:
     case([]):
       lst2
     case([x | xs]):
-      Cons(x, append(xs, lst2))
+      [x | append(xs, lst2)]
     end
   end
 
