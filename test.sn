@@ -63,6 +63,8 @@ module List:
     def Cons(x, xs)
   end
 
+  let Nil = Nil()
+
   def append(lst1, lst2):
     match(lst1):
     case(Nil()):
@@ -73,7 +75,7 @@ module List:
   end
 
   module Open:
-    let C#(+) = append
+    let C#(++) = append
 
     def C#to_string(self):
       match(self):
@@ -84,7 +86,7 @@ module List:
       end
     end
 
-    export C#(+), C#to_string
+    export C#(++), C#to_string
   end
 
   export C, Nil, Cons, append, Open
@@ -92,14 +94,12 @@ end
 
 open List::Open
 
-let nil = List::Nil()
-let cons = List::Cons
-let lst1 = cons(1, cons(2, cons(3, nil)))
-let lst2 = cons(4, cons(5, cons(6, nil)))
+let lst1 = [1, 2, 3]
+let lst2 = [4, 5, 6]
 
 write_line("{0}", lst1) //=> 1::2::3::[]
 write_line("{0}", lst2) //=> 4::5::6::[]
-write_line("{0}", lst1 + lst2) //=> 1::2::3::4::5::6::[]
+write_line("{0}", lst1 ++ lst2) //=> 1::2::3::4::5::6::[]
 
 
 trait Account(C, C#balance, C#(balance=)):

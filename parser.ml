@@ -611,8 +611,8 @@ and parse_get_expr parser pos rev_idents =
   end
 
 and parse_list parser pos =
-  let nil = Expr.at pos (Expr.Get ([], VarOrMethod.Var "Nil")) in
-  let cons = Expr.at pos (Expr.Get ([], VarOrMethod.Var "Cons")) in
+  let nil = Expr.at pos (Expr.Get (["List"], VarOrMethod.Var "Nil")) in
+  let cons = Expr.at pos (Expr.Get (["List"], VarOrMethod.Var "Cons")) in
   let rec loop () =
     begin match parser.token with
       | Token.Reserved "]" ->
