@@ -198,3 +198,75 @@ let x = (1, 2, 3, :p 4)
 let (a, b, c, :p d, :q e=5) = x
 
 write_line("{0}{1}{2}{3}{4}", a, b, c, d, e)
+
+
+def my_if1(cond, then_thunk)else(else_thunk=^{}):
+  if(cond):
+    then_thunk()
+  else:
+    else_thunk()
+  end
+end
+
+my_if1(true):
+  write_line("ok!")
+else:
+  write_line("NG")
+end
+
+my_if1(true):
+  write_line("ok!")
+end
+
+def my_if2(cond)then(then_thunk=^{})else(else_thunk=^{}):
+  if(cond):
+    then_thunk()
+  else:
+    else_thunk()
+  end
+end
+
+my_if2(false):
+then:
+  write_line("NG")
+else:
+  write_line("ok!")
+end
+
+my_if2(false):
+else:
+  write_line("ok!")
+end
+
+my_if2(true):
+then:
+  write_line("ok!")
+end
+
+my_if2(false):
+end
+
+def my_while(test_thunk, :do body_thunk):
+  if(test_thunk()):
+    body_thunk()
+    my_while(test_thunk, :do body_thunk)
+  end
+end
+
+class Counter = make_counter:
+  mutable count
+end
+
+def Counter#is_zero(self):
+  self.count == 0
+end
+
+def Counter#decr(self):
+  self.count = self.count - 1
+end
+
+let counter = make_counter(5)
+my_while: !counter.is_zero
+do:
+  write_line("{0}", counter.decr)
+end
