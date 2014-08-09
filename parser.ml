@@ -492,8 +492,7 @@ and parse_dot_expr parser =
         lookahead parser;
         let sel = parse_selector parser in
         begin match parser.token with
-          | Token.Reserved "(" ->
-            lookahead parser;
+          | Token.Reserved "(" | Token.Reserved "^" | Token.Reserved ":" | Token.Reserved "{" ->
             let args = parse_args parser in
             loop (Expr.at pos (Expr.MethodCall (recv, sel, args)))
           | Token.Reserved "=" ->
@@ -512,10 +511,9 @@ and parse_dot_expr parser =
 and parse_prim_expr parser =
   let expr = parse_atomic_expr parser in
   let rec loop func =
+    let pos = parser.pos in
     begin match parser.token with
-      | Token.Reserved "(" ->
-        let pos = parser.pos in
-        lookahead parser;
+      | Token.Reserved "(" | Token.Reserved "^" | Token.Reserved ":" | Token.Reserved "{" ->
         let args = parse_args parser in
         loop (Expr.at pos (Expr.FunCall (func, args)))
       | _ ->
@@ -525,7 +523,14 @@ and parse_prim_expr parser =
   loop expr
 
 and parse_args parser =
-  let normals = parse_elems parser comma_or_rparen parse_expr in
+  let normals = if parser.token = Token.Reserved "(" then
+      begin
+        lookahead parser;
+        parse_elems parser comma_or_rparen parse_expr
+      end
+    else
+      []
+  in
   begin match parser.token with
     | Token.Reserved "^" ->
       let pos_lambda = parser.pos in
