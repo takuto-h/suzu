@@ -612,7 +612,12 @@ and parse_get_expr parser pos rev_idents =
 
 and parse_list parser pos =
   let nil = Expr.at pos (Expr.Get (["List"], VarOrMethod.Var "Nil")) in
-  let cons = Expr.at pos (Expr.Get (["List"], VarOrMethod.Var "Cons")) in
+  let cons head tail =
+    Expr.at pos
+      (Expr.FunCall
+         (Expr.at pos (Expr.Get (["List"], VarOrMethod.Var "Cons")),
+          Expr.Args.make [head; tail] []))
+  in    
   let rec loop () =
     begin match parser.token with
       | Token.Reserved "]" ->
@@ -623,15 +628,15 @@ and parse_list parser pos =
         begin match parser.token with
           | Token.Reserved "]" ->
             lookahead parser;
-            Expr.at pos (Expr.FunCall (cons, Expr.Args.make [head; nil] []))
+            cons head nil
           | Token.Reserved "," ->
             lookahead parser;
-            Expr.at pos (Expr.FunCall (cons, Expr.Args.make [head; loop ()] []))
+            cons head (loop ())
           | Token.Reserved "|" ->
             lookahead parser;
             let tail = parse_expr parser in
             parse_token parser (Token.Reserved "]");
-            Expr.at pos (Expr.FunCall (cons, Expr.Args.make [head; tail] []))
+            cons head tail
           | _ ->
             failwith (expected parser "',' or '|' or ']'")
         end
@@ -722,7 +727,7 @@ and parse_as_pattern parser =
 and parse_or_pattern parser =
   let lhs = parse_atomic_pattern parser in
   let rec loop lhs =
-    if parser.token = Token.Reserved "|" then
+    if parser.token = Token.Reserved "or" then
       let pos = parser.pos in
       lookahead parser;
       let rhs = parse_atomic_pattern parser in
@@ -748,6 +753,9 @@ and parse_atomic_pattern parser =
         parse_variant_pattern parser pos vom
       else
         Expr.Pattern.at pos (Expr.PatBind vom)
+    | Token.Reserved "[" ->
+      lookahead parser;
+      parse_list_pattern parser pos
     | Token.Reserved "(" ->
       parse_parens_pattern parser
     | _ ->
@@ -763,6 +771,37 @@ and parse_variant_pattern parser pos_vom vom =
     | VarOrMethod.Method (_, _, _) ->
       failwith (expected_at pos_vom "method pattern" "variant constructor")
   end
+
+and parse_list_pattern parser pos =
+  let nil = Expr.Pattern.at pos (Expr.PatVariant ("Nil", Expr.Params.make [] [])) in
+  let cons head tail =
+    Expr.Pattern.at pos (Expr.PatVariant ("Cons", Expr.Params.make [head; tail] []))
+  in
+  let rec loop () =
+    begin match parser.token with
+      | Token.Reserved "]" ->
+        lookahead parser;
+        nil
+      | _ ->
+        let head = parse_pattern parser in
+        begin match parser.token with
+          | Token.Reserved "]" ->
+            lookahead parser;
+            cons head nil
+          | Token.Reserved "," ->
+            lookahead parser;
+            cons head (loop ())
+          | Token.Reserved "|" ->
+            lookahead parser;
+            let tail = parse_pattern parser in
+            parse_token parser (Token.Reserved "]");
+            cons head tail
+          | _ ->
+            failwith (expected parser "',' or '|' or ']'")
+        end
+    end
+  in
+  loop ()
 
 and parse_parens_pattern parser =
   let pos = parser.pos in

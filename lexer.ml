@@ -25,6 +25,7 @@ let reserved = [
   "module";
   "mutable";
   "open";
+  "or";
   "trait";
   "true";
   "when";

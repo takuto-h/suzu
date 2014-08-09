@@ -67,9 +67,9 @@ module List:
 
   def append(lst1, lst2):
     match(lst1):
-    case(Nil()):
+    case([]):
       lst2
-    case(Cons(x, xs)):
+    case([x | xs]):
       Cons(x, append(xs, lst2))
     end
   end
@@ -79,9 +79,9 @@ module List:
 
     def C#to_string(self):
       match(self):
-      case(Nil()):
+      case([]):
         "[]"
-      case(Cons(x,xs)):
+      case([x | xs]):
         String::format("{0}::{1}", x, xs)
       end
     end
