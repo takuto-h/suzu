@@ -242,94 +242,6 @@ let parse_var_or_method parser =
       VarOrMethod.Var ident
   end
 
-let rec parse_pattern parser =
-  parse_as_pattern parser
-
-and parse_as_pattern parser =
-  let pat = parse_or_pattern parser in
-  if parser.token = Token.Reserved "as" then
-    let pos = parser.pos in
-    lookahead parser;
-    let ident = parse_ident parser in
-    Expr.Pattern.at pos (Expr.PatAs (pat, ident))
-  else
-    pat
-
-and parse_or_pattern parser =
-  let lhs = parse_atomic_pattern parser in
-  let rec loop lhs =
-    if parser.token = Token.Reserved "|" then
-      let pos = parser.pos in
-      lookahead parser;
-      let rhs = parse_atomic_pattern parser in
-      loop (Expr.Pattern.at pos (Expr.PatOr (lhs, rhs)))
-    else
-      lhs
-  in
-  loop lhs
-
-and parse_atomic_pattern parser =
-  let pos = parser.pos in
-  begin match parser.token with
-    | Token.Int _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
-      let lit = parse_literal parser in
-      Expr.Pattern.at pos (Expr.PatConst lit)
-    | Token.Ident "_" ->
-      lookahead parser;
-      Expr.Pattern.at pos Expr.PatWildCard
-    | Token.Ident _ ->
-      let pos = parser.pos in
-      let vom = parse_var_or_method parser in
-      if parser.token = Token.Reserved "(" then
-        parse_variant_pattern parser pos vom
-      else
-        Expr.Pattern.at pos (Expr.PatBind vom)
-    | Token.Reserved "(" ->
-      parse_parens_pattern parser
-    | _ ->
-      failwith (expected parser "pattern")
-  end
-
-and parse_variant_pattern parser pos_vom vom =
-  begin match vom with
-    | VarOrMethod.Var ctor ->
-      let pos = parser.pos in
-      let pats = parse_params parser in
-      Expr.Pattern.at pos (Expr.PatVariant (ctor, pats))
-    | VarOrMethod.Method (_, _, _) ->
-      failwith (expected_at pos_vom "method pattern" "variant constructor")
-  end
-
-and parse_parens_pattern parser =
-  let pos = parser.pos in
-  let params = parse_params parser in
-  begin match (params.Expr.normal_params, params.Expr.keyword_params) with
-    | ([], []) ->
-      Expr.Pattern.at pos (Expr.PatConst Literal.Unit)
-    | (pat::[], []) ->
-      pat
-    | _ ->
-      Expr.Pattern.at pos (Expr.PatTuple params)
-  end
-
-and parse_params parser =
-  parse_token parser (Token.Reserved "(");
-  let normals = parse_elems parser comma_or_rparen parse_pattern in
-  let rec loop rev_keyword_params =
-    begin match parser.token with
-      | Token.Ident _ ->
-        let key = parse_ident parser in
-        parse_token parser (Token.Reserved "(");
-        let pat = parse_pattern parser in
-        parse_token parser (Token.Reserved ")");
-        let keyword_param = (key, (pat, None)) in
-        loop (keyword_param::rev_keyword_params)
-      | _ ->
-        Expr.Params.make normals (List.rev rev_keyword_params)
-    end
-  in
-  loop []
-
 let rec parse_var_or_methods parser rev_voms =
   let vom = parse_var_or_method parser in
   if parser.token <> Token.Reserved "," then
@@ -727,6 +639,102 @@ and parse_case_clause parser =
   in
   let body = parse_block_like_elems parser parse_expr in
   (pat, guard, body)
+
+and parse_pattern parser =
+  parse_as_pattern parser
+
+and parse_as_pattern parser =
+  let pat = parse_or_pattern parser in
+  if parser.token = Token.Reserved "as" then
+    let pos = parser.pos in
+    lookahead parser;
+    let ident = parse_ident parser in
+    Expr.Pattern.at pos (Expr.PatAs (pat, ident))
+  else
+    pat
+
+and parse_or_pattern parser =
+  let lhs = parse_atomic_pattern parser in
+  let rec loop lhs =
+    if parser.token = Token.Reserved "|" then
+      let pos = parser.pos in
+      lookahead parser;
+      let rhs = parse_atomic_pattern parser in
+      loop (Expr.Pattern.at pos (Expr.PatOr (lhs, rhs)))
+    else
+      lhs
+  in
+  loop lhs
+
+and parse_atomic_pattern parser =
+  let pos = parser.pos in
+  begin match parser.token with
+    | Token.Int _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
+      let lit = parse_literal parser in
+      Expr.Pattern.at pos (Expr.PatConst lit)
+    | Token.Ident "_" ->
+      lookahead parser;
+      Expr.Pattern.at pos Expr.PatWildCard
+    | Token.Ident _ ->
+      let pos = parser.pos in
+      let vom = parse_var_or_method parser in
+      if parser.token = Token.Reserved "(" then
+        parse_variant_pattern parser pos vom
+      else
+        Expr.Pattern.at pos (Expr.PatBind vom)
+    | Token.Reserved "(" ->
+      parse_parens_pattern parser
+    | _ ->
+      failwith (expected parser "pattern")
+  end
+
+and parse_variant_pattern parser pos_vom vom =
+  begin match vom with
+    | VarOrMethod.Var ctor ->
+      let pos = parser.pos in
+      let pats = parse_params parser in
+      Expr.Pattern.at pos (Expr.PatVariant (ctor, pats))
+    | VarOrMethod.Method (_, _, _) ->
+      failwith (expected_at pos_vom "method pattern" "variant constructor")
+  end
+
+and parse_parens_pattern parser =
+  let pos = parser.pos in
+  let params = parse_params parser in
+  begin match (params.Expr.normal_params, params.Expr.keyword_params) with
+    | ([], []) ->
+      Expr.Pattern.at pos (Expr.PatConst Literal.Unit)
+    | (pat::[], []) ->
+      pat
+    | _ ->
+      Expr.Pattern.at pos (Expr.PatTuple params)
+  end
+
+and parse_params parser =
+  parse_token parser (Token.Reserved "(");
+  let normals = parse_elems parser comma_or_rparen parse_pattern in
+  let rec loop rev_keyword_params =
+    begin match parser.token with
+      | Token.Ident _ ->
+        let key = parse_ident parser in
+        parse_token parser (Token.Reserved "(");
+        let pat = parse_pattern parser in
+        let opt_expr = if parser.token = Token.Reserved "=" then
+            begin
+              lookahead parser;
+              Some (parse_expr parser)
+            end
+          else
+            None
+        in
+        parse_token parser (Token.Reserved ")");
+        let keyword_param = (key, (pat, opt_expr)) in
+        loop (keyword_param::rev_keyword_params)
+      | _ ->
+        Expr.Params.make normals (List.rev rev_keyword_params)
+    end
+  in
+  loop []
 
 let parse_field_decl parser =
   let mutabl = (parser.token = Token.Reserved "mutable") in
