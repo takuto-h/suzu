@@ -33,13 +33,16 @@ let reserved = [
   "with"
 ]
 
-let create source = {
-  source = source;
-  parens = Stack.create ();
-  offside_lines = Stack.create ();
-  is_bol = true;
-  is_bob = true;
-}
+let create source =
+  let offside_lines = Stack.create () in
+  Stack.push (-1) offside_lines;
+  {
+    source = source;
+    parens = Stack.create ();
+    offside_lines = offside_lines;
+    is_bol = true;
+    is_bob = true;
+  }
 
 let indent lexer =
   if Stack.is_empty lexer.parens then
@@ -267,15 +270,23 @@ let lex_visible_token lexer pos c =
 
 let lex_token lexer pos c =
   let offset = pos.Pos.cnum - pos.Pos.bol in
+  let offside_line = Stack.top lexer.offside_lines in
   if lexer.is_bob then
-    begin
-      lexer.is_bob <- false;
-      lexer.is_bol <- false;
-      Stack.push offset lexer.offside_lines;
-      lex_visible_token lexer pos c
+    begin if offset > offside_line then
+        begin
+          lexer.is_bob <- false;
+          lexer.is_bol <- false;
+          Stack.push offset lexer.offside_lines;
+          lex_visible_token lexer pos c
+        end
+      else
+        begin
+          lexer.is_bob <- false;
+          lexer.is_bol <- false;
+          Token.Newline
+        end
     end
   else if lexer.is_bol then
-    let offside_line = Stack.top lexer.offside_lines in
     begin if offset < offside_line then
         begin
           ignore (Stack.pop lexer.offside_lines);
@@ -307,7 +318,7 @@ let rec skip_single_line_comment lexer =
 let rec next lexer =
   let pos = Source.pos lexer.source in
   begin match Source.peek lexer.source with
-    | None when Stack.length lexer.offside_lines <= 1 ->
+    | None when Stack.length lexer.offside_lines <= 2 ->
       None, pos
     | None ->
       ignore (Stack.pop lexer.offside_lines);
