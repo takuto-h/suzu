@@ -1,5 +1,5 @@
 
-let subr_tuple_to_string = Eva.subr_value_to_string
+let subr_tuple_to_string = Eva.subr_show
 
 let initialize {Interp.eva={Eva.env}} =
   let mod_tuple = Eva.Env.create_local env in

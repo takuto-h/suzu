@@ -4,7 +4,7 @@ let make_binary_arith_op proc = Eva.make_binary_subr Eva.value_of_int proc Eva.i
 
 let make_unary_op proc = Eva.make_unary_subr Eva.value_of_int proc Eva.int_of_value
 
-let subr_int_to_string = Eva.subr_value_to_string
+let subr_int_to_string = Eva.subr_show
 
 let initialize {Interp.eva={Eva.env}} =
   let mod_int = Eva.Env.create_local env in

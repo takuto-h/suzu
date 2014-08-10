@@ -828,7 +828,7 @@ let make_unary_subr proc_out proc_body proc_in =
     proc_out (proc_body (proc_in pos arg0))
   end
 
-let subr_value_to_string =
+let subr_show =
   create_subr 1 begin fun eva pos args ->
     let self = Args.nth args 0 in
     value_of_string (Value.show self)

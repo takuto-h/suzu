@@ -1,5 +1,5 @@
 
-let subr_module_to_string = Eva.subr_value_to_string
+let subr_module_to_string = Eva.subr_show
 
 let initialize {Interp.eva={Eva.env}} =
   let mod_module = Eva.Env.create_local env in
