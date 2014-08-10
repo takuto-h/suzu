@@ -55,23 +55,28 @@ let rec show_value value =
       sprintf "%C" c
     | Bool b ->
       sprintf "%B" b
-    | Closure (_,  _, _) ->
-      "<closure>"
+    | Tuple args ->
+      sprintf "%s" (show_args args)
     | Subr (_, _, _, _, _) ->
       "<subr>"
+    | Trait (_,  _, _) ->
+      "<trait>"
+    | Closure (_,  _, _) ->
+      "<closure>"
     | Module _ ->
       "<module>"
     | Class klass ->
       sprintf "<class %s>" klass
-    | Record (klass, _) ->
-      sprintf "<record %s>" klass
-    | Variant (klass, _, _) ->
-      sprintf "<variant %s>" klass
-    | Trait (_,  _, _) ->
-      "<trait>"
-    | Tuple args ->
-      sprintf "%s" (show_args args)
+    | Record (klass, fields) ->
+      sprintf "<record %s%s>" klass (show_fields fields)
+    | Variant (klass, ctor, args) ->
+      sprintf "<variant %s %s %s>" klass ctor (show_args args)
   end
+
+and show_fields table =
+  Hashtbl.fold begin fun key value acc ->
+    sprintf "%s %s=%s" acc key (show_value value)
+  end table ""
 
 and show_args {normal_args;keyword_args;} =
   let str_normals = SnString.concat_map ", " show_value normal_args in
