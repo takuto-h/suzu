@@ -65,7 +65,11 @@ def List::C#to_string(self):
   case([]):
     "[]"
   case([x | xs]):
-    String::format("{0}::{1}", x, xs)
+    let str = String::format("{0}", x)
+    let str = xs.fold_left(str)^(acc, elem):
+      String::format("{0}, {1}", acc, elem)
+    end
+    String::format("[{0}]", str)
   end
 end
 

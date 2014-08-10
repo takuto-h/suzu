@@ -6,23 +6,43 @@ module List:
   end
 
   let Nil = Nil()
+  
+  def fold_left(init, lst, proc):
+    match(lst):
+    case([]):
+      init
+    case([x | xs]):
+      fold_left(proc(init, x), xs, proc)
+    end
+  end
+
+  def fold_right(lst, init, proc):
+    match(lst):
+    case([]):
+      init
+    case([x | xs]):
+      proc(x, fold_right(xs, init, proc))
+    end
+  end
 
   def append(lst1, lst2):
-    match(lst1):
-    case([]):
-      lst2
-    case([x | xs]):
-      [x | append(xs, lst2)]
+    fold_right(lst1, lst2)^(elem, acc):
+      [elem | acc]
     end
   end
 
   module Open:
     let C#(++) = append
+    let C#fold_right = fold_right
 
-    export C#(++)
+    def C#fold_left(self, init, proc):
+      fold_left(init, self, proc)
+    end
+
+    export C#(++), C#fold_left, C#fold_right
   end
 
-  export C, Nil, Cons, append, Open
+  export C, Nil, Cons, fold_left, fold_right, append, Open
 end
 
 open List::Open

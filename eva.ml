@@ -41,6 +41,7 @@ and frame = {
   method_table : (string * string, value) Hashtbl.t;
 }
 
+exception Match_failure of Pos.t * Expr.Pattern.t * value
 exception Match_success of value
 
 let rec show_value value =
@@ -520,7 +521,12 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       end
     | Expr.Let (pat, expr) ->
       let value = eval eva expr in
-      bind_param eva pos pat value;
+      begin try
+          bind_param eva pos pat value
+        with
+        | Match_failure (pos, pat, value) ->
+          failwith (match_failure pos pat value)
+      end;
       value
     | Expr.Lambda (params, body) ->
       Closure (eva.env, params, body)
@@ -635,7 +641,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
                 bind_param eva pos pat target;
                 raise (Match_success (eval_exprs eva body))
               with
-              | Failure message ->
+              | Match_failure (pos, pat, value) ->
                 ()
             end
           end cases;
@@ -664,7 +670,12 @@ and call_fun eva pos func args =
     | Closure (env, params, body) ->
       let env = Env.create_local env in
       let eva = { eva with env = env } in
-      bind_params eva pos params args;
+      begin try
+          bind_params eva pos params args;
+        with
+        | Match_failure (pos, pat, value) ->
+          failwith (match_failure pos pat value)
+      end;
       eval_exprs eva body
     | Subr (required_count, allows_rest, req_keys, opt_keys, subr) ->
       let arg_count = List.length args.normal_args in
@@ -689,7 +700,12 @@ and call_fun eva pos func args =
     | Trait (env, params, body) ->
       let env = Env.create_local env in
       let eva = { eva with env = env } in
-      bind_params eva pos params args;
+      begin try
+          bind_params eva pos params args;
+        with
+        | Match_failure (pos, pat, value) ->
+          failwith (match_failure pos pat value)
+      end;
       ignore (eval_exprs eva body);
       Module env;
     | _ ->
@@ -742,7 +758,7 @@ and bind_param eva pos pat value =
       if value = value_of_literal lit then
         ()
       else
-        failwith (match_failure pos pat value)
+        raise (Match_failure (pos, pat, value))
     | Expr.PatBind (VarOrMethod.Var x) ->
       Env.add_var eva.env x value
     | Expr.PatBind (VarOrMethod.Method (mods, klass, sel)) ->
@@ -763,14 +779,14 @@ and bind_param eva pos pat value =
         | Variant (_, ctor_got, values) when ctor_got = ctor_req ->
           bind_params eva pos params values
         | _ ->
-          failwith (match_failure pos pat value)
+          raise (Match_failure (pos, pat, value))
       end
     | Expr.PatTuple params ->
       begin match value with
         | Tuple args ->
           bind_params eva pos params args
         | _ ->
-          failwith (match_failure pos pat value)
+          raise (Match_failure (pos, pat, value))
       end
   end
 
