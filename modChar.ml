@@ -1,5 +1,7 @@
 
-let subr_char_to_string = Eva.subr_show
+open Printf
+
+let subr_char_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%c") Eva.char_of_value
 
 let initialize {Interp.eva={Eva.env}} =
   let mod_char = Eva.Env.create_local env in
