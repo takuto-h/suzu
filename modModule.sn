@@ -1,0 +1,6 @@
+
+module Module:
+  class C
+
+  export C
+end

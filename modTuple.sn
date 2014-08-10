@@ -1,0 +1,6 @@
+
+module Tuple:
+  class C
+
+  export C
+end

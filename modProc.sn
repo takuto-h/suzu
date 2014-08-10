@@ -1,0 +1,6 @@
+
+module Proc:
+  class C
+
+  export C
+end

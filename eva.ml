@@ -90,31 +90,31 @@ module Value = struct
   let class_of value =
     begin match value with
       | Unit ->
-        "Unit:C"
-      | Int _ ->
-        "Int:C"
-      | String _ ->
-        "String:C"
-      | Char _ ->
-        "Char:C"
+        "Unit::C"
       | Bool _ ->
-        "Bool:C"
+        "Bool::C"
+      | Int _ ->
+        "Int::C"
+      | Char _ ->
+        "Char::C"
+      | String _ ->
+        "String::C"
+      | Tuple _ ->
+        "Tuple::C"
       | Closure (_,  _, _) ->
-        "Closure:C"
+        "Proc::C"
       | Subr (_, _, _, _, _) ->
-        "Subr:C"
+        "Proc::C"
+      | Trait (_, _, _) ->
+        "Proc::C"
       | Module _ ->
-        "Module:C"
+        "Module::C"
       | Class _ ->
-        "Class:C"
+        "Class::C"
       | Record (klass, _) ->
         klass
       | Variant (klass, _, _) ->
         klass
-      | Trait (_, _, _) ->
-        "Trait:C"
-      | Tuple _ ->
-        "Tuple:C"
     end
 
   let show = show_value
@@ -416,7 +416,7 @@ let find_var env pos mods x =
       find_binding (fun () -> Env.find_var env mods x) pos
     with
     | Frame.Not_exported ->
-      failwith (Pos.show_error pos (sprintf "'%s' is not exported from '%s'\n" x (SnString.concat ":" mods)))
+      failwith (Pos.show_error pos (sprintf "'%s' is not exported from '%s'\n" x (SnString.concat "::" mods)))
   end
 
 let find_method env pos mods klass sel =
@@ -424,7 +424,7 @@ let find_method env pos mods klass sel =
       find_binding (fun () -> Env.find_method env mods klass (Selector.string_of sel)) pos
     with
     | Frame.Not_exported ->
-      failwith (Pos.show_error pos (sprintf "'%s#%s' is not exported from '%s'\n" klass (Selector.show sel) (SnString.concat ":" mods)))
+      failwith (Pos.show_error pos (sprintf "'%s#%s' is not exported from '%s'\n" klass (Selector.show sel) (SnString.concat "::" mods)))
   end
 
 let find_klass env pos mods klass_name =
@@ -432,7 +432,7 @@ let find_klass env pos mods klass_name =
       find_var env pos mods klass_name
     with
     | Not_found ->
-      failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat ":" (mods @ [klass_name]))))
+      failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat "::" (mods @ [klass_name]))))
   end
   in
   begin match klass with
@@ -501,7 +501,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           find_var eva.env pos mods x
         with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "variable not found: %s\n" (SnString.concat ":" (mods @ [x]))))
+          failwith (Pos.show_error pos (sprintf "variable not found: %s\n" (SnString.concat "::" (mods @ [x]))))
       end
     | Expr.Get (mods1, VarOrMethod.Method (mods2, klass, sel)) ->
       let klass = find_klass eva.env pos mods2 klass in
@@ -511,7 +511,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | Not_found ->
           let pair = sprintf "%s#%s" klass (Selector.show sel) in
           let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
-          failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat ":" (mods1 @ [pair]))))
+          failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat "::" (mods1 @ [pair]))))
       end
     | Expr.Let (pat, expr) ->
       let value = eval eva expr in
@@ -579,15 +579,19 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           failwith (required pos "module" value)
       end
     | Expr.Record (klass_name, ctor_name, fields) ->
-      let klass = SnString.concat ":" (List.rev (klass_name::eva.curr_mod_path)) in
+      let klass = SnString.concat "::" (List.rev (klass_name::eva.curr_mod_path)) in
       Env.add_var eva.env klass_name (Class klass);
       Env.add_var eva.env ctor_name (make_record_ctor klass fields);
       add_accessors eva.env klass fields;
       Class klass
     | Expr.Variant (klass_name, ctors) ->
-      let klass = SnString.concat ":" (List.rev (klass_name::eva.curr_mod_path)) in
+      let klass = SnString.concat "::" (List.rev (klass_name::eva.curr_mod_path)) in
       Env.add_var eva.env klass_name (Class klass);
       add_ctors eva.env klass ctors;
+      Class klass
+    | Expr.Phantom klass_name ->
+      let klass = SnString.concat "::" (List.rev (klass_name::eva.curr_mod_path)) in
+      Env.add_var eva.env klass_name (Class klass);
       Class klass
     | Expr.Trait (params, body) ->
       Trait (eva.env, params, body)

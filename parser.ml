@@ -910,7 +910,7 @@ let parse_class parser pos =
       parse_token parser (Token.Reserved "end");
       Expr.at pos (Expr.Variant (klass, ctors))
     | _ ->
-      failwith (expected parser "'=' or ':' or '{'")
+      Expr.at pos (Expr.Phantom klass)
   end
 
 let rec parse_toplevel parser =

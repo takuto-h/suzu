@@ -22,6 +22,7 @@ and raw =
   | Open of t
   | Record of string * string * (string * bool) list
   | Variant of string * (string * params) list
+  | Phantom of string
   | Trait of params * t list
   | Except of t * VarOrMethod.t list
   | Match of t * (pat * t option * t list) list
@@ -122,6 +123,8 @@ let rec show {raw} =
       sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
     | Variant (klass, ctors) ->
       sprintf "(Variant %s %s)" klass (SnString.concat_map " " show_ctor ctors)
+    | Phantom klass ->
+      sprintf "(Phantom %s)" klass
     | Trait (params, body) ->
       sprintf "(Trait %s %s)" (show_params params) (SnString.concat_map " " show body)
     | Except (modl, voms) ->
