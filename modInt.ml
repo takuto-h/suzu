@@ -1,12 +1,10 @@
 
-open Printf
-
 let make_binary_cmp_op proc = Eva.make_binary_subr Eva.value_of_bool proc Eva.int_of_value
 let make_binary_arith_op proc = Eva.make_binary_subr Eva.value_of_int proc Eva.int_of_value
 
 let make_unary_op proc = Eva.make_unary_subr Eva.value_of_int proc Eva.int_of_value
 
-let subr_int_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%d") Eva.int_of_value
+let subr_int_to_string = Eva.subr_value_to_string
 
 let initialize {Interp.eva={Eva.env}} =
   let mod_int = Eva.Env.create_local env in

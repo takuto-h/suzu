@@ -1,5 +1,5 @@
 
-let subr_unit_to_string = Eva.make_unary_subr Eva.value_of_string (fun () -> "()") Eva.unit_of_value
+let subr_unit_to_string = Eva.subr_value_to_string
 
 let initialize {Interp.eva={Eva.env}} =
   let mod_unit = Eva.Env.create_local env in

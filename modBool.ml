@@ -1,9 +1,7 @@
 
-open Printf
-
 let make_unary_op proc = Eva.make_unary_subr Eva.value_of_bool proc Eva.bool_of_value
 
-let subr_bool_to_string = Eva.make_unary_subr Eva.value_of_string (sprintf "%B") Eva.bool_of_value
+let subr_bool_to_string = Eva.subr_value_to_string
 
 let initialize {Interp.eva={Eva.env}} =
   let mod_bool = Eva.Env.create_local env in

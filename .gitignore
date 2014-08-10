@@ -8,8 +8,5 @@
 suzu
 suzutop
 sn2ml
-modTuple.ml
 modProc.ml
-modModule.ml
-modClass.ml
 modList.ml
