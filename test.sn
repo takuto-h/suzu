@@ -73,9 +73,9 @@ def List::C#to_string(self):
   end
 end
 
-write_line("{0}", lst1) //=> 1::2::3::[]
-write_line("{0}", lst2) //=> 4::5::6::[]
-write_line("{0}", lst1 ++ lst2) //=> 1::2::3::4::5::6::[]
+write_line("{0}", lst1) //=> [1, 2, 3]
+write_line("{0}", lst2) //=> [4, 5, 6]
+write_line("{0}", lst1 ++ lst2) //=> [1, 2, 3, 4, 5, 6]
 
 
 trait Account(C, C#balance, C#(balance=)):
