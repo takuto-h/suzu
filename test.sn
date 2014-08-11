@@ -229,19 +229,15 @@ def my_while(test_thunk, :do body_thunk):
   end
 end
 
-class Counter = make_counter:
-  mutable count
+def Ref::C#zero?(self):
+  self.value == 0
 end
 
-def Counter#zero?(self):
-  self.count == 0
+def Ref::C#decr!(self):
+  self.value = self.value - 1
 end
 
-def Counter#decr!(self):
-  self.count = self.count - 1
-end
-
-let counter = make_counter(5)
+let counter = Ref::make(5)
 my_while: !counter.zero?
 do:
   write_line("{0}", counter.decr!)

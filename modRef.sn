@@ -1,0 +1,17 @@
+
+module Ref:
+  class C = make:
+    mutable value
+  end
+
+  module Open:
+    let C#value = C#value
+    let C#(value=) = C#(value=)
+  
+    export C#value, C#(value=)
+  end
+
+  export make, C, Open
+end
+
+open Ref::Open

@@ -5,7 +5,7 @@ BYTE_ENABLED = true
 SUZU_FILES[] =\
   snPervasives snString snChar pos source token lexer literal selector varOrMethod expr parser\
   eva interp modPervasives modInt modUnit modBool modChar modString modTuple modModule modClass\
-  modProc modList main
+  modProc modList modRef main
 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)

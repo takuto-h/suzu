@@ -12,10 +12,11 @@ let main () =
   ModChar.initialize interp;
   ModString.initialize interp;
   ModTuple.initialize interp;
-  ModProc.initialize interp;
   ModModule.initialize interp;
   ModClass.initialize interp;
+  ModProc.initialize interp;
   ModList.initialize interp;
+  ModRef.initialize interp;
   Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun file_name ->
     Interp.load_file interp file_name
   end usage_msg;
