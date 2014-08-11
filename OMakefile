@@ -22,7 +22,7 @@ OCamlProgram($(PROGRAM), $(PROGRAM_FILES))
 OCamlProgram($(SN2ML), $(SN2ML_FILES))
 
 %.ml: %.sn $(SN2ML)
-    ./$(SN2ML) $<
+    ./$(SN2ML) $(absname $<)
 
 .PHONY: run
 run: $(PROGRAM)
