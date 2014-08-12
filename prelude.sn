@@ -17,7 +17,12 @@ module Pervasives:
   export if, while, write_line, read_line
 end
 
-trait Ord(C):
+trait DefaultToString(C):
+  let C#to_string = Builtin::show
+  export C#to_string
+end
+
+trait DefaultCompare(C):
   let C#(>) = Builtin::gt
   let C#(<) = Builtin::lt
   let C#(>=) = Builtin::ge
@@ -27,18 +32,25 @@ trait Ord(C):
   let C#(<=>) = Builtin::compare
   export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
 end
- 
+
+trait Compare(C, C#(<=>)):
+  def C#(>)(self, other){ (self <=> other) > 0 }end
+  def C#(<)(self, other){ (self <=> other) < 0 }end
+  def C#(>=)(self, other){ (self <=> other) >= 0 }end
+  def C#(<=)(self, other){ (self <=> other) <= 0 }end
+  def C#(==)(self, other){ (self <=> other) == 0 }end
+  def C#(!=)(self, other){ (self <=> other) != 0 }end
+  export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
+end
+
 module Unit:
   class C
 
   module Open:
-    include Ord(C)
-
-    let C#to_string = Builtin::show
-
-    export C#to_string
+    include DefaultCompare(C)
+    include DefaultToString(C)
   end
-  
+
   export C, Open
 end
 
@@ -46,14 +58,14 @@ module Bool:
   class C
 
   module Open:
-    include Ord(C)
+    include DefaultCompare(C)
+    include DefaultToString(C)
 
     let C#(!) = Builtin::not
-    let C#to_string = Builtin::show
 
-    export C#(!), C#to_string
+    export C#(!)
   end
-  
+
   export C, Open
 end
 
@@ -61,7 +73,8 @@ module Int:
   class C
 
   module Open:
-    include Ord(C)
+    include DefaultCompare(C)
+    include DefaultToString(C)
   
     let C#(+) = Builtin::add
     let C#(-) = Builtin::sub
@@ -70,9 +83,8 @@ module Int:
     let C#(%) = Builtin::mod
     let C#(~+) = Builtin::plus
     let C#(~-) = Builtin::minus
-    let C#to_string = Builtin::show
 
-    export C#(+), C#(-), C#(*), C#(/), C#(%), C#(~+), C#(~-), C#to_string
+    export C#(+), C#(-), C#(*), C#(/), C#(%), C#(~+), C#(~-)
   end
   
   export C, Open
@@ -82,7 +94,7 @@ module Char:
   class C
 
   module Open:
-    include Ord(C)
+    include DefaultCompare(C)
 
     let C#to_string = Builtin::char_to_string
     
@@ -98,11 +110,9 @@ module String:
   let format = Builtin::format
 
   module Open:
-    include Ord(C)
+    include DefaultCompare(C)
     
-    def C#to_string(self):
-      self
-    end
+    def C#to_string(self){ self }end
     
     export C#to_string
   end
@@ -114,11 +124,8 @@ module Tuple:
   class C
 
   module Open:
-    include Ord(C)
-
-    let C#to_string = Builtin::show
-    
-    export C#to_string
+    include DefaultCompare(C)
+    include DefaultToString(C)
   end
   
   export C, Open
@@ -130,11 +137,8 @@ module Class:
   let of = Builtin::class_of
 
   module Open:
-    include Ord(C)
-
-    let C#to_string = Builtin::show
-
-    export C#to_string
+    include DefaultCompare(C)
+    include DefaultToString(C)
   end
   
   export C, of, Open
@@ -144,9 +148,7 @@ module Module:
   class C
 
   module Open:
-    let C#to_string = Builtin::show
-
-    export C#to_string
+    include DefaultToString(C)
   end
 
   export C, Open
@@ -156,9 +158,7 @@ module Proc:
   class C
 
   module Open:
-    let C#to_string = Builtin::show
-
-    export C#to_string
+    include DefaultToString(C)
   end
 
   export C, Open
@@ -197,14 +197,18 @@ module List:
   end
 
   module Open:
-    def C#(==)(self, other):
+    include Compare(C)^(self, other):
       match((self, other)):
       case(([] , [])):
-        true
-      case(([x | xs], [y | ys]))when(x == y && xs == ys):
-        true
-      case(_):
-        false
+        0
+      case(([] , [y | ys])):
+        -1
+      case(([x | xs] , [])):
+        1
+      case(([x | xs], [y | ys]))when((x <=> y) != 0):
+        x <=> y
+      case(([x | xs], [y | ys])):
+        xs <=> ys
       end
     end
 
@@ -216,7 +220,7 @@ module List:
 
     let C#fold_right = fold_right
 
-    export C#(==), C#(++), C#fold_left, C#fold_right
+    export C#(++), C#fold_left, C#fold_right
   end
 
   export C, Nil, Cons, fold_left, fold_right, append, Open
@@ -228,14 +232,14 @@ module Ref:
   end
 
   module Open:
+    include Compare(C)^(self, other):
+      self.value <=> other.value
+    end
+
     let C#value = C#value
     let C#(value=) = C#(value=)
 
-    def C#(==)(self, other):
-      self.value == other.value
-    end
-
-    export C#value, C#(value=), C#(==)
+    export C#value, C#(value=)
   end
 
   export make, C, Open
