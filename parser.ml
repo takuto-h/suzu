@@ -1,6 +1,8 @@
 
 open Printf
 
+exception Error of Pos.t * string
+
 type t = {
   lexer : Lexer.t;
   mutable token : Token.t;
@@ -19,19 +21,24 @@ let create lexer = {
 }
 
 let expected parser str_token =
-  Pos.show_error parser.pos (sprintf "unexpected %s, expected %s\n" (Token.show parser.token) str_token)
+  Error (parser.pos, sprintf "unexpected %s, expected %s\n" (Token.show parser.token) str_token)
 
 let expected_at pos str_unexpected str_expected =
-  Pos.show_error pos (sprintf "unexpected %s, expected %s\n" str_unexpected str_expected)
+  Error (pos, sprintf "unexpected %s, expected %s\n" str_unexpected str_expected)
 
 let lookahead parser =
-  begin match Lexer.next parser.lexer with
-    | (None, pos) ->
-      parser.token <- Token.EOF;
-      parser.pos <- pos
-    | (Some token, pos) ->
-      parser.token <- token;
-      parser.pos <- pos
+  begin try
+      begin match Lexer.next parser.lexer with
+        | (None, pos) ->
+          parser.token <- Token.EOF;
+          parser.pos <- pos
+        | (Some token, pos) ->
+          parser.token <- token;
+          parser.pos <- pos
+      end
+    with
+    | Lexer.Error (pos, message) ->
+      raise (Error (pos, message))
   end
 
 let skip parser token =
@@ -42,7 +49,7 @@ let skip parser token =
 
 let parse_token parser token =
   if parser.token <> token then
-    failwith (expected parser (Token.show token))
+    raise (expected parser (Token.show token))
   else
     lookahead parser
 
@@ -104,7 +111,7 @@ let parse_elems parser sep_or_term parse_elem =
             lookahead parser;
             loop (elem::elems)
           | Neither ->
-            failwith (expected parser "separator or terminator")
+            raise (expected parser "separator or terminator")
         end
     end
   in
@@ -152,7 +159,7 @@ let parse_block_like_elems parser parse_elem =
       lookahead parser;
       parse_elems parser semi_or_rbrace parse_elem
     | _ ->
-      failwith (expected parser "':' or '{'")
+      raise (expected parser "':' or '{'")
   end
 
 let parse_literal parser =
@@ -173,7 +180,7 @@ let parse_literal parser =
       lookahead parser;
       Literal.Bool false
     | _ ->
-      failwith (expected parser "literal")
+      raise (expected parser "literal")
   end
 
 let parse_ident parser =
@@ -182,7 +189,7 @@ let parse_ident parser =
       lookahead parser;
       str
     | _ ->
-      failwith (expected parser "identifier")
+      raise (expected parser "identifier")
   end
 
 let parse_selector parser =
@@ -203,7 +210,7 @@ let parse_selector parser =
           lookahead parser;
           Selector.Op str
         | (_, None) ->
-          failwith (expected parser "operator")
+          raise (expected parser "operator")
       end
       in
       parse_token parser (Token.Reserved ")");
@@ -211,7 +218,7 @@ let parse_selector parser =
     | Token.Ident _ ->
       Selector.Ident (parse_ident parser)
     | _ ->
-      failwith (expected parser "identifier")
+      raise (expected parser "identifier")
   end
 
 let parse_var_or_method parser =
@@ -234,7 +241,7 @@ let parse_var_or_method parser =
             lookahead parser;
             loop (ident::rev_idents)
           | _ ->
-            failwith (expected parser "'#' or '::'")
+            raise (expected parser "'#' or '::'")
         end
       in
       loop [ident]
@@ -292,7 +299,7 @@ and parse_def_expr parser pos =
       parse_token parser (Token.Reserved "end");
       Expr.at pos (Expr.Let (pat, func))
     | _ ->
-      failwith (expected parser "'('")
+      raise (expected parser "'('")
   end
 
 and parse_let_expr parser pos =
@@ -303,7 +310,7 @@ and parse_let_expr parser pos =
       let expr = parse_expr parser in
       Expr.at pos (Expr.Let (pat, expr))
     | _ ->
-      failwith (expected parser "'='")
+      raise (expected parser "'='")
   end
 
 and parse_open_expr parser pos =
@@ -473,7 +480,7 @@ and parse_args parser =
             lookahead parser;
             loop rev_normals rev_keywords
           | _ ->
-            failwith (expected parser "',' or ')'")
+            raise (expected parser "',' or ')'")
         end
     end
   in
@@ -559,7 +566,7 @@ and parse_extra_keyword_arg parser =
       let lambda = parse_block parser in
       (key, lambda)
     | _ ->
-      failwith (expected parser "'(' or '^' or ':'")
+      raise (expected parser "'(' or '^' or ':'")
   end
 
 and parse_atomic_expr parser =
@@ -583,7 +590,7 @@ and parse_atomic_expr parser =
       lookahead parser;
       parse_match_expr parser pos
     | _ ->
-      failwith (expected parser "expression")
+      raise (expected parser "expression")
   end
 
 and parse_get_expr parser pos rev_idents =
@@ -604,7 +611,7 @@ and parse_get_expr parser pos rev_idents =
           let ident = parse_ident parser in
           parse_get_expr parser pos (ident::rev_idents);
         | _ ->
-          failwith (expected parser "identifier or '('")
+          raise (expected parser "identifier or '('")
       end
     | _ ->
       Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), VarOrMethod.Var (List.hd rev_idents)))
@@ -638,7 +645,7 @@ and parse_list parser pos =
             parse_token parser (Token.Reserved "]");
             cons head tail
           | _ ->
-            failwith (expected parser "',' or '|' or ']'")
+            raise (expected parser "',' or '|' or ']'")
         end
     end
   in
@@ -759,7 +766,7 @@ and parse_atomic_pattern parser =
     | Token.Reserved "(" ->
       parse_parens_pattern parser
     | _ ->
-      failwith (expected parser "pattern")
+      raise (expected parser "pattern")
   end
 
 and parse_variant_pattern parser pos_vom vom =
@@ -769,7 +776,7 @@ and parse_variant_pattern parser pos_vom vom =
       let pats = parse_params parser in
       Expr.Pattern.at pos (Expr.PatVariant (ctor, pats))
     | VarOrMethod.Method (_, _, _) ->
-      failwith (expected_at pos_vom "method pattern" "variant constructor")
+      raise (expected_at pos_vom "method pattern" "variant constructor")
   end
 
 and parse_list_pattern parser pos =
@@ -797,7 +804,7 @@ and parse_list_pattern parser pos =
             parse_token parser (Token.Reserved "]");
             cons head tail
           | _ ->
-            failwith (expected parser "',' or '|' or ']'")
+            raise (expected parser "',' or '|' or ']'")
         end
     end
   in
@@ -831,7 +838,7 @@ and parse_params parser =
             lookahead parser;
             loop rev_normals rev_keywords
           | _ ->
-            failwith (expected parser "',' or ')'")
+            raise (expected parser "',' or ')'")
         end
     end
   in
@@ -939,7 +946,7 @@ let parse_stmt parser =
     | Token.EOF | Token.Newline | Token.Reserved ";" ->
       expr
     | _ ->
-      failwith (expected parser "newline or ';'")
+      raise (expected parser "newline or ';'")
   end
 
 let parse parser =

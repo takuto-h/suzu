@@ -1,6 +1,8 @@
 
 open Printf
 
+exception Error of Pos.t * string
+
 type t = {
   source : Source.t;
   parens : string Stack.t;
@@ -47,7 +49,7 @@ let indent lexer =
     lexer.is_bob <- true
   else
     let pos = Source.pos lexer.source in
-    failwith (Pos.show_error pos "layout inside parentheses\n")
+    raise (Error (pos, "layout inside parentheses\n"))
 
 let is_ident_start c = String.contains "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" c
 
@@ -61,7 +63,7 @@ let is_whitespace c = String.contains " \t\r\n" c
 
 let lex_close_paren lexer pos open_paren close_paren =
   if Stack.is_empty lexer.parens || Stack.top lexer.parens <> open_paren then
-    failwith (Pos.show_error pos (sprintf "unmatched parenthesis: '%s'\n" close_paren))
+    raise (Error (pos, sprintf "unmatched parenthesis: '%s'\n" close_paren))
   else
     begin
       ignore (Stack.pop lexer.parens);
@@ -100,7 +102,7 @@ let lex_escape_sequence pos c =
     | 'b' ->
       '\b'
     | _ ->
-      failwith (Pos.show_error pos "invalid escape sequence\n")
+      raise (Error (pos, "invalid escape sequence\n"))
   end
 
 let rec lex_string lexer buf =
@@ -118,7 +120,7 @@ let rec lex_string lexer buf =
           lex_string lexer buf
         | None ->
           let pos_eof = Source.pos lexer.source in
-          failwith (Pos.show_error pos_eof "EOF inside a string literal\n")
+          raise (Error (pos_eof, "EOF inside a string literal\n"))
       end
     | Some c ->
       Source.junk lexer.source;
@@ -126,7 +128,7 @@ let rec lex_string lexer buf =
       lex_string lexer buf
     | None ->
       let pos_eof = Source.pos lexer.source in
-      failwith (Pos.show_error pos_eof "EOF inside a string literal\n")
+      raise (Error (pos_eof, "EOF inside a string literal\n"))
   end
 
 let lex_char lexer =
@@ -140,14 +142,14 @@ let lex_char lexer =
           lex_escape_sequence pos c
         | None ->
           let pos_eof = (Source.pos lexer.source) in
-          failwith (Pos.show_error pos_eof "EOF inside a character literal\n")
+          raise (Error (pos_eof, "EOF inside a character literal\n"))
       end
     | Some c ->
       Source.junk lexer.source;
       c
     | None ->
       let pos_eof = (Source.pos lexer.source) in
-      failwith (Pos.show_error pos_eof "EOF inside a character literal\n")
+      raise (Error (pos_eof, "EOF inside a character literal\n"))
   end in
   if Source.peek lexer.source = Some '\'' then
     begin
@@ -156,7 +158,7 @@ let lex_char lexer =
     end
   else
     let pos = Source.pos lexer.source in
-    failwith (Pos.show_error pos "invalid character literal\n")
+    raise (Error (pos, "invalid character literal\n"))
 
 let ident_or_reserved str =
   if List.mem str reserved then
@@ -269,7 +271,7 @@ let lex_visible_token lexer pos c =
       Buffer.add_char buf c;
       lex_ident lexer buf
     | _ ->
-      failwith (Pos.show_error pos (sprintf "unknown character: '%c'\n" c))
+      raise (Error (pos, sprintf "unknown character: '%c'\n" c))
   end
 
 let lex_token lexer pos c =

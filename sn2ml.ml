@@ -24,7 +24,7 @@ let main () =
         end
         in
         output_string chan_out (sprintf "\nlet str = %S\n" str);
-        output_string chan_out (sprintf "\nlet initialize interp =\n  Interp.parse_string interp %S str\n" file_name_in);
+        output_string chan_out (sprintf "\nlet initialize interp =\n  Interp.load_string interp %S str\n" file_name_in);
       end
     end
   end usage_msg

@@ -4,6 +4,8 @@ open Printf
 module VarSet = Set.Make(struct type t = string let compare = compare end)
 module MethodSet = Set.Make(struct type t = string * string let compare = compare end)
 
+exception Error of Pos.t * string * Pos.t list
+
 type t = {
   env : env;
   curr_mod_path : string list;  (* reversed *)
@@ -388,33 +390,33 @@ let value_of_literal lit =
   end
 
 let required pos req_str got_value =
-  Pos.show_error pos (sprintf "%s required, but got: %s\n" req_str (Value.show got_value))
+  Error (pos, sprintf "%s required, but got: %s\n" req_str (Value.show got_value), [])
 
 let wrong_number_of_arguments pos param_count arg_count =
   let message = sprintf "wrong number of arguments: required %d, but got %d\n" param_count arg_count in
-  failwith (Pos.show_error pos message)
+  Error (pos, message, [])
 
 let lack_of_keyword_argument pos key =
   let message = sprintf "lack of keyword argument: %s\n" key in
-  failwith (Pos.show_error pos message)
+  Error (pos, message, [])
 
 let extra_keyword_arguments pos rest_keyword_args =
   let message = sprintf "extra keyword arguments: %s\n" (SnString.concat_map ", " fst rest_keyword_args) in
-  failwith (Pos.show_error pos message)
+  Error (pos, message, [])
 
 let match_failure pos pat value =
-  let message = Pos.show_error pos (sprintf "match failure of %s\n" (Value.show value)) in
-  let message = message ^ Pos.show_message pat.Expr.pat_pos (sprintf "with pattern %s\n" (Expr.Pattern.show pat)) in
-  failwith message
+  let pos = pat.Expr.pat_pos in
+  let message = sprintf "match failure of %s with pattern %s\n" (Value.show value) (Expr.Pattern.show pat) in
+  Error (pos, message, [])
 
 let find_binding thunk pos =
   begin try
       thunk ()
     with
     | Env.Module_not_found mod_name ->
-      failwith (Pos.show_error pos (sprintf "module not found: %s\n" mod_name))
+      raise (Error (pos, sprintf "module not found: %s\n" mod_name, []))
     | Env.Not_a_module (mod_name, value) ->
-      failwith (Pos.show_error pos (sprintf "'%s' is not a module: %s\n" mod_name (Value.show value)))
+      raise (Error (pos, sprintf "'%s' is not a module: %s\n" mod_name (Value.show value), []))
   end
 
 let find_var env pos mods x =
@@ -422,7 +424,7 @@ let find_var env pos mods x =
       find_binding (fun () -> Env.find_var env mods x) pos
     with
     | Frame.Not_exported ->
-      failwith (Pos.show_error pos (sprintf "'%s' is not exported from '%s'\n" x (SnString.concat "::" mods)))
+      raise (Error (pos, sprintf "'%s' is not exported from '%s'\n" x (SnString.concat "::" mods), []))
   end
 
 let find_method env pos mods klass sel =
@@ -430,7 +432,7 @@ let find_method env pos mods klass sel =
       find_binding (fun () -> Env.find_method env mods klass (Selector.string_of sel)) pos
     with
     | Frame.Not_exported ->
-      failwith (Pos.show_error pos (sprintf "'%s#%s' is not exported from '%s'\n" klass (Selector.show sel) (SnString.concat "::" mods)))
+      raise (Error (pos, sprintf "'%s#%s' is not exported from '%s'\n" klass (Selector.show sel) (SnString.concat "::" mods), []))
   end
 
 let find_klass env pos mods klass_name =
@@ -438,14 +440,14 @@ let find_klass env pos mods klass_name =
       find_var env pos mods klass_name
     with
     | Not_found ->
-      failwith (Pos.show_error pos (sprintf "class not found: %s\n" (SnString.concat "::" (mods @ [klass_name]))))
+      raise (Error (pos, sprintf "class not found: %s\n" (SnString.concat "::" (mods @ [klass_name])), []))
   end
   in
   begin match klass with
     | Class klass ->
       klass
     | _ ->
-      failwith (Pos.show_error pos (sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass)))
+      raise (Error (pos, sprintf "'%s' is not a class: %s\n" klass_name (Value.show klass), []))
   end
 
 let make_record_ctor klass fields =
@@ -464,7 +466,7 @@ let make_getter klass field =
       | Record (klass2, table) when klass2 = klass ->
         Hashtbl.find table field
       | _ ->
-        failwith (required pos (sprintf "some instance of %s" klass) self)
+        raise (required pos (sprintf "some instance of %s" klass) self)
     end
   end      
 
@@ -477,7 +479,7 @@ let make_setter klass field =
         Hashtbl.replace table field value;
         value
       | _ ->
-        failwith (required pos (sprintf "some instance of %s" klass) self)
+        raise (required pos (sprintf "some instance of %s" klass) self)
     end
   end     
 
@@ -507,7 +509,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           find_var eva.env pos mods x
         with
         | Not_found ->
-          failwith (Pos.show_error pos (sprintf "variable not found: %s\n" (SnString.concat "::" (mods @ [x]))))
+          raise (Error (pos, sprintf "variable not found: %s\n" (SnString.concat "::" (mods @ [x])), []))
       end
     | Expr.Get (mods1, VarOrMethod.Method (mods2, klass, sel)) ->
       let klass = find_klass eva.env pos mods2 klass in
@@ -517,7 +519,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
         | Not_found ->
           let pair = sprintf "%s#%s" klass (Selector.show sel) in
           let pair = if mods1 <> [] then sprintf "(%s)" pair else pair in
-          failwith (Pos.show_error pos (sprintf "method not found: %s\n" (SnString.concat "::" (mods1 @ [pair]))))
+          raise (Error (pos, sprintf "method not found: %s\n" (SnString.concat "::" (mods1 @ [pair])), []))
       end
     | Expr.Let (pat, expr) ->
       let value = eval eva expr in
@@ -525,7 +527,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           bind_param eva pos pat value
         with
         | Match_failure (pos, pat, value) ->
-          failwith (match_failure pos pat value)
+          raise (match_failure pos pat value)
       end;
       value
     | Expr.Lambda (params, body) ->
@@ -568,7 +570,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
               Env.export_var eva.env x;
             with
             | Not_found ->
-              failwith (Pos.show_error pos (sprintf "variable not found: %s\n" x))
+              raise (Error (pos, sprintf "variable not found: %s\n" x, []))
           end
         | VarOrMethod.Method (mods, klass, sel) ->
           let klass = find_klass eva.env pos mods klass in
@@ -576,7 +578,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
               Env.export_method eva.env klass (Selector.string_of sel);
             with
             | Not_found ->
-              failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+              raise (Error (pos, sprintf "method not found: %s#%s\n" klass (Selector.show sel), []))
           end
       end voms;
       Unit
@@ -587,7 +589,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           Env.open_module eva.env modl;
           value
         | _ ->
-          failwith (required pos "module" value)
+          raise (required pos "module" value)
       end
     | Expr.Record (klass_name, ctor_name, fields) ->
       let klass = SnString.concat "::" (List.rev (klass_name::eva.curr_mod_path)) in
@@ -616,7 +618,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
                   Env.unexport_var modl x;
                 with
                 | Not_found ->
-                  failwith (Pos.show_error pos (sprintf "variable not found: %s\n" x))
+                  raise (Error (pos, sprintf "variable not found: %s\n" x, []))
               end
             | VarOrMethod.Method (mods, klass, sel) ->
               let klass = find_klass eva.env pos mods klass in
@@ -624,11 +626,11 @@ let rec eval eva {Expr.pos;Expr.raw;} =
                   Env.unexport_method modl klass (Selector.string_of sel);
                 with
                 | Not_found ->
-                  failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+                  raise (Error (pos, sprintf "method not found: %s#%s\n" klass (Selector.show sel), []))
               end
           end voms
         | _ ->
-          failwith (required pos "module" modl)
+          raise (required pos "module" modl)
       end;
       modl
     | Expr.Match (target, cases) ->
@@ -645,7 +647,7 @@ let rec eval eva {Expr.pos;Expr.raw;} =
                 ()
             end
           end cases;
-          failwith (Pos.show_error pos (sprintf "match failure of %s\n" (Value.show target)))
+          raise (Error (pos, sprintf "match failure of %s\n" (Value.show target), []))
         with
         | Match_success result ->
           result
@@ -673,18 +675,18 @@ and call_fun eva pos func args =
         begin try
             call_closure eva pos env params body args
           with
-          | Failure message ->
-            failwith (Pos.show_stack_trace pos message)
+          | Error (pos_error, message, rev_stack_trace) ->
+            raise (Error (pos_error, message, pos::rev_stack_trace))
         end
     | Trait (env, params, body) ->
         begin try
             call_trait eva pos env params body args
           with
-          | Failure message ->
-            failwith (Pos.show_stack_trace pos message)
+          | Error (pos_error, message, rev_stack_trace) ->
+            raise (Error (pos_error, message, pos::rev_stack_trace))
         end
     | _ ->
-      failwith (required pos "function" func)
+      raise (required pos "function" func)
   end
 
 and call_closure eva pos env params body args =
@@ -694,20 +696,20 @@ and call_closure eva pos env params body args =
       bind_params eva pos params args;
     with
     | Match_failure (pos, pat, value) ->
-      failwith (match_failure pos pat value)
+      raise (match_failure pos pat value)
   end;
   eval_exprs eva body
 
 and call_subr eva pos required_count allows_rest req_keys opt_keys subr args =
   let arg_count = List.length args.normal_args in
   begin if arg_count < required_count || arg_count > required_count && not allows_rest then
-      failwith (wrong_number_of_arguments pos required_count arg_count)
+      raise (wrong_number_of_arguments pos required_count arg_count)
   end;
   let rest_keyword_args = List.fold_left begin fun keyword_args req_key ->
       if List.mem_assoc req_key keyword_args then
         List.remove_assoc req_key keyword_args
       else
-        failwith (lack_of_keyword_argument pos req_key)
+        raise (lack_of_keyword_argument pos req_key)
     end args.keyword_args req_keys
   in
   let rest_keyword_args = List.fold_left begin fun keyword_args opt_key ->
@@ -715,7 +717,7 @@ and call_subr eva pos required_count allows_rest req_keys opt_keys subr args =
     end rest_keyword_args opt_keys
   in
   begin if List.length rest_keyword_args <> 0 then
-      failwith (extra_keyword_arguments pos rest_keyword_args)
+      raise (extra_keyword_arguments pos rest_keyword_args)
   end;
   subr eva pos args
 
@@ -726,7 +728,7 @@ and call_trait eva pos env params body args =
       bind_params eva pos params args;
     with
     | Match_failure (pos, pat, value) ->
-      failwith (match_failure pos pat value)
+      raise (match_failure pos pat value)
   end;
   ignore (eval_exprs eva body);
   Module env;
@@ -737,7 +739,7 @@ and call_method eva pos recv sel args =
       find_method eva.env pos [] klass sel
     with
     | Not_found ->
-      failwith (Pos.show_error pos (sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+      raise (Error (pos, sprintf "method not found: %s#%s\n" klass (Selector.show sel), []))
   end
   in
   call_fun eva pos meth {args with normal_args = recv::args.normal_args}
@@ -749,7 +751,7 @@ and bind_params eva pos params args =
     | Invalid_argument _ ->
       let arg_count = List.length args.normal_args in
       let param_count = List.length params.Expr.normal_params in
-      failwith (wrong_number_of_arguments pos param_count arg_count)
+      raise (wrong_number_of_arguments pos param_count arg_count)
   end;
   let rest_keyword_args = List.fold_left begin fun keyword_args (key, (param, opt_expr)) ->
       begin match opt_expr with
@@ -762,12 +764,12 @@ and bind_params eva pos params args =
           bind_param eva pos param arg;
           keyword_args
         | None ->
-          failwith (lack_of_keyword_argument pos key)
+          raise (lack_of_keyword_argument pos key)
       end
     end args.keyword_args params.Expr.keyword_params
   in
   if List.length rest_keyword_args <> 0 then
-    failwith (extra_keyword_arguments pos rest_keyword_args)
+    raise (extra_keyword_arguments pos rest_keyword_args)
 
 and bind_param eva pos pat value =
   begin match pat.Expr.pat_raw with
@@ -814,7 +816,7 @@ let int_of_value pos v =
     | Int i ->
       i
     | _ ->
-      failwith (required pos "int" v)
+      raise (required pos "int" v)
   end
 
 let unit_of_value pos v =
@@ -822,7 +824,7 @@ let unit_of_value pos v =
     | Unit ->
       ()
     | _ ->
-      failwith (required pos "unit" v)
+      raise (required pos "unit" v)
   end
 
 let bool_of_value pos v =
@@ -830,7 +832,7 @@ let bool_of_value pos v =
     | Bool b ->
       b
     | _ ->
-      failwith (required pos "bool" v)
+      raise (required pos "bool" v)
   end
 
 let char_of_value pos v =
@@ -838,7 +840,7 @@ let char_of_value pos v =
     | Char c ->
       c
     | _ ->
-      failwith (required pos "char" v)
+      raise (required pos "char" v)
   end
 
 let string_of_value pos v =
@@ -846,7 +848,7 @@ let string_of_value pos v =
     | String str ->
       str
     | _ ->
-      failwith (required pos "string" v)
+      raise (required pos "string" v)
   end
 
 let value_of_int i = Int i

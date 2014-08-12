@@ -55,9 +55,3 @@ let show_source {fname;lnum;cnum;bol;source;} =
 
 let show_message pos message =
   sprintf "%s: %s%s" (show pos) message (show_source pos)
-
-let show_error pos message =
-  show_message pos (sprintf "error: %s" message)
-
-let show_stack_trace pos message =
-  sprintf "%s%s: note: function called here\n%s" message (show pos) (show_source pos)

@@ -33,7 +33,7 @@ let read () =
   else
     line
 
-let parse_source proc source =
+let load_source proc {eva} source =
   let lexer = Lexer.create source in
   let parser = Parser.create lexer in
   begin try
@@ -42,33 +42,38 @@ let parse_source proc source =
           | None ->
             ()
           | Some expr ->
-            ignore (proc expr);
+            proc expr (Eva.eval eva expr);
             loop ()
         end
       in
       loop ()
     with
-    | Failure message ->
-      printf "%s" message
+    | Parser.Error (pos, message) ->
+      printf "%s" (Pos.show_message pos (sprintf "syntax error: %s" message))
+    | Eva.Error (pos, message, rev_stack_trace) ->
+      printf "%s" (Pos.show_message pos (sprintf "error: %s" message));
+      List.iter begin fun pos ->
+        printf "%s" (Pos.show_message pos "note: error from here\n")
+      end (List.rev rev_stack_trace)
   end
 
-let parse_string {eva} name str =
+let load_string interp name str =
   let source = Source.of_string name str in
-  parse_source (Eva.eval eva) source
+  load_source (fun _ _ -> ()) interp source
 
-let load_file {eva} name =
+let load_file interp name =
   with_open_in name begin fun chan_in ->
     let source = Source.of_channel name chan_in in
-    parse_source (Eva.eval eva) source
+    load_source (fun _ _ -> ()) interp source
   end
 
-let rec repl {eva} =
+let rec repl interp =
   let rec loop () =
     begin try
         printf ">>> ";
         let str = read () in
         let source = Source.of_string "<stdin>" str in
-        parse_source (fun expr -> printf "%s\n" (Eva.Value.show (Eva.eval eva expr))) source;
+        load_source (fun _ value -> printf "%s\n" (Eva.Value.show value)) interp source;
         loop ()
       with
       | End_of_file ->
