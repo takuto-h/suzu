@@ -874,6 +874,20 @@ let make_unary_subr proc_out proc_body proc_in =
 
 let subr_show =
   create_subr 1 begin fun eva pos args ->
-    let self = Args.nth args 0 in
-    value_of_string (Value.show self)
+    let arg0 = Args.nth args 0 in
+    value_of_string (Value.show arg0)
   end
+
+let make_cmp_subr op =
+  create_subr 2 begin fun eva pos args ->
+    let arg0 = Args.nth args 0 in
+    let arg1 = Args.nth args 1 in
+    value_of_bool (op arg0 arg1)
+  end
+
+let subr_eq = make_cmp_subr ( = )
+let subr_ne = make_cmp_subr ( <> )
+let subr_gt = make_cmp_subr ( > )
+let subr_ge = make_cmp_subr ( >= )
+let subr_lt = make_cmp_subr ( < )
+let subr_le = make_cmp_subr ( <= )
