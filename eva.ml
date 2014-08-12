@@ -377,20 +377,6 @@ let create_subr req_count ?(allows_rest=false) ?(req_keys=[]) ?(opt_keys=[]) pro
 let initial_field_table_size = 4
 let initial_param_table_size = 4
 
-let value_of_literal lit =
-  begin match lit with
-    | Literal.Unit ->
-      Unit
-    | Literal.Int i ->
-      Int i
-    | Literal.String s ->
-      String s
-    | Literal.Char c ->
-      Char c
-    | Literal.Bool b ->
-      Bool b
-  end
-
 let required pos req_str got_value =
   Error (pos, sprintf "%s required, but got: %s\n" req_str (Value.show got_value), [])
 
@@ -501,6 +487,66 @@ let add_ctors env klass ctors =
   List.iter begin fun (ctor_name, params) ->
     Env.add_var env ctor_name (make_variant_ctor klass ctor_name params);
   end ctors
+
+let value_of_literal lit =
+  begin match lit with
+    | Literal.Unit ->
+      Unit
+    | Literal.Int i ->
+      Int i
+    | Literal.String s ->
+      String s
+    | Literal.Char c ->
+      Char c
+    | Literal.Bool b ->
+      Bool b
+  end
+
+let int_of_value pos v =
+  begin match v with
+    | Int i ->
+      i
+    | _ ->
+      raise (required pos "int" v)
+  end
+
+let unit_of_value pos v =
+  begin match v with
+    | Unit ->
+      ()
+    | _ ->
+      raise (required pos "unit" v)
+  end
+
+let bool_of_value pos v =
+  begin match v with
+    | Bool b ->
+      b
+    | _ ->
+      raise (required pos "bool" v)
+  end
+
+let char_of_value pos v =
+  begin match v with
+    | Char c ->
+      c
+    | _ ->
+      raise (required pos "char" v)
+  end
+
+let string_of_value pos v =
+  begin match v with
+    | String str ->
+      str
+    | _ ->
+      raise (required pos "string" v)
+  end
+
+let value_of_int i = Int i
+let value_of_unit u = Unit
+let value_of_bool b = Bool b
+let value_of_char c = Char c
+let value_of_string str = String str
 
 let rec eval eva {Expr.pos;Expr.raw;} =
   begin match raw with
@@ -643,7 +689,12 @@ let rec eval eva {Expr.pos;Expr.raw;} =
                 let env = Env.create_local eva.env in
                 let eva = { eva with env = env } in
                 bind_param eva pos pat target;
-                raise (Match_success (eval_exprs eva body))
+                begin match guard with
+                  | Some guard when not (bool_of_value pos (eval eva guard)) ->
+                    raise (Match_failure (pos, pat, target))
+                  | None | Some _ ->
+                    raise (Match_success (eval_exprs eva body))
+                end
               with
               | Match_failure (pos, pat, value) ->
                 ()
@@ -812,52 +863,6 @@ and bind_param eva pos pat value =
           raise (Match_failure (pos, pat, value))
       end
   end
-
-let int_of_value pos v =
-  begin match v with
-    | Int i ->
-      i
-    | _ ->
-      raise (required pos "int" v)
-  end
-
-let unit_of_value pos v =
-  begin match v with
-    | Unit ->
-      ()
-    | _ ->
-      raise (required pos "unit" v)
-  end
-
-let bool_of_value pos v =
-  begin match v with
-    | Bool b ->
-      b
-    | _ ->
-      raise (required pos "bool" v)
-  end
-
-let char_of_value pos v =
-  begin match v with
-    | Char c ->
-      c
-    | _ ->
-      raise (required pos "char" v)
-  end
-
-let string_of_value pos v =
-  begin match v with
-    | String str ->
-      str
-    | _ ->
-      raise (required pos "string" v)
-  end
-
-let value_of_int i = Int i
-let value_of_unit u = Unit
-let value_of_bool b = Bool b
-let value_of_char c = Char c
-let value_of_string str = String str
 
 let make_binary_subr proc_out proc_body proc_in =
   create_subr 2 begin fun eva pos args ->

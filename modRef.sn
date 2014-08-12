@@ -7,8 +7,12 @@ module Ref:
   module Open:
     let C#value = C#value
     let C#(value=) = C#(value=)
-  
-    export C#value, C#(value=)
+
+    def C#(==)(self, other):
+      self.value == other.value
+    end
+
+    export C#value, C#(value=), C#(==)
   end
 
   export make, C, Open

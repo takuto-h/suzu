@@ -123,6 +123,8 @@ let initialize {Interp.eva={Eva.env}} =
   Eva.Env.add_var mod_string "C" (Eva.Class "String::C") ~export:true;
   Eva.Env.add_var mod_string "format" subr_string_format ~export:true;
   Eva.Env.add_var mod_string "Open" (Eva.Module mod_string_open) ~export:true;
+  Eva.Env.add_method mod_string_open "String::C" "==" Eva.subr_eq ~export:true;
+  Eva.Env.add_method mod_string_open "String::C" "!=" Eva.subr_ne ~export:true;
   Eva.Env.add_method mod_string_open "String::C" "to_string" subr_string_to_string ~export:true;
   Eva.Env.open_module env mod_string_open
 

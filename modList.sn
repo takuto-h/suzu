@@ -32,14 +32,26 @@ module List:
   end
 
   module Open:
+    def C#(==)(self, other):
+      match((self, other)):
+      case(([] , [])):
+        true
+      case(([x | xs], [y | ys]))when(x == y && xs == ys):
+        true
+      case(_):
+        false
+      end
+    end
+
     let C#(++) = append
-    let C#fold_right = fold_right
 
     def C#fold_left(self, init, proc):
       fold_left(init, self, proc)
     end
 
-    export C#(++), C#fold_left, C#fold_right
+    let C#fold_right = fold_right
+
+    export C#(==), C#(++), C#fold_left, C#fold_right
   end
 
   export C, Nil, Cons, fold_left, fold_right, append, Open
