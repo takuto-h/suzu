@@ -71,15 +71,17 @@ let rec show_value value =
     | Class klass ->
       sprintf "<class %s>" klass
     | Record (klass, fields) ->
-      sprintf "<record %s%s>" klass (show_fields fields)
+      sprintf "{%s}" (show_fields fields)
     | Variant (klass, ctor, args) ->
       sprintf "%s%s" ctor (show_args args)
   end
 
 and show_fields table =
-  Hashtbl.fold begin fun key value acc ->
-    sprintf "%s %s=%s" acc key (show_value value)
-  end table ""
+  let rev_strs = Hashtbl.fold begin fun key value acc ->
+      (sprintf "%s=%s" key (show_value value))::acc
+  end table []
+  in
+  SnString.concat ", " (List.rev rev_strs)
 
 and show_args {normal_args;keyword_args;} =
   let str_normals = SnString.concat_map ", " show_value normal_args in
