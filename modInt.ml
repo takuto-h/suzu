@@ -18,6 +18,7 @@ let initialize {Interp.eva={Eva.env}} =
   Eva.Env.add_method mod_int_open "Int::C" "<=" Eva.subr_le ~export:true;
   Eva.Env.add_method mod_int_open "Int::C" "==" Eva.subr_eq ~export:true;
   Eva.Env.add_method mod_int_open "Int::C" "!=" Eva.subr_ne ~export:true;
+  Eva.Env.add_method mod_int_open "Int::C" "<=>" Eva.subr_compare ~export:true;
   Eva.Env.add_method mod_int_open "Int::C" "+" (make_binary_op ( + )) ~export:true;
   Eva.Env.add_method mod_int_open "Int::C" "-" (make_binary_op ( - )) ~export:true;
   Eva.Env.add_method mod_int_open "Int::C" "*" (make_binary_op ( * )) ~export:true;

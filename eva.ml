@@ -896,3 +896,10 @@ let subr_gt = make_cmp_subr ( > )
 let subr_ge = make_cmp_subr ( >= )
 let subr_lt = make_cmp_subr ( < )
 let subr_le = make_cmp_subr ( <= )
+
+let subr_compare =
+  create_subr 2 begin fun eva pos args ->
+    let arg0 = Args.nth args 0 in
+    let arg1 = Args.nth args 1 in
+    value_of_int (compare arg0 arg1)
+  end
