@@ -667,51 +667,70 @@ and eval_exprs eva exprs =
 
 and call_fun eva pos func args =
   begin match func with
-    | Closure (env, params, body) ->
-      let env = Env.create_local env in
-      let eva = { eva with env = env } in
-      begin try
-          bind_params eva pos params args;
-        with
-        | Match_failure (pos, pat, value) ->
-          failwith (match_failure pos pat value)
-      end;
-      eval_exprs eva body
     | Subr (required_count, allows_rest, req_keys, opt_keys, subr) ->
-      let arg_count = List.length args.normal_args in
-      begin if arg_count < required_count || arg_count > required_count && not allows_rest then
-          failwith (wrong_number_of_arguments pos required_count arg_count)
-      end;
-      let rest_keyword_args = List.fold_left begin fun keyword_args req_key ->
-          if List.mem_assoc req_key keyword_args then
-            List.remove_assoc req_key keyword_args
-          else
-            failwith (lack_of_keyword_argument pos req_key)
-        end args.keyword_args req_keys
-      in
-      let rest_keyword_args = List.fold_left begin fun keyword_args opt_key ->
-          List.remove_assoc opt_key keyword_args
-        end rest_keyword_args opt_keys
-      in
-      begin if List.length rest_keyword_args <> 0 then
-          failwith (extra_keyword_arguments pos rest_keyword_args)
-      end;
-      subr eva pos args
+      call_subr eva pos required_count allows_rest req_keys opt_keys subr args
+    | Closure (env, params, body) ->
+        begin try
+            call_closure eva pos env params body args
+          with
+          | Failure message ->
+            failwith (Pos.show_stack_trace pos message)
+        end
     | Trait (env, params, body) ->
-      let env = Env.create_local env in
-      let eva = { eva with env = env } in
-      begin try
-          bind_params eva pos params args;
-        with
-        | Match_failure (pos, pat, value) ->
-          failwith (match_failure pos pat value)
-      end;
-      ignore (eval_exprs eva body);
-      Module env;
+        begin try
+            call_trait eva pos env params body args
+          with
+          | Failure message ->
+            failwith (Pos.show_stack_trace pos message)
+        end
     | _ ->
       failwith (required pos "function" func)
   end
 
+and call_closure eva pos env params body args =
+  let env = Env.create_local env in
+  let eva = { eva with env = env } in
+  begin try
+      bind_params eva pos params args;
+    with
+    | Match_failure (pos, pat, value) ->
+      failwith (match_failure pos pat value)
+  end;
+  eval_exprs eva body
+
+and call_subr eva pos required_count allows_rest req_keys opt_keys subr args =
+  let arg_count = List.length args.normal_args in
+  begin if arg_count < required_count || arg_count > required_count && not allows_rest then
+      failwith (wrong_number_of_arguments pos required_count arg_count)
+  end;
+  let rest_keyword_args = List.fold_left begin fun keyword_args req_key ->
+      if List.mem_assoc req_key keyword_args then
+        List.remove_assoc req_key keyword_args
+      else
+        failwith (lack_of_keyword_argument pos req_key)
+    end args.keyword_args req_keys
+  in
+  let rest_keyword_args = List.fold_left begin fun keyword_args opt_key ->
+      List.remove_assoc opt_key keyword_args
+    end rest_keyword_args opt_keys
+  in
+  begin if List.length rest_keyword_args <> 0 then
+      failwith (extra_keyword_arguments pos rest_keyword_args)
+  end;
+  subr eva pos args
+
+and call_trait eva pos env params body args =
+  let env = Env.create_local env in
+  let eva = { eva with env = env } in
+  begin try
+      bind_params eva pos params args;
+    with
+    | Match_failure (pos, pat, value) ->
+      failwith (match_failure pos pat value)
+  end;
+  ignore (eval_exprs eva body);
+  Module env;
+        
 and call_method eva pos recv sel args =
   let klass = Value.class_of recv in
   let meth = begin try

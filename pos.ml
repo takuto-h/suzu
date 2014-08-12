@@ -58,3 +58,6 @@ let show_message pos message =
 
 let show_error pos message =
   show_message pos (sprintf "error: %s" message)
+
+let show_stack_trace pos message =
+  sprintf "%s%s: note: function called here\n%s" message (show pos) (show_source pos)
