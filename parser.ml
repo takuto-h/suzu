@@ -281,6 +281,9 @@ and parse_binding_expr parser =
     | Token.Reserved "open" ->
       lookahead parser;
       parse_open_expr parser pos
+    | Token.Reserved "include" ->
+      lookahead parser;
+      parse_include_expr parser pos
     | Token.Reserved "trait" ->
       lookahead parser;
       parse_trait parser pos
@@ -316,6 +319,10 @@ and parse_let_expr parser pos =
 and parse_open_expr parser pos =
   let expr = parse_expr parser in
   Expr.at pos (Expr.Open expr)
+
+and parse_include_expr parser pos =
+  let expr = parse_expr parser in
+  Expr.at pos (Expr.Include expr)
 
 and parse_trait parser pos =
   let pos_vom = parser.pos in

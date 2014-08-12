@@ -22,6 +22,7 @@ let reserved = [
   "except";
   "export";
   "false";
+  "include";
   "let";
   "match";
   "module";

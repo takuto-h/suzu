@@ -16,21 +16,27 @@ module Pervasives:
 
   export if, while, write_line, read_line
 end
+
+trait Ord(C):
+  let C#(>) = Builtin::gt
+  let C#(<) = Builtin::lt
+  let C#(>=) = Builtin::ge
+  let C#(<=) = Builtin::le
+  let C#(==) = Builtin::eq
+  let C#(!=) = Builtin::ne
+  let C#(<=>) = Builtin::compare
+  export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
+end
  
 module Unit:
   class C
 
   module Open:
-    let C#(>) = Builtin::gt
-    let C#(<) = Builtin::lt
-    let C#(>=) = Builtin::ge
-    let C#(<=) = Builtin::le
-    let C#(==) = Builtin::eq
-    let C#(!=) = Builtin::ne
-    let C#(<=>) = Builtin::compare
+    include Ord(C)
+
     let C#to_string = Builtin::show
-    
-    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+
+    export C#to_string
   end
   
   export C, Open
@@ -40,18 +46,12 @@ module Bool:
   class C
 
   module Open:
+    include Ord(C)
+
     let C#(!) = Builtin::not
-    let C#(>) = Builtin::gt
-    let C#(<) = Builtin::lt
-    let C#(>=) = Builtin::ge
-    let C#(<=) = Builtin::le
-    let C#(==) = Builtin::eq
-    let C#(!=) = Builtin::ne
-    let C#(<=>) = Builtin::compare
     let C#to_string = Builtin::show
 
-    export C#(!)
-    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+    export C#(!), C#to_string
   end
   
   export C, Open
@@ -61,6 +61,8 @@ module Int:
   class C
 
   module Open:
+    include Ord(C)
+  
     let C#(+) = Builtin::add
     let C#(-) = Builtin::sub
     let C#(*) = Builtin::mul
@@ -68,17 +70,9 @@ module Int:
     let C#(%) = Builtin::mod
     let C#(~+) = Builtin::plus
     let C#(~-) = Builtin::minus
-    let C#(>) = Builtin::gt
-    let C#(<) = Builtin::lt
-    let C#(>=) = Builtin::ge
-    let C#(<=) = Builtin::le
-    let C#(==) = Builtin::eq
-    let C#(!=) = Builtin::ne
-    let C#(<=>) = Builtin::compare
     let C#to_string = Builtin::show
 
-    export C#(+), C#(-), C#(*), C#(/), C#(%), C#(~+), C#(~-)
-    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+    export C#(+), C#(-), C#(*), C#(/), C#(%), C#(~+), C#(~-), C#to_string
   end
   
   export C, Open
@@ -88,16 +82,11 @@ module Char:
   class C
 
   module Open:
-    let C#(>) = Builtin::gt
-    let C#(<) = Builtin::lt
-    let C#(>=) = Builtin::ge
-    let C#(<=) = Builtin::le
-    let C#(==) = Builtin::eq
-    let C#(!=) = Builtin::ne
-    let C#(<=>) = Builtin::compare
+    include Ord(C)
+
     let C#to_string = Builtin::char_to_string
     
-    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+    export C#to_string
   end
   
   export C, Open
@@ -109,19 +98,13 @@ module String:
   let format = Builtin::format
 
   module Open:
-    let C#(>) = Builtin::gt
-    let C#(<) = Builtin::lt
-    let C#(>=) = Builtin::ge
-    let C#(<=) = Builtin::le
-    let C#(==) = Builtin::eq
-    let C#(!=) = Builtin::ne
-    let C#(<=>) = Builtin::compare
+    include Ord(C)
     
     def C#to_string(self):
       self
     end
     
-    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+    export C#to_string
   end
   
   export C, format, Open
@@ -131,16 +114,11 @@ module Tuple:
   class C
 
   module Open:
-    let C#(>) = Builtin::gt
-    let C#(<) = Builtin::lt
-    let C#(>=) = Builtin::ge
-    let C#(<=) = Builtin::le
-    let C#(==) = Builtin::eq
-    let C#(!=) = Builtin::ne
-    let C#(<=>) = Builtin::compare
+    include Ord(C)
+
     let C#to_string = Builtin::show
     
-    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+    export C#to_string
   end
   
   export C, Open
@@ -152,16 +130,11 @@ module Class:
   let of = Builtin::class_of
 
   module Open:
-    let C#(>) = Builtin::gt
-    let C#(<) = Builtin::lt
-    let C#(>=) = Builtin::ge
-    let C#(<=) = Builtin::le
-    let C#(==) = Builtin::eq
-    let C#(!=) = Builtin::ne
-    let C#(<=>) = Builtin::compare
+    include Ord(C)
+
     let C#to_string = Builtin::show
 
-    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+    export C#to_string
   end
   
   export C, of, Open
@@ -172,6 +145,7 @@ module Module:
 
   module Open:
     let C#to_string = Builtin::show
+
     export C#to_string
   end
 
@@ -183,6 +157,7 @@ module Proc:
 
   module Open:
     let C#to_string = Builtin::show
+
     export C#to_string
   end
 

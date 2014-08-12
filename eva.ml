@@ -237,6 +237,15 @@ module Frame = struct
       add_method frame klass sel (find_method modl klass sel Outside) false
     end modl.exported_methods
 
+  let include_module frame modl =
+    open_module frame modl;
+    VarSet.iter begin fun x ->
+      export_var frame x
+    end modl.exported_vars;
+    MethodSet.iter begin fun (klass, sel) ->
+      export_method frame klass sel
+    end modl.exported_methods
+
   let unexport_var frame x =
     if VarSet.mem x frame.exported_vars then
       frame.exported_vars <- VarSet.remove x frame.exported_vars
@@ -351,6 +360,13 @@ module Env = struct
     with_current_frame begin fun frame_env ->
       with_current_frame begin fun frame_mod ->
         Frame.open_module frame_env frame_mod
+      end modl
+    end env
+
+  let include_module env modl =
+    with_current_frame begin fun frame_env ->
+      with_current_frame begin fun frame_mod ->
+        Frame.include_module frame_env frame_mod
       end modl
     end env
 
@@ -635,6 +651,15 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       begin match value with
         | Module modl ->
           Env.open_module eva.env modl;
+          value
+        | _ ->
+          raise (required pos "module" value)
+      end
+    | Expr.Include expr ->
+      let value = eval eva expr in
+      begin match value with
+        | Module modl ->
+          Env.include_module eva.env modl;
           value
         | _ ->
           raise (required pos "module" value)

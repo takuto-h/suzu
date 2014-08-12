@@ -20,6 +20,7 @@ and raw =
   | Module of string * t list
   | Export of VarOrMethod.t list
   | Open of t
+  | Include of t
   | Record of string * string * (string * bool) list
   | Variant of string * (string * params) list
   | Phantom of string
@@ -119,6 +120,8 @@ let rec show {raw} =
       sprintf "(Export %s)" (SnString.concat_map " " VarOrMethod.show voms)
     | Open expr ->
       sprintf "(Open %s)" (show expr)
+    | Include expr ->
+      sprintf "(Include %s)" (show expr)
     | Record (klass, ctor, fields) ->
       sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
     | Variant (klass, ctors) ->
