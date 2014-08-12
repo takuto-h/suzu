@@ -73,7 +73,7 @@ let rec show_value value =
     | Record (klass, fields) ->
       sprintf "<record %s%s>" klass (show_fields fields)
     | Variant (klass, ctor, args) ->
-      sprintf "<variant %s %s %s>" klass ctor (show_args args)
+      sprintf "%s%s" ctor (show_args args)
   end
 
 and show_fields table =
