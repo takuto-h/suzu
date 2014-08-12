@@ -1,0 +1,280 @@
+
+module Pervasives:
+  def if(cond, then_thunk, :else else_thunk=^{}):
+    cond && (then_thunk() || true) || else_thunk()
+  end
+
+  def while(test_thunk, :do body_thunk):
+    if(test_thunk()):
+      body_thunk()
+      while(test_thunk, :do body_thunk)
+    end
+  end
+
+  let write_line = Builtin::write_line
+  let read_line = Builtin::read_line
+
+  export if, while, write_line, read_line
+end
+ 
+module Unit:
+  class C
+
+  module Open:
+    let C#(>) = Builtin::gt
+    let C#(<) = Builtin::lt
+    let C#(>=) = Builtin::ge
+    let C#(<=) = Builtin::le
+    let C#(==) = Builtin::eq
+    let C#(!=) = Builtin::ne
+    let C#(<=>) = Builtin::compare
+    let C#to_string = Builtin::show
+    
+    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+  end
+  
+  export C, Open
+end
+
+module Bool:
+  class C
+
+  module Open:
+    let C#(!) = Builtin::not
+    let C#(>) = Builtin::gt
+    let C#(<) = Builtin::lt
+    let C#(>=) = Builtin::ge
+    let C#(<=) = Builtin::le
+    let C#(==) = Builtin::eq
+    let C#(!=) = Builtin::ne
+    let C#(<=>) = Builtin::compare
+    let C#to_string = Builtin::show
+
+    export C#(!)
+    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+  end
+  
+  export C, Open
+end
+
+module Int:
+  class C
+
+  module Open:
+    let C#(+) = Builtin::add
+    let C#(-) = Builtin::sub
+    let C#(*) = Builtin::mul
+    let C#(/) = Builtin::div
+    let C#(%) = Builtin::mod
+    let C#(~+) = Builtin::plus
+    let C#(~-) = Builtin::minus
+    let C#(>) = Builtin::gt
+    let C#(<) = Builtin::lt
+    let C#(>=) = Builtin::ge
+    let C#(<=) = Builtin::le
+    let C#(==) = Builtin::eq
+    let C#(!=) = Builtin::ne
+    let C#(<=>) = Builtin::compare
+    let C#to_string = Builtin::show
+
+    export C#(+), C#(-), C#(*), C#(/), C#(%), C#(~+), C#(~-)
+    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+  end
+  
+  export C, Open
+end
+
+module Char:
+  class C
+
+  module Open:
+    let C#(>) = Builtin::gt
+    let C#(<) = Builtin::lt
+    let C#(>=) = Builtin::ge
+    let C#(<=) = Builtin::le
+    let C#(==) = Builtin::eq
+    let C#(!=) = Builtin::ne
+    let C#(<=>) = Builtin::compare
+    let C#to_string = Builtin::char_to_string
+    
+    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+  end
+  
+  export C, Open
+end
+
+module String:
+  class C
+
+  let format = Builtin::format
+
+  module Open:
+    let C#(>) = Builtin::gt
+    let C#(<) = Builtin::lt
+    let C#(>=) = Builtin::ge
+    let C#(<=) = Builtin::le
+    let C#(==) = Builtin::eq
+    let C#(!=) = Builtin::ne
+    let C#(<=>) = Builtin::compare
+    
+    def C#to_string(self):
+      self
+    end
+    
+    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+  end
+  
+  export C, format, Open
+end
+
+module Tuple:
+  class C
+
+  module Open:
+    let C#(>) = Builtin::gt
+    let C#(<) = Builtin::lt
+    let C#(>=) = Builtin::ge
+    let C#(<=) = Builtin::le
+    let C#(==) = Builtin::eq
+    let C#(!=) = Builtin::ne
+    let C#(<=>) = Builtin::compare
+    let C#to_string = Builtin::show
+    
+    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+  end
+  
+  export C, Open
+end
+
+module Class:
+  class C
+
+  let of = Builtin::class_of
+
+  module Open:
+    let C#(>) = Builtin::gt
+    let C#(<) = Builtin::lt
+    let C#(>=) = Builtin::ge
+    let C#(<=) = Builtin::le
+    let C#(==) = Builtin::eq
+    let C#(!=) = Builtin::ne
+    let C#(<=>) = Builtin::compare
+    let C#to_string = Builtin::show
+
+    export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>), C#to_string
+  end
+  
+  export C, of, Open
+end
+
+module Module:
+  class C
+
+  module Open:
+    let C#to_string = Builtin::show
+    export C#to_string
+  end
+
+  export C, Open
+end
+
+module Proc:
+  class C
+
+  module Open:
+    let C#to_string = Builtin::show
+    export C#to_string
+  end
+
+  export C, Open
+end
+
+module List:
+  class C:
+    def Nil()
+    def Cons(x, xs)
+  end
+
+  let Nil = Nil()
+  
+  def fold_left(init, lst, proc):
+    match(lst):
+    case([]):
+      init
+    case([x | xs]):
+      fold_left(proc(init, x), xs, proc)
+    end
+  end
+
+  def fold_right(lst, init, proc):
+    match(lst):
+    case([]):
+      init
+    case([x | xs]):
+      proc(x, fold_right(xs, init, proc))
+    end
+  end
+
+  def append(lst1, lst2):
+    fold_right(lst1, lst2)^(elem, acc):
+      [elem | acc]
+    end
+  end
+
+  module Open:
+    def C#(==)(self, other):
+      match((self, other)):
+      case(([] , [])):
+        true
+      case(([x | xs], [y | ys]))when(x == y && xs == ys):
+        true
+      case(_):
+        false
+      end
+    end
+
+    let C#(++) = append
+
+    def C#fold_left(self, init, proc):
+      fold_left(init, self, proc)
+    end
+
+    let C#fold_right = fold_right
+
+    export C#(==), C#(++), C#fold_left, C#fold_right
+  end
+
+  export C, Nil, Cons, fold_left, fold_right, append, Open
+end
+
+module Ref:
+  class C = make:
+    mutable value
+  end
+
+  module Open:
+    let C#value = C#value
+    let C#(value=) = C#(value=)
+
+    def C#(==)(self, other):
+      self.value == other.value
+    end
+
+    export C#value, C#(value=), C#(==)
+  end
+
+  export make, C, Open
+end
+
+open Pervasives
+open Unit::Open
+open Bool::Open
+open Int::Open
+open Char::Open
+open String::Open
+open Tuple::Open
+open Class::Open
+open Module::Open
+open Proc::Open
+open List::Open
+open Ref::Open

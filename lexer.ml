@@ -213,6 +213,15 @@ let lex_visible_token lexer pos c =
         | _ ->
           Token.Reserved "="
       end
+    | '~' ->
+      begin match Source.peek lexer.source with
+        | Some c when is_op_part c ->
+          let buf = Buffer.create initial_buffer_size in
+          Buffer.add_char buf '~';
+          Token.UnaryOp (lex_op lexer buf)
+        | Some _ | None ->
+          Token.Reserved "~"
+      end
     | '|' ->
       begin match Source.peek lexer.source with
         | Some '|' ->
