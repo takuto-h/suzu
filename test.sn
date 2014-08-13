@@ -176,7 +176,7 @@ let (a, b, c, :p d, :q e=5) = x
 write_line("{0}{1}{2}{3}{4}", a, b, c, d, e)
 
 
-def my_if1(cond, then_thunk)else(else_thunk=^{}):
+def my_if1(cond, then_thunk, :else else_thunk=^{}):
   if(cond):
     then_thunk()
   else:
@@ -194,7 +194,7 @@ my_if1(true):
   write_line("ok!")
 end
 
-def my_if2(cond)then(then_thunk=^{})else(else_thunk=^{}):
+def my_if2(cond, :then then_thunk=^{}, :else else_thunk=^{}):
   if(cond):
     then_thunk()
   else:

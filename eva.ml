@@ -706,26 +706,28 @@ let rec eval eva {Expr.pos;Expr.raw;} =
           raise (required pos "module" modl)
       end;
       modl
-    | Expr.Match (target, cases) ->
-      let target = eval eva target in
+    | Expr.Match (args, cases) ->
+      let args = eval_args eva args in
       begin try
-          List.iter begin fun (pat, guard, body) ->
+          List.iter begin fun (params, guard, body) ->
             begin try
                 let env = Env.create_local eva.env in
                 let eva = { eva with env = env } in
-                bind_param eva pos pat target;
+                bind_params eva pos params args;
                 begin match guard with
                   | Some guard when not (bool_of_value pos (eval eva guard)) ->
-                    raise (Match_failure (pos, pat, target))
+                    raise Exit
                   | None | Some _ ->
                     raise (Match_success (eval_exprs eva body))
                 end
               with
+              | Exit ->
+                ()
               | Match_failure (pos, pat, value) ->
                 ()
             end
           end cases;
-          raise (Error (pos, sprintf "match failure of %s\n" (Value.show target), []))
+          raise (Error (pos, sprintf "match failure of %s\n" (Args.show args), []))
         with
         | Match_success result ->
           result

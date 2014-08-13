@@ -198,16 +198,16 @@ module List:
 
   module Open:
     include Compare(C)^(self, other):
-      match((self, other)):
-      case(([] , [])):
+      match(self, other):
+      case([] , []):
         0
-      case(([] , [y | ys])):
+      case([] , [y | ys]):
         -1
-      case(([x | xs] , [])):
+      case([x | xs] , []):
         1
-      case(([x | xs], [y | ys]))when((x <=> y) != 0):
+      case([x | xs], [y | ys])when((x <=> y) != 0):
         x <=> y
-      case(([x | xs], [y | ys])):
+      case([x | xs], [y | ys]):
         xs <=> ys
       end
     end

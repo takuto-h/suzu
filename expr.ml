@@ -26,7 +26,7 @@ and raw =
   | Phantom of string
   | Trait of params * t list
   | Except of t * VarOrMethod.t list
-  | Match of t * (pat * t option * t list) list
+  | Match of args * (params * t option * t list) list
   | Tuple of args
 
 and pat = {
@@ -132,18 +132,18 @@ let rec show {raw} =
       sprintf "(Trait %s %s)" (show_params params) (SnString.concat_map " " show body)
     | Except (modl, voms) ->
       sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " VarOrMethod.show voms)
-    | Match (target, cases) ->
-      sprintf "(Match %s %s)" (show target) (SnString.concat_map " " show_case cases)
+    | Match (args, cases) ->
+      sprintf "(Match %s %s)" (show_args args) (SnString.concat_map " " show_case cases)
     | Tuple args ->
       sprintf "(Tuple %s)" (show_args args)
   end
 
-and show_case (pat, guard, body) =
+and show_case (params, guard, body) =
   begin match guard with
     | Some cond ->
-      sprintf "(Case %s (Some %s) %s)" (show_pattern pat) (show cond) (SnString.concat_map " " show body)
+      sprintf "(Case %s (Some %s) %s)" (show_params params) (show cond) (SnString.concat_map " " show body)
     | None ->
-      sprintf "(Case %s None %s)" (show_pattern pat) (SnString.concat_map " " show body)
+      sprintf "(Case %s None %s)" (show_params params) (SnString.concat_map " " show body)
   end
 
 and show_args {normal_args;keyword_args;} =
