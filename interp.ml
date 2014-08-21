@@ -33,7 +33,7 @@ let read () =
   else
     line
 
-let load_source proc {eva} source =
+let load_source proc source =
   let lexer = Lexer.create source in
   let parser = Parser.create lexer in
   begin try
@@ -42,7 +42,7 @@ let load_source proc {eva} source =
           | None ->
             ()
           | Some expr ->
-            proc expr (Eva.eval eva expr);
+            proc expr;
             loop ()
         end
       in
@@ -57,23 +57,23 @@ let load_source proc {eva} source =
       end (List.rev rev_stack_trace)
   end
 
-let load_string interp name str =
+let load_string {eva} name str =
   let source = Source.of_string name str in
-  load_source (fun _ _ -> ()) interp source
+  load_source (fun expr  -> ignore (Eva.eval eva expr)) source
 
-let load_file interp name =
+let load_file {eva} name =
   with_open_in name begin fun chan_in ->
     let source = Source.of_channel name chan_in in
-    load_source (fun _ _ -> ()) interp source
+    load_source (fun expr -> ignore (Eva.eval eva expr)) source
   end
 
-let rec repl interp =
+let rec rppl proc =
   let rec loop () =
     begin try
         printf ">>> ";
         let str = read () in
         let source = Source.of_string "<stdin>" str in
-        load_source (fun _ value -> printf "%s\n" (Eva.Value.show value)) interp source;
+        load_source proc source;
         loop ()
       with
       | End_of_file ->
@@ -81,3 +81,6 @@ let rec repl interp =
     end
   in
   loop ()
+
+let repl {eva} =
+  rppl (fun expr -> printf "%s\n" (Eva.Value.show (Eva.eval eva expr)))
