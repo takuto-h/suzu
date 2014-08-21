@@ -4,7 +4,7 @@ BYTE_ENABLED = true
 
 SUZU_FILES[] =\
   snPervasives snString snChar pos source token lexer literal selector varOrMethod expr parser\
-  eva interp builtin prelude main insn compiler
+  eva interp builtin prelude main
 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)
@@ -14,8 +14,6 @@ TOP_FILES[] = $(addsuffix .cmo, $(SUZU_FILES))
 
 SN2ML = sn2ml
 SN2ML_FILES[] = snPervasives sn2ml
-
-#OCAMLFLAGS =
 
 .DEFAULT: $(PROGRAM)
 
