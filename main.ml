@@ -12,4 +12,11 @@ let main () =
   end usage_msg;
   Interp.repl interp
 
-let () = main ()
+let main2 () =
+  let loader = Loader.create () in
+  Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun file_name ->
+    Loader.load_file loader file_name
+  end usage_msg;
+  Loader.repl loader
+
+let () = main2 ()
