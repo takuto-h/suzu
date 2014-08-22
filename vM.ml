@@ -16,8 +16,6 @@ module VarSet = Set.Make(OrderedVar)
 module MethodMap = Map.Make(OrderedMethod)
 module MethodSet = Set.Make(OrderedMethod)
 
-exception Error of Pos.t * string
-
 type t = {
   insns : Insn.t list;
   stack : value list;
@@ -31,6 +29,7 @@ and value =
   | Bool of bool
   | Char of char
   | String of string
+  | Klass of string
 
 and env =
   | Global of frame
@@ -42,6 +41,8 @@ and frame = {
   exported_vars : VarSet.t;
   exported_methods : MethodSet.t;
 }
+
+exception Error of t * string
 
 let create_frame () = {
   vars = VarMap.empty;
@@ -63,17 +64,6 @@ let create insns env = {
   pos = Pos.dummy;
 }
 
-let push_value vm value =
-  {vm with stack = value::vm.stack}
-
-let pop_value vm =
-  begin match vm.stack with
-    | [] ->
-      assert false
-    | top::stack ->
-      (top, {vm with stack = stack})
-  end
-
 let show_value value =
   begin match value with
     | Unit ->
@@ -84,8 +74,24 @@ let show_value value =
       sprintf "%B" b
     | Char c ->
       sprintf "%C" c
-    | String s ->
-      sprintf "%S" s
+    | String str ->
+      sprintf "%S" str
+    | Klass klass ->
+      sprintf "<class %s>" klass
+  end
+
+let required vm req_str got_value =
+  Error (vm, sprintf "%s required, but got: %s\n" req_str (show_value got_value))
+
+let push_value vm value =
+  {vm with stack = value::vm.stack}
+
+let pop_value vm =
+  begin match vm.stack with
+    | [] ->
+      assert false
+    | top::stack ->
+      (top, {vm with stack = stack})
   end
 
 let value_of_literal lit =
@@ -116,7 +122,10 @@ let rec find proc env =
   end
 
 let find_var env x =
-  find (fun {vars;exported_vars} -> VarMap.find x vars) env
+  find (fun {vars} -> VarMap.find x vars) env
+
+let find_method env klass sel =
+  find (fun {methods} -> MethodMap.find (klass, sel) methods) env
 
 let update_current_frame proc env =
   begin match env with
@@ -132,6 +141,14 @@ let add_var vm x v =
   in
   {vm with env = update_current_frame proc vm.env}
 
+let klass_of_value vm value =
+  begin match value with
+    | Klass klass ->
+      klass
+    | _ ->
+      raise (required vm "class" value)
+  end
+
 let execute vm insn =
   begin match insn with
     | Insn.At pos ->
@@ -143,7 +160,16 @@ let execute vm insn =
           push_value vm (find_var vm.env x)
         with
         | Not_found ->
-          raise (Error (vm.pos, sprintf "variable not found: %s\n" x))
+          raise (Error (vm, sprintf "variable not found: %s\n" x))
+      end
+    | Insn.FindMethod sel ->
+      let (klass, vm) = pop_value vm in
+      let klass = klass_of_value vm klass in
+      begin try
+          push_value vm (find_method vm.env klass (Selector.string_of sel))
+        with
+        | Not_found ->
+          raise (Error (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
       end
     | Insn.AddVar x ->
       let (value, vm) = pop_value vm in
