@@ -30,6 +30,7 @@ and value =
   | Char of char
   | String of string
   | Klass of string
+  | Module of env
 
 and env =
   | Global of frame
@@ -42,7 +43,10 @@ and frame = {
   exported_methods : MethodSet.t;
 }
 
-exception Error of t * string
+exception Error of Pos.t * string * Pos.t list
+
+exception InternalError of t * string
+exception Not_exported
 
 let create_frame () = {
   vars = VarMap.empty;
@@ -78,10 +82,12 @@ let show_value value =
       sprintf "%S" str
     | Klass klass ->
       sprintf "<class %s>" klass
+    | Module _ ->
+      "<module>"
   end
 
 let required vm req_str got_value =
-  Error (vm, sprintf "%s required, but got: %s\n" req_str (show_value got_value))
+  InternalError (vm, sprintf "%s required, but got: %s\n" req_str (show_value got_value))
 
 let push_value vm value =
   {vm with stack = value::vm.stack}
@@ -135,6 +141,30 @@ let find_var env x =
 let find_method env klass sel =
   find (fun {methods} -> MethodMap.find (klass, sel) methods) env
 
+let peek_current_frame env =
+  begin match env with
+    | Global frame ->
+      frame
+    | Local (frame, _) ->
+      frame
+  end
+
+let access_var modl x =
+  let {vars;exported_vars} = peek_current_frame modl in
+  let value = VarMap.find x vars in
+  if VarSet.mem x exported_vars then
+    value
+  else
+    raise Not_exported
+
+let access_method modl klass sel =
+  let {methods;exported_methods} = peek_current_frame modl in
+  let value = MethodMap.find (klass, sel) methods in
+  if MethodSet.mem (klass, sel) exported_methods then
+    value
+  else
+    raise Not_exported
+
 let update_current_frame proc env =
   begin match env with
     | Global frame ->
@@ -163,6 +193,14 @@ let klass_of_value vm value =
       raise (required vm "class" value)
   end
 
+let module_of_value vm value =
+  begin match value with
+    | Module modl ->
+      modl
+    | _ ->
+      raise (required vm "module" value)
+  end
+
 let execute vm insn =
   begin match insn with
     | Insn.At pos ->
@@ -174,7 +212,7 @@ let execute vm insn =
           push_value vm (find_var vm.env x)
         with
         | Not_found ->
-          raise (Error (vm, sprintf "variable not found: %s\n" x))
+          raise (InternalError (vm, sprintf "variable not found: %s\n" x))
       end
     | Insn.FindMethod sel ->
       let (klass, vm) = pop_value vm in
@@ -183,7 +221,31 @@ let execute vm insn =
           push_value vm (find_method vm.env klass (Selector.string_of sel))
         with
         | Not_found ->
-          raise (Error (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+          raise (InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+      end
+    | Insn.AccessVar x ->
+      let (modl, vm) = pop_value vm in
+      let modl = module_of_value vm modl in
+      begin try
+          push_value vm (access_var modl x)
+        with
+        | Not_found ->
+          raise (InternalError (vm, sprintf "variable not found: %s\n" x))
+        | Not_exported ->
+          raise (InternalError (vm, sprintf "variable not exported: %s\n" x))
+      end
+    | Insn.AccessMethod sel ->
+      let (klass, vm) = pop_value vm in
+      let klass = klass_of_value vm klass in
+      let (modl, vm) = pop_value vm in
+      let modl = module_of_value vm modl in
+      begin try
+          push_value vm (access_method modl klass (Selector.string_of sel))
+        with
+        | Not_found ->
+          raise (InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+        | Not_exported ->
+          raise (InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel)))
       end
     | Insn.AddVar x ->
       let value = peek_value vm in
@@ -196,12 +258,17 @@ let execute vm insn =
   end
 
 let rec run vm =
-  begin match (vm.insns, vm.stack) with
-    | ([], [top]) ->
-      top
-    | ([], _) ->
-      assert false
-    | (insn::insns, _) ->
-      let vm = execute {vm with insns = insns} insn in
-      run vm
+  begin try
+      begin match (vm.insns, vm.stack) with
+        | ([], [top]) ->
+          top
+        | ([], _) ->
+          assert false
+        | (insn::insns, _) ->
+          let vm = execute {vm with insns = insns} insn in
+          run vm
+      end
+    with
+    | InternalError (vm, message) ->
+      raise (Error (vm.pos, message, []))
   end

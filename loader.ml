@@ -50,6 +50,11 @@ let parse_source proc source =
     with
     | Parser.Error (pos, message) ->
       printf "%s" (Pos.show_message pos (sprintf "syntax error: %s" message))
+    | VM.Error (pos, message, rev_stack_trace) ->
+      printf "%s" (Pos.show_message pos (sprintf "error: %s" message));
+      List.iter begin fun pos ->
+        printf "%s" (Pos.show_message pos "note: error from here\n")
+      end (List.rev rev_stack_trace)
   end
 
 let compile_and_run {env} expr =
