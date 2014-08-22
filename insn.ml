@@ -5,3 +5,4 @@ type t =
   | FindVar of string
   | FindMethod of Selector.t
   | AddVar of string
+  | AddMethod of Selector.t

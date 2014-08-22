@@ -86,6 +86,14 @@ let required vm req_str got_value =
 let push_value vm value =
   {vm with stack = value::vm.stack}
 
+let peek_value vm =
+  begin match vm.stack with
+    | [] ->
+      assert false
+    | top::_ ->
+      top
+  end
+
 let pop_value vm =
   begin match vm.stack with
     | [] ->
@@ -135,9 +143,15 @@ let update_current_frame proc env =
       Local (proc frame, env)
   end
 
-let add_var vm x v =
+let add_var vm x value =
   let proc frame =
-    {frame with vars = VarMap.add x v frame.vars}
+    {frame with vars = VarMap.add x value frame.vars}
+  in
+  {vm with env = update_current_frame proc vm.env}
+
+let add_method vm klass sel value =
+  let proc frame =
+    {frame with methods = MethodMap.add (klass, sel) value frame.methods}
   in
   {vm with env = update_current_frame proc vm.env}
 
@@ -172,8 +186,13 @@ let execute vm insn =
           raise (Error (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
       end
     | Insn.AddVar x ->
-      let (value, vm) = pop_value vm in
+      let value = peek_value vm in
       add_var vm x value
+    | Insn.AddMethod sel ->
+      let (klass, vm) = pop_value vm in
+      let klass = klass_of_value vm klass in
+      let value = peek_value vm in
+      add_method vm klass (Selector.string_of sel) value
   end
 
 let rec run vm =
