@@ -17,10 +17,10 @@ module MethodMap = Map.Make(OrderedMethod)
 module MethodSet = Set.Make(OrderedMethod)
 
 type t = {
-  insns : Insn.t list;
-  stack : value list;
-  env : env;
-  pos : Pos.t;
+  mutable insns : Insn.t list;
+  mutable stack : value list;
+  mutable env : env;
+  mutable pos : Pos.t;
 }
 
 and value =
@@ -90,7 +90,7 @@ let required vm req_str got_value =
   InternalError (vm, sprintf "%s required, but got: %s\n" req_str (show_value got_value))
 
 let push_value vm value =
-  {vm with stack = value::vm.stack}
+  vm.stack <- value::vm.stack
 
 let peek_value vm =
   begin match vm.stack with
@@ -105,7 +105,8 @@ let pop_value vm =
     | [] ->
       assert false
     | top::stack ->
-      (top, {vm with stack = stack})
+      vm.stack <- stack;
+      top
   end
 
 let value_of_literal lit =
@@ -141,7 +142,7 @@ let find_var env x =
 let find_method env klass sel =
   find (fun {methods} -> MethodMap.find (klass, sel) methods) env
 
-let peek_current_frame env =
+let get_current_frame env =
   begin match env with
     | Global frame ->
       frame
@@ -150,7 +151,7 @@ let peek_current_frame env =
   end
 
 let access_var modl x =
-  let {vars;exported_vars} = peek_current_frame modl in
+  let {vars;exported_vars} = get_current_frame modl in
   let value = VarMap.find x vars in
   if VarSet.mem x exported_vars then
     value
@@ -158,7 +159,7 @@ let access_var modl x =
     raise Not_exported
 
 let access_method modl klass sel =
-  let {methods;exported_methods} = peek_current_frame modl in
+  let {methods;exported_methods} = get_current_frame modl in
   let value = MethodMap.find (klass, sel) methods in
   if MethodSet.mem (klass, sel) exported_methods then
     value
@@ -177,13 +178,13 @@ let add_var vm x value =
   let proc frame =
     {frame with vars = VarMap.add x value frame.vars}
   in
-  {vm with env = update_current_frame proc vm.env}
+  vm.env <- update_current_frame proc vm.env
 
 let add_method vm klass sel value =
   let proc frame =
     {frame with methods = MethodMap.add (klass, sel) value frame.methods}
   in
-  {vm with env = update_current_frame proc vm.env}
+  vm.env <- update_current_frame proc vm.env
 
 let klass_of_value vm value =
   begin match value with
@@ -204,7 +205,7 @@ let module_of_value vm value =
 let execute vm insn =
   begin match insn with
     | Insn.At pos ->
-      {vm with pos = pos}
+      vm.pos <- pos
     | Insn.Push lit ->
       push_value vm (value_of_literal lit)
     | Insn.FindVar x ->
@@ -215,7 +216,7 @@ let execute vm insn =
           raise (InternalError (vm, sprintf "variable not found: %s\n" x))
       end
     | Insn.FindMethod sel ->
-      let (klass, vm) = pop_value vm in
+      let klass = pop_value vm in
       let klass = klass_of_value vm klass in
       begin try
           push_value vm (find_method vm.env klass (Selector.string_of sel))
@@ -224,7 +225,7 @@ let execute vm insn =
           raise (InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
       end
     | Insn.AccessVar x ->
-      let (modl, vm) = pop_value vm in
+      let modl = pop_value vm in
       let modl = module_of_value vm modl in
       begin try
           push_value vm (access_var modl x)
@@ -235,9 +236,9 @@ let execute vm insn =
           raise (InternalError (vm, sprintf "variable not exported: %s\n" x))
       end
     | Insn.AccessMethod sel ->
-      let (klass, vm) = pop_value vm in
+      let klass = pop_value vm in
       let klass = klass_of_value vm klass in
-      let (modl, vm) = pop_value vm in
+      let modl = pop_value vm in
       let modl = module_of_value vm modl in
       begin try
           push_value vm (access_method modl klass (Selector.string_of sel))
@@ -251,7 +252,7 @@ let execute vm insn =
       let value = peek_value vm in
       add_var vm x value
     | Insn.AddMethod sel ->
-      let (klass, vm) = pop_value vm in
+      let klass = pop_value vm in
       let klass = klass_of_value vm klass in
       let value = peek_value vm in
       add_method vm klass (Selector.string_of sel) value
@@ -259,13 +260,12 @@ let execute vm insn =
 
 let rec run vm =
   begin try
-      begin match (vm.insns, vm.stack) with
-        | ([], [top]) ->
-          top
-        | ([], _) ->
-          assert false
-        | (insn::insns, _) ->
-          let vm = execute {vm with insns = insns} insn in
+      begin match vm.insns with
+        | [] ->
+          pop_value vm
+        | insn::insns ->
+          vm.insns <- insns;
+          execute vm insn;
           run vm
       end
     with
