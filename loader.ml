@@ -3,7 +3,7 @@ open SnPervasives
 open Printf
 
 type t = {
-  env : VM.env;
+  mutable env : VM.env;
 }
 
 let initial_buffer_size = 64
@@ -57,10 +57,12 @@ let parse_source proc source =
       end (List.rev rev_stack_trace)
   end
 
-let compile_and_run {env} expr =
+let compile_and_run loader expr =
   let insns = Compiler.compile expr in
-  let vm = VM.create insns env in
-  VM.run vm
+  let vm = VM.create insns loader.env in
+  let value = VM.run vm in
+  loader.env <- vm.VM.env;
+  value
 
 let load_source loader source =
   parse_source (fun expr -> ignore (compile_and_run loader expr)) source
