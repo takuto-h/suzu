@@ -2,11 +2,15 @@
 open SnPervasives
 open Printf
 
-type t = unit
+type t = {
+  env : VM.env;
+}
 
 let initial_buffer_size = 64
 
-let create () = ()
+let create () = {
+  env = VM.create_global ();
+}
 
 let rec read_multiple_lines buf =
   printf "... ";
@@ -48,10 +52,10 @@ let parse_source proc source =
       printf "%s" (Pos.show_message pos (sprintf "syntax error: %s" message))
   end
 
-let compile_and_run loader expr =
+let compile_and_run {env} expr =
   let insns = Compiler.compile expr in
-  let cont = Cont.create insns in
-  Cont.run cont
+  let vm = VM.create insns env in
+  VM.run vm
 
 let load_source loader source =
   parse_source (fun expr -> ignore (compile_and_run loader expr)) source
@@ -85,4 +89,4 @@ let rppl () =
   rpl (fun expr -> printf "%s\n" (Expr.show expr))
 
 let repl loader =
-  rpl (fun expr -> printf "%s\n" (Cont.show_value (compile_and_run loader expr)))
+  rpl (fun expr -> printf "%s\n" (VM.show_value (compile_and_run loader expr)))
