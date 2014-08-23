@@ -144,13 +144,13 @@ let add_var vm x value =
   let proc frame =
     {frame with vars = VarMap.add x value frame.vars}
   in
-  vm.env <- update_current_module proc vm.env
+  update_current_module proc vm.env
 
 let add_method vm klass sel value =
   let proc frame =
     {frame with methods = MethodMap.add (klass, sel) value frame.methods}
   in
-  vm.env <- update_current_module proc vm.env
+  update_current_module proc vm.env
 
 let class_of_value vm value =
   begin match value with
@@ -216,12 +216,12 @@ let execute vm insn =
       end
     | Insn.AddVar x ->
       let value = peek_value vm in
-      add_var vm x value
+      vm.env <- add_var vm x value
     | Insn.AddMethod sel ->
       let klass = pop_value vm in
       let klass = class_of_value vm klass in
       let value = peek_value vm in
-      add_method vm klass (Selector.string_of sel) value
+      vm.env <- add_method vm klass (Selector.string_of sel) value
   end
 
 let rec run vm =
