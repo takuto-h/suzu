@@ -31,12 +31,18 @@ and value =
   | String of string
   | Class of string
   | Module of modl
+  | Tuple of args
 
 and modl = {
   vars : value VarMap.t;
   methods : value MethodMap.t;
   exported_vars : VarSet.t;
   exported_methods : MethodSet.t;
+}
+
+and args = {
+  normal_args : value list;
+  labeled_args : (string * value) list;
 }
 
 exception Error of Pos.t * string * Pos.t list
@@ -58,7 +64,7 @@ let create insns modl = {
   pos = Pos.dummy;
 }
 
-let show_value value =
+let rec show_value value =
   begin match value with
     | Unit ->
       "()"
@@ -74,10 +80,26 @@ let show_value value =
       sprintf "<class %s>" klass
     | Module _ ->
       "<module>"
+    | Tuple args ->
+      show_args args
   end
+
+and show_args {normal_args;labeled_args} =
+  let str_normal = SnString.concat_map ", " show_value normal_args in
+  let str_labeled = SnString.concat_map ", " show_keyword_arg labeled_args in
+  if List.length normal_args <> 0 && List.length labeled_args <> 0 then
+    sprintf "(%s, %s)" str_normal str_labeled
+  else
+    sprintf "(%s%s)" str_normal str_labeled
+
+and show_keyword_arg (key, value) =
+  sprintf ":%s %s" key (show_value value)
 
 let required vm req_str got_value =
   InternalError (vm, sprintf "%s required, but got: %s\n" req_str (show_value got_value))
+
+let match_failure vm got_value pat_str =
+  InternalError (vm, sprintf "match failure of %s with %s\n" (show_value got_value) pat_str)
 
 let push_value vm value =
   vm.stack <- value::vm.stack
@@ -214,6 +236,11 @@ let execute vm insn =
         | Not_exported ->
           raise (InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel)))
       end
+    | Insn.AssertEqual lit ->
+      let value = value_of_literal lit in
+      let top = peek_value vm in
+      if top <> value then
+        raise (match_failure vm top (Literal.show lit))
     | Insn.AddVar x ->
       let value = peek_value vm in
       vm.env <- add_var vm x value
@@ -222,6 +249,12 @@ let execute vm insn =
       let klass = class_of_value vm klass in
       let value = peek_value vm in
       vm.env <- add_method vm klass (Selector.string_of sel) value
+    | Insn.GetNth n ->
+      ()
+    | Insn.GetLabeledOrDefault (label, insns) ->
+      ()
+    | Insn.RemoveTag tag ->
+      ()
   end
 
 let rec run vm =
