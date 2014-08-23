@@ -5,7 +5,7 @@ let compile_mods insns modl mods =
     Stack.push (Insn.AccessVar modl) insns;
   end mods
 
-let compile_klass insns mods klass =
+let compile_class insns mods klass =
   begin match mods with
     | [] ->
       Stack.push (Insn.FindVar klass) insns;
@@ -25,14 +25,14 @@ let compile_expr insns {Expr.pos;Expr.raw} =
     | Expr.Get ([], VarOrMethod.Var x) ->
       Stack.push (Insn.FindVar x) insns
     | Expr.Get ([], VarOrMethod.Method (mods_k, klass, sel)) ->
-      compile_klass insns mods_k klass;
+      compile_class insns mods_k klass;
       Stack.push (Insn.FindMethod sel) insns
     | Expr.Get (modl::mods, VarOrMethod.Var x) ->
       compile_mods insns modl mods;
       Stack.push (Insn.AccessVar x) insns
     | Expr.Get (modl::mods, VarOrMethod.Method (mods_k, klass, sel)) ->
       compile_mods insns modl mods;
-      compile_klass insns mods_k klass;
+      compile_class insns mods_k klass;
       Stack.push (Insn.AccessMethod sel) insns
     | Expr.Let (pat, expr) ->
       Stack.push (Insn.Push Literal.Unit) insns

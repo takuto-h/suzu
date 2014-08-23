@@ -3,13 +3,13 @@ open SnPervasives
 open Printf
 
 type t = {
-  mutable env : VM.env;
+  mutable modl : VM.modl;
 }
 
 let initial_buffer_size = 64
 
 let create () = {
-  env = VM.create_global ();
+  modl = VM.create_module ();
 }
 
 let rec read_multiple_lines buf =
@@ -59,9 +59,9 @@ let parse_source proc source =
 
 let compile_and_run loader expr =
   let insns = Compiler.compile expr in
-  let vm = VM.create insns loader.env in
+  let vm = VM.create insns loader.modl in
   let value = VM.run vm in
-  loader.env <- vm.VM.env;
+  loader.modl <- VM.get_current_module vm;
   value
 
 let load_source loader source =
