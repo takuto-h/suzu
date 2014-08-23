@@ -31,7 +31,7 @@ and value =
   | String of string
   | Class of string
   | Module of modl
-  | Tuple of args
+  | Args of args
 
 and modl = {
   vars : value VarMap.t;
@@ -80,7 +80,7 @@ let rec show_value value =
       sprintf "<class %s>" klass
     | Module _ ->
       "<module>"
-    | Tuple args ->
+    | Args args ->
       show_args args
   end
 
