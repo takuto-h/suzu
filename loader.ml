@@ -33,7 +33,14 @@ let read () =
   else
     line
 
-let parse_source proc source =
+let compile_and_run loader expr =
+  let insns = Compiler.compile expr in
+  let vm = VM.create insns loader.modl in
+  let value = VM.run vm in
+  loader.modl <- VM.get_current_module vm;
+  value
+
+let load_source proc loader source =
   let lexer = Lexer.create source in
   let parser = Parser.create lexer in
   begin try
@@ -42,7 +49,7 @@ let parse_source proc source =
           | None ->
             ()
           | Some expr ->
-            proc expr;
+            proc (compile_and_run loader expr);
             loop ()
         end
       in
@@ -57,33 +64,23 @@ let parse_source proc source =
       end (List.rev rev_stack_trace)
   end
 
-let compile_and_run loader expr =
-  let insns = Compiler.compile expr in
-  let vm = VM.create insns loader.modl in
-  let value = VM.run vm in
-  loader.modl <- VM.get_current_module vm;
-  value
-
-let load_source loader source =
-  parse_source (fun expr -> ignore (compile_and_run loader expr)) source
-
 let load_string loader name str =
   let source = Source.of_string name str in
-  load_source loader source
+  load_source (fun _ -> ()) loader source
 
 let load_file loader name =
   with_open_in name begin fun chan_in ->
     let source = Source.of_channel name chan_in in
-    load_source loader source
+    load_source (fun _ -> ()) loader source
   end
 
-let rec rpl proc =
+let rec repl loader =
   let rec loop () =
     begin try
         printf ">>> ";
         let str = read () in
         let source = Source.of_string "<stdin>" str in
-        parse_source proc source;
+        load_source (fun value -> printf "%s\n" (VM.show_value value)) loader source;
         loop ()
       with
       | End_of_file ->
@@ -91,9 +88,3 @@ let rec rpl proc =
     end
   in
   loop ()
-
-let rppl () =
-  rpl (fun expr -> printf "%s\n" (Expr.show expr))
-
-let repl loader =
-  rpl (fun expr -> printf "%s\n" (VM.show_value (compile_and_run loader expr)))
