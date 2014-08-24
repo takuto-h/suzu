@@ -32,6 +32,7 @@ and value =
   | Class of string
   | Module of modl
   | Args of args
+  | Variant of string * args
 
 and modl = {
   vars : value VarMap.t;
@@ -82,6 +83,8 @@ let rec show_value value =
       "<module>"
     | Args args ->
       show_args args
+    | Variant (tag, args) ->
+      sprintf "%s%s" tag (show_args args)
   end
 
 and show_args {normal_args;labeled_args} =
@@ -198,6 +201,14 @@ let args_of_value vm value =
       raise (required vm "arguments" value)
   end
 
+let variant_of_value vm value =
+  begin match value with
+    | Variant (tag, args) ->
+      (tag, args)
+    | _ ->
+      raise (required vm "variant" value)
+  end
+
 let nth {normal_args} n =
   List.nth normal_args n
 
@@ -284,7 +295,12 @@ let execute vm insn =
           raise (InternalError (vm, sprintf "label not found: %s\n" label))
       end
     | Insn.RemoveTag tag ->
-      ()
+      let value = pop_value vm in
+      let (tag2, args) = variant_of_value vm value in
+      if tag2 = tag then
+        push_value vm (Args args)
+      else
+        raise (required vm tag value)
   end
 
 let rec run vm =
