@@ -177,6 +177,46 @@ let add_method vm klass sel value =
   in
   update_current_module proc vm.env
 
+let unit_of_value vm value =
+  begin match value with
+    | Unit ->
+      ()
+    | _ ->
+      raise (required vm "unit" value)
+  end
+
+let int_of_value vm value =
+  begin match value with
+    | Int i ->
+      i
+    | _ ->
+      raise (required vm "int" value)
+  end
+
+let bool_of_value vm value =
+  begin match value with
+    | Bool b ->
+      b
+    | _ ->
+      raise (required vm "bool" value)
+  end
+
+let char_of_value vm value =
+  begin match value with
+    | Char c ->
+      c
+    | _ ->
+      raise (required vm "char" value)
+  end
+
+let string_of_value vm value =
+  begin match value with
+    | String str ->
+      str
+    | _ ->
+      raise (required vm "string" value)
+  end
+
 let class_of_value vm value =
   begin match value with
     | Class klass ->
@@ -209,15 +249,69 @@ let variant_of_value vm value =
       raise (required vm "variant" value)
   end
 
+let value_of_unit u = Unit
+let value_of_int i = Int i
+let value_of_bool b = Bool b
+let value_of_char c = Char c
+let value_of_string str = String str
+
 let nth {normal_args} n =
   List.nth normal_args n
 
 let labeled {labeled_args} label =
+  List.assoc label labeled_args
+
+let opt_nth args n =
   begin try
-      Some (List.assoc label labeled_args)
+      Some (nth args n)
+    with
+    | Failure "nth" ->
+      None
+  end
+
+let opt_labeled args label =
+  begin try
+      Some (labeled args label)
     with
     | Not_found ->
       None
+  end
+
+let rec test_pattern pattern value =
+  begin match (pattern, value) with
+    | (Insn.Any, _) ->
+      true
+    | (Insn.Const lit, _) when value_of_literal lit = value ->
+      true
+    | (Insn.Params params, Args args) ->
+      test_params params args
+    | (Insn.Variant (tag1, params), Variant (tag2, args)) when tag1 = tag2 ->
+      test_params params args
+    | _ ->
+      false
+  end
+
+and test_params params args =
+  begin try
+      List.for_all2 test_pattern params.Insn.normal_params args.normal_args
+    with
+    | Invalid_argument _ ->
+      false
+  end
+  && test_labeled_params params.Insn.labeled_params args.labeled_args
+
+and test_labeled_params labeled_params labeled_args =
+  begin match labeled_params with
+    | [] ->
+      List.length labeled_args = 0
+    | (label, (param, _))::labeled_params when List.mem_assoc label labeled_args ->
+      let arg = List.assoc label labeled_args in
+      let labeled_args = List.remove_assoc label labeled_args in
+      test_pattern param arg && test_labeled_params labeled_params labeled_args
+    | (_, (_, has_default))::labeled_params when has_default ->
+      test_labeled_params labeled_params labeled_args
+    | (_, (_, _))::_ ->
+      false
   end
 
 let execute vm insn =
@@ -284,17 +378,22 @@ let execute vm insn =
     | Insn.GetNth n ->
       let args = peek_value vm in
       let args = args_of_value vm args in
-      push_value vm (nth args n)
+      begin match (opt_nth args n) with
+        | Some value ->
+          push_value vm value 
+        | None ->
+          raise (InternalError (vm, sprintf "argument not found at '%d': %s\n" n (show_args args)))
+      end
     | Insn.GetLabeled (label, default) ->
       let args = peek_value vm in
       let args = args_of_value vm args in
-      begin match (labeled args label, default)  with
+      begin match (opt_labeled args label, default)  with
         | (Some value, _) ->
           push_value vm value
         | (None, Some insns) ->
           vm.insns <- insns @ vm.insns
         | (None, None) ->
-          raise (InternalError (vm, sprintf "label not found: %s\n" label))
+          raise (InternalError (vm, sprintf "argument not found for '%s': %s\n" label (show_args args)))
       end
     | Insn.RemoveTag tag ->
       let value = pop_value vm in
@@ -306,6 +405,10 @@ let execute vm insn =
     | Insn.Dup ->
       let top = peek_value vm in
       push_value vm top
+    | Insn.Test pattern ->
+      let value = peek_value vm in
+      let result = test_pattern pattern value in
+      push_value vm (value_of_bool result)
   end
 
 let rec run vm =

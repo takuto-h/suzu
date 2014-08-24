@@ -6,7 +6,6 @@ type pattern =
   | Const of Literal.t
   | Params of params
   | Variant of string * params
-  | Or of pattern * pattern
 
 and params = {
   normal_params : pattern list;
@@ -28,3 +27,9 @@ type t =
   | GetLabeled of string * (t list) option
   | RemoveTag of string
   | Dup
+  | Test of pattern
+
+let make_params normal_params labeled_params = {
+  normal_params = normal_params;
+  labeled_params = labeled_params;
+}
