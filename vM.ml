@@ -190,6 +190,25 @@ let module_of_value vm value =
       raise (required vm "module" value)
   end
 
+let args_of_value vm value =
+  begin match value with
+    | Args args ->
+      args
+    | _ ->
+      raise (required vm "arguments" value)
+  end
+
+let nth {normal_args} n =
+  List.nth normal_args n
+
+let labeled {labeled_args} label =
+  begin try
+      Some (List.assoc label labeled_args)
+    with
+    | Not_found ->
+      None
+  end
+
 let execute vm insn =
   begin match insn with
     | Insn.At pos ->
@@ -250,9 +269,20 @@ let execute vm insn =
       let value = peek_value vm in
       vm.env <- add_method vm klass (Selector.string_of sel) value
     | Insn.GetNth n ->
-      ()
-    | Insn.GetLabeledOrDefault (label, insns) ->
-      ()
+      let args = pop_value vm in
+      let args = args_of_value vm args in
+      push_value vm (nth args n)
+    | Insn.GetLabeled (label, default) ->
+      let args = pop_value vm in
+      let args = args_of_value vm args in
+      begin match (labeled args label, default)  with
+        | (Some value, _) ->
+          push_value vm value
+        | (None, Some insns) ->
+          vm.insns <- insns @ vm.insns
+        | (None, None) ->
+          raise (InternalError (vm, sprintf "label not found: %s\n" label))
+      end
     | Insn.RemoveTag tag ->
       ()
   end

@@ -24,5 +24,5 @@ type t =
   | AddVar of string
   | AddMethod of Selector.t
   | GetNth of int
-  | GetLabeledOrDefault of string * t list
+  | GetLabeled of string * (t list) option
   | RemoveTag of string
