@@ -4,7 +4,7 @@ type has_default = bool
 type pattern =
   | Any
   | Const of Literal.t
-  | Tuple of params
+  | Params of params
   | Variant of string * params
   | Or of pattern * pattern
 
@@ -20,9 +20,11 @@ type t =
   | FindMethod of Selector.t
   | AccessVar of string
   | AccessMethod of Selector.t
+  | Pop
   | AssertEqual of Literal.t
   | AddVar of string
   | AddMethod of Selector.t
   | GetNth of int
   | GetLabeled of string * (t list) option
   | RemoveTag of string
+  | Dup

@@ -166,14 +166,14 @@ let update_current_module proc mods =
   proc (List.hd mods)::List.tl mods
 
 let add_var vm x value =
-  let proc frame =
-    {frame with vars = VarMap.add x value frame.vars}
+  let proc modl =
+    {modl with vars = VarMap.add x value modl.vars}
   in
   update_current_module proc vm.env
 
 let add_method vm klass sel value =
-  let proc frame =
-    {frame with methods = MethodMap.add (klass, sel) value frame.methods}
+  let proc modl =
+    {modl with methods = MethodMap.add (klass, sel) value modl.methods}
   in
   update_current_module proc vm.env
 
@@ -266,25 +266,27 @@ let execute vm insn =
         | Not_exported ->
           raise (InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel)))
       end
+    | Insn.Pop ->
+      ignore (pop_value vm)
     | Insn.AssertEqual lit ->
       let value = value_of_literal lit in
-      let top = peek_value vm in
+      let top = pop_value vm in
       if top <> value then
         raise (match_failure vm top (Literal.show lit))
     | Insn.AddVar x ->
-      let value = peek_value vm in
-      vm.env <- add_var vm x value
+      let value = pop_value vm in
+      vm.env <- add_var vm x value;
     | Insn.AddMethod sel ->
       let klass = pop_value vm in
       let klass = class_of_value vm klass in
-      let value = peek_value vm in
+      let value = pop_value vm in
       vm.env <- add_method vm klass (Selector.string_of sel) value
     | Insn.GetNth n ->
-      let args = pop_value vm in
+      let args = peek_value vm in
       let args = args_of_value vm args in
       push_value vm (nth args n)
     | Insn.GetLabeled (label, default) ->
-      let args = pop_value vm in
+      let args = peek_value vm in
       let args = args_of_value vm args in
       begin match (labeled args label, default)  with
         | (Some value, _) ->
@@ -301,6 +303,9 @@ let execute vm insn =
         push_value vm (Args args)
       else
         raise (required vm tag value)
+    | Insn.Dup ->
+      let top = peek_value vm in
+      push_value vm top
   end
 
 let rec run vm =
