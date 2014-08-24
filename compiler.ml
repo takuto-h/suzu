@@ -29,12 +29,38 @@ let list_of_stack stack =
   in
   loop []
 
-let rec compile expr =
+let compile_with proc source =
   let insns = Stack.create () in
-  compile_expr insns expr;
+  proc insns source;
   list_of_stack insns
 
-and compile_expr insns {Expr.pos;Expr.raw} =
+let rec compile_pattern {Expr.pat_raw} =
+  begin match pat_raw with
+    | Expr.PatWildCard ->
+      Insn.Any
+    | Expr.PatConst lit ->
+      Insn.Const lit
+    | Expr.PatTuple params ->
+      Insn.Params (compile_params params)
+    | Expr.PatVariant (tag, params) ->
+      Insn.Variant (tag, compile_params params)
+    | Expr.PatBind _ ->
+      Insn.Any
+    | Expr.PatOr (_, _) ->
+      assert false
+    | Expr.PatAs (pat, _) ->
+      compile_pattern pat
+  end
+  
+and compile_params {Expr.normal_params;Expr.keyword_params} =
+  let normal_params = List.map compile_pattern normal_params in
+  let labeled_params = List.map begin fun (label, (pat, default)) ->
+      (label, (compile_pattern pat, default <> None))
+    end keyword_params
+  in
+  Insn.make_params normal_params labeled_params
+
+let rec compile_expr insns {Expr.pos;Expr.raw} =
   Stack.push (Insn.At pos) insns;
   begin match raw with
     | Expr.Const lit ->
@@ -109,7 +135,11 @@ and compile_bind insns {Expr.pat_pos;Expr.pat_raw} =
       compile_class insns mods klass; 
       Stack.push (Insn.AddMethod sel) insns;
     | Expr.PatOr (lhs, rhs) ->
-      Stack.push Insn.Pop insns  (* TODO *)
+      let pattern = compile_pattern lhs in
+      Stack.push (Insn.Test pattern) insns;
+      let then_insns = compile_with compile_bind lhs in
+      let else_insns = compile_with compile_bind rhs in
+      Stack.push (Insn.Branch (then_insns, else_insns)) insns
     | Expr.PatAs (pat, x) ->
       Stack.push Insn.Dup insns;
       compile_bind insns pat;
@@ -126,8 +156,11 @@ and compile_params insns {Expr.normal_params;Expr.keyword_params} =
       | None ->
         Stack.push (Insn.GetLabeled (label, None)) insns
       | Some expr ->
-        let default = compile expr in
+        let default = compile_with compile_expr expr in
         Stack.push (Insn.GetLabeled (label, Some default)) insns
     end;
     compile_bind insns pat
   end keyword_params
+
+let compile expr =
+  compile_with compile_expr expr

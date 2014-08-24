@@ -741,16 +741,13 @@ and parse_as_pattern parser =
 
 and parse_or_pattern parser =
   let lhs = parse_atomic_pattern parser in
-  let rec loop lhs =
-    if parser.token = Token.Reserved "or" then
-      let pos = parser.pos in
-      lookahead parser;
-      let rhs = parse_atomic_pattern parser in
-      loop (Expr.Pattern.at pos (Expr.PatOr (lhs, rhs)))
-    else
-      lhs
-  in
-  loop lhs
+  if parser.token = Token.Reserved "or" then
+    let pos = parser.pos in
+    lookahead parser;
+    let rhs = parse_or_pattern parser in
+    Expr.Pattern.at pos (Expr.PatOr (lhs, rhs))
+  else
+    lhs
 
 and parse_atomic_pattern parser =
   let pos = parser.pos in

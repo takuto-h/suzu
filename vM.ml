@@ -99,10 +99,7 @@ and show_keyword_arg (key, value) =
   sprintf ":%s %s" key (show_value value)
 
 let required vm req_str got_value =
-  InternalError (vm, sprintf "%s required, but got: %s\n" req_str (show_value got_value))
-
-let match_failure vm got_value pat_str =
-  InternalError (vm, sprintf "match failure of %s with %s\n" (show_value got_value) pat_str)
+  InternalError (vm, sprintf "%s required, but got %s\n" req_str (show_value got_value))
 
 let push_value vm value =
   vm.stack <- value::vm.stack
@@ -366,7 +363,7 @@ let execute vm insn =
       let value = value_of_literal lit in
       let top = pop_value vm in
       if top <> value then
-        raise (match_failure vm top (Literal.show lit))
+        raise (required vm (Literal.show lit) top)
     | Insn.AddVar x ->
       let value = pop_value vm in
       vm.env <- add_var vm x value;
