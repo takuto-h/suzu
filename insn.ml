@@ -28,6 +28,7 @@ type t =
   | RemoveTag of string
   | Dup
   | Test of pattern
+  | Branch of t list * t list
 
 let make_params normal_params labeled_params = {
   normal_params = normal_params;

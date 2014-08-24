@@ -409,6 +409,13 @@ let execute vm insn =
       let value = peek_value vm in
       let result = test_pattern pattern value in
       push_value vm (value_of_bool result)
+    | Insn.Branch (then_insns, else_insns) ->
+      let cond = pop_value vm in
+      let cond = bool_of_value vm cond in
+      if cond then
+        vm.insns <- then_insns @ vm.insns
+      else
+        vm.insns <- else_insns @ vm.insns
   end
 
 let rec run vm =
