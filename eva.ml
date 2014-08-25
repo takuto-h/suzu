@@ -29,7 +29,7 @@ and value =
 
 and args = {
   normal_args : value list;
-  keyword_args : (string * value) list;
+  labeled_args : (string * value) list;
 }
 
 and env =
@@ -83,16 +83,16 @@ and show_fields table =
   in
   SnString.concat ", " (List.rev rev_strs)
 
-and show_args {normal_args;keyword_args;} =
-  let str_normals = SnString.concat_map ", " show_value normal_args in
-  let str_keywords = SnString.concat_map ", " show_keyword_arg keyword_args in
-  if List.length normal_args <> 0 && List.length keyword_args <> 0 then
-    sprintf "(%s, %s)" str_normals str_keywords
+and show_args {normal_args;labeled_args;} =
+  let str_normal = SnString.concat_map ", " show_value normal_args in
+  let str_labeled = SnString.concat_map ", " show_labeled_arg labeled_args in
+  if List.length normal_args <> 0 && List.length labeled_args <> 0 then
+    sprintf "(%s, %s)" str_normal str_labeled
   else
-    sprintf "(%s%s)" str_normals str_keywords
+    sprintf "(%s%s)" str_normal str_labeled
 
-and show_keyword_arg (key, value) =
-  sprintf ":%s %s" key (show_value value)
+and show_labeled_arg (label, value) =
+  sprintf ":%s %s" label (show_value value)
 
 module Value = struct
   type t = value
@@ -133,20 +133,20 @@ end
 module Args = struct
   type t = args
 
-  let make normals keywords = {
-    normal_args = normals;
-    keyword_args = keywords;
+  let make normal labeled = {
+    normal_args = normal;
+    labeled_args = labeled;
   }
 
   let nth {normal_args} n =
     List.nth normal_args n
 
-  let find {keyword_args} key =
-    List.assoc key keyword_args
+  let find {labeled_args} label =
+    List.assoc label labeled_args
 
-  let get args key =
+  let get args label =
     begin try
-        Some (find args key)
+        Some (find args label)
       with
       | Not_found ->
         None
@@ -387,8 +387,8 @@ let create () = {
   dummy = ();
 }
 
-let create_subr req_count ?(allows_rest=false) ?(req_keys=[]) ?(opt_keys=[]) proc =
-  Subr (req_count, allows_rest, req_keys, opt_keys, proc)
+let create_subr req_count ?(allows_rest=false) ?(req_labels=[]) ?(opt_labels=[]) proc =
+  Subr (req_count, allows_rest, req_labels, opt_labels, proc)
 
 let initial_field_table_size = 4
 let initial_param_table_size = 4
@@ -400,12 +400,12 @@ let wrong_number_of_arguments pos param_count arg_count =
   let message = sprintf "wrong number of arguments: required %d, but got %d\n" param_count arg_count in
   Error (pos, message, [])
 
-let lack_of_keyword_argument pos key =
-  let message = sprintf "lack of keyword argument: %s\n" key in
+let lack_of_labeled_argument pos label =
+  let message = sprintf "lack of labeled argument: %s\n" label in
   Error (pos, message, [])
 
-let extra_keyword_arguments pos rest_keyword_args =
-  let message = sprintf "extra keyword arguments: %s\n" (SnString.concat_map ", " fst rest_keyword_args) in
+let extra_labeled_arguments pos rest_labeled_args =
+  let message = sprintf "extra labeled arguments: %s\n" (SnString.concat_map ", " fst rest_labeled_args) in
   Error (pos, message, [])
 
 let match_failure pos pat value =
@@ -737,9 +737,9 @@ let rec eval eva {Expr.pos;Expr.raw;} =
       Tuple args
   end
 
-and eval_args eva {Expr.normal_args;Expr.keyword_args;} = {
+and eval_args eva {Expr.normal_args;Expr.labeled_args;} = {
   normal_args = List.map (eval eva) normal_args;
-  keyword_args = List.map (fun (key, expr) -> (key, eval eva expr)) keyword_args;
+  labeled_args = List.map (fun (label, expr) -> (label, eval eva expr)) labeled_args;
 }
 
 and eval_exprs eva exprs =
@@ -749,8 +749,8 @@ and eval_exprs eva exprs =
 
 and call_fun eva pos func args =
   begin match func with
-    | Subr (required_count, allows_rest, req_keys, opt_keys, subr) ->
-      call_subr eva pos required_count allows_rest req_keys opt_keys subr args
+    | Subr (required_count, allows_rest, req_labels, opt_labels, subr) ->
+      call_subr eva pos required_count allows_rest req_labels opt_labels subr args
     | Closure (env, params, body) ->
         begin try
             call_closure eva pos env params body args
@@ -780,24 +780,24 @@ and call_closure eva pos env params body args =
   end;
   eval_exprs eva body
 
-and call_subr eva pos required_count allows_rest req_keys opt_keys subr args =
+and call_subr eva pos required_count allows_rest req_labels opt_labels subr args =
   let arg_count = List.length args.normal_args in
   begin if arg_count < required_count || arg_count > required_count && not allows_rest then
       raise (wrong_number_of_arguments pos required_count arg_count)
   end;
-  let rest_keyword_args = List.fold_left begin fun keyword_args req_key ->
-      if List.mem_assoc req_key keyword_args then
-        List.remove_assoc req_key keyword_args
+  let rest_labeled_args = List.fold_left begin fun labeled_args req_label ->
+      if List.mem_assoc req_label labeled_args then
+        List.remove_assoc req_label labeled_args
       else
-        raise (lack_of_keyword_argument pos req_key)
-    end args.keyword_args req_keys
+        raise (lack_of_labeled_argument pos req_label)
+    end args.labeled_args req_labels
   in
-  let rest_keyword_args = List.fold_left begin fun keyword_args opt_key ->
-      List.remove_assoc opt_key keyword_args
-    end rest_keyword_args opt_keys
+  let rest_labeled_args = List.fold_left begin fun labeled_args opt_label ->
+      List.remove_assoc opt_label labeled_args
+    end rest_labeled_args opt_labels
   in
-  begin if List.length rest_keyword_args <> 0 then
-      raise (extra_keyword_arguments pos rest_keyword_args)
+  begin if List.length rest_labeled_args <> 0 then
+      raise (extra_labeled_arguments pos rest_labeled_args)
   end;
   subr eva pos args
 
@@ -833,23 +833,23 @@ and bind_params eva pos params args =
       let param_count = List.length params.Expr.normal_params in
       raise (wrong_number_of_arguments pos param_count arg_count)
   end;
-  let rest_keyword_args = List.fold_left begin fun keyword_args (key, (param, opt_expr)) ->
+  let rest_labeled_args = List.fold_left begin fun labeled_args (label, (param, opt_expr)) ->
       begin match opt_expr with
-        | _ when List.mem_assoc key keyword_args ->
-          let arg = List.assoc key keyword_args in
+        | _ when List.mem_assoc label labeled_args ->
+          let arg = List.assoc label labeled_args in
           bind_param eva pos param arg;
-          List.remove_assoc key keyword_args
+          List.remove_assoc label labeled_args
         | Some expr ->
           let arg = eval eva expr in
           bind_param eva pos param arg;
-          keyword_args
+          labeled_args
         | None ->
-          raise (lack_of_keyword_argument pos key)
+          raise (lack_of_labeled_argument pos label)
       end
-    end args.keyword_args params.Expr.keyword_params
+    end args.labeled_args params.Expr.labeled_params
   in
-  if List.length rest_keyword_args <> 0 then
-    raise (extra_keyword_arguments pos rest_keyword_args)
+  if List.length rest_labeled_args <> 0 then
+    raise (extra_labeled_arguments pos rest_labeled_args)
 
 and bind_param eva pos pat value =
   begin match pat.Expr.pat_raw with

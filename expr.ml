@@ -45,12 +45,12 @@ and pat_raw =
 
 and params = {
   normal_params : pat list;
-  keyword_params : (string * (pat * t option)) list;
+  labeled_params : (string * (pat * t option)) list;
 }
 
 and args = {
   normal_args : t list;
-  keyword_args : (string * t) list;
+  labeled_args : (string * t) list;
 }
 
 let at pos raw = {
@@ -76,16 +76,16 @@ let rec show_pattern {pat_raw} =
       sprintf "%s" (show_params params)
   end
 
-and show_params {normal_params;keyword_params;} =
-  let str_normals = SnString.concat_map ", " show_pattern normal_params in
-  let str_keywords = SnString.concat_map ", " show_keyword_param keyword_params in
-  if List.length normal_params <> 0 && List.length keyword_params <> 0 then
-    sprintf "(%s, %s)" str_normals str_keywords
+and show_params {normal_params;labeled_params;} =
+  let str_normal = SnString.concat_map ", " show_pattern normal_params in
+  let str_labeled = SnString.concat_map ", " show_labeled_param labeled_params in
+  if List.length normal_params <> 0 && List.length labeled_params <> 0 then
+    sprintf "(%s, %s)" str_normal str_labeled
   else
-    sprintf "(%s%s)" str_normals str_keywords
+    sprintf "(%s%s)" str_normal str_labeled
 
-and show_keyword_param (key, (pat, _)) =
-  sprintf ":%s %s = <expr>" key (show_pattern pat)
+and show_labeled_param (label, (pat, _)) =
+  sprintf ":%s %s = <expr>" label (show_pattern pat)
 
 let show_field (field, mutabl) =
   if mutabl then
@@ -146,16 +146,16 @@ and show_case (params, guard, body) =
       sprintf "(Case %s None %s)" (show_params params) (SnString.concat_map " " show body)
   end
 
-and show_args {normal_args;keyword_args;} =
-  let str_normals = SnString.concat_map ", " show normal_args in
-  let str_keywords = SnString.concat_map ", " show_keyword_arg keyword_args in
-  if List.length normal_args <> 0 && List.length keyword_args <> 0 then
-    sprintf "(%s, %s)" str_normals str_keywords
+and show_args {normal_args;labeled_args;} =
+  let str_normal = SnString.concat_map ", " show normal_args in
+  let str_labeled = SnString.concat_map ", " show_labeled_arg labeled_args in
+  if List.length normal_args <> 0 && List.length labeled_args <> 0 then
+    sprintf "(%s, %s)" str_normal str_labeled
   else
-    sprintf "(%s%s)" str_normals str_keywords
+    sprintf "(%s%s)" str_normal str_labeled
 
-and show_keyword_arg (key, value) =
-  sprintf ":%s %s" key (show value)
+and show_labeled_arg (label, value) =
+  sprintf ":%s %s" label (show value)
 
 module Pattern = struct
   type t = pat
@@ -171,9 +171,9 @@ end
 module Params = struct
   type t = params
 
-  let make normals keywords = {
-    normal_params = normals;
-    keyword_params = keywords;
+  let make normal labeled = {
+    normal_params = normal;
+    labeled_params = labeled;
   }
   
   let show = show_params
@@ -182,9 +182,9 @@ end
 module Args = struct
   type t = args
 
-  let make normals keywords = {
-    normal_args = normals;
-    keyword_args = keywords;
+  let make normal labeled = {
+    normal_args = normal;
+    labeled_args = labeled;
   }
   
   let show = show_args

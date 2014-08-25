@@ -52,11 +52,11 @@ let rec compile_pattern {Expr.pat_raw} =
       compile_pattern pat
   end
   
-and compile_params {Expr.normal_params;Expr.keyword_params} =
+and compile_params {Expr.normal_params;Expr.labeled_params} =
   let normal_params = List.map compile_pattern normal_params in
   let labeled_params = List.map begin fun (label, (pat, default)) ->
       (label, (compile_pattern pat, default <> None))
-    end keyword_params
+    end labeled_params
   in
   Insn.make_params normal_params labeled_params
 
@@ -146,7 +146,7 @@ and compile_bind insns {Expr.pat_pos;Expr.pat_raw} =
       Stack.push (Insn.AddVar x) insns
   end
 
-and compile_params insns {Expr.normal_params;Expr.keyword_params} =
+and compile_params insns {Expr.normal_params;Expr.labeled_params} =
   List.iteri begin fun i pat ->
     Stack.push (Insn.GetNth i) insns;
     compile_bind insns pat
@@ -160,7 +160,7 @@ and compile_params insns {Expr.normal_params;Expr.keyword_params} =
         Stack.push (Insn.GetLabeled (label, Some default)) insns
     end;
     compile_bind insns pat
-  end keyword_params
+  end labeled_params
 
 let compile expr =
   compile_with compile_expr expr
