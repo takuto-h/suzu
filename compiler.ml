@@ -46,8 +46,8 @@ let rec compile_pattern {Expr.pat_raw} =
       Insn.Variant (tag, compile_params params)
     | Expr.PatBind _ ->
       Insn.Any
-    | Expr.PatOr (_, _) ->
-      assert false
+    | Expr.PatOr (lhs, rhs) ->
+      Insn.Or (compile_pattern lhs, compile_pattern rhs)
     | Expr.PatAs (pat, _) ->
       compile_pattern pat
   end

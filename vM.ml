@@ -284,6 +284,8 @@ let rec test_pattern pattern value =
       test_params params args
     | (Insn.Variant (tag1, params), Variant (tag2, args)) when tag1 = tag2 ->
       test_params params args
+    | (Insn.Or (lhs, rhs), _) ->
+      test_pattern lhs value || test_pattern rhs value
     | _ ->
       false
   end

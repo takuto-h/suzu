@@ -6,6 +6,7 @@ type pattern =
   | Const of Literal.t
   | Params of params
   | Variant of string * params
+  | Or of pattern * pattern
 
 and params = {
   normal_params : pattern list;
