@@ -33,6 +33,7 @@ and value =
   | Module of frame
   | Args of args
   | Variant of string * args
+  | Closure of env * Insn.t list
 
 and env = frame list
 
@@ -87,6 +88,8 @@ let rec show_value value =
       show_args args
     | Variant (tag, args) ->
       sprintf "%s%s" tag (show_args args)
+    | Closure (_, _) ->
+      "<closure>"
   end
 
 and show_args {normal_args;labeled_args} =
