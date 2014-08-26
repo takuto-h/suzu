@@ -32,6 +32,7 @@ type t =
   | Branch of t list * t list
   | Return
   | MakeClosure of t list
+  | MakeArgs of int * string list
 
 let make_params normal_params labeled_params = {
   normal_params = normal_params;

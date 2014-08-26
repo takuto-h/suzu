@@ -125,6 +125,16 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.Push Literal.Unit) insns
   end
 
+and compile_args {Expr.normal_args;Expr.labeled_args} insns =
+  let count = List.length normal_args in
+  compile_exprs normal_args insns;
+  let rev_labels = List.fold_left begin fun labels (label, expr) ->
+      compile_expr expr insns;
+      label::labels
+    end [] labeled_args
+  in
+  Stack.push (Insn.MakeArgs (count, List.rev rev_labels)) insns
+
 and compile_exprs exprs insns =
   List.iter (fun expr -> compile_expr expr insns) exprs
 

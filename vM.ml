@@ -21,6 +21,7 @@ type t = {
   mutable stack : value list;
   mutable env : env;
   mutable pos : Pos.t;
+  mutable controls  : control list;
 }
 
 and value =
@@ -49,23 +50,32 @@ and frame = {
   exported_methods : MethodSet.t;
 }
 
+and control =
+  | Dump of Insn.t list * value list * env * Pos.t
+
 exception Error of Pos.t * string * Pos.t list
 
 exception InternalError of t * string
 exception Not_exported
-
-let create_frame () = {
-  vars = VarMap.empty;
-  methods = MethodMap.empty;
-  exported_vars = VarSet.empty;
-  exported_methods = MethodSet.empty;
-}
 
 let create insns env = {
   insns = insns;
   stack = [];
   env = env;
   pos = Pos.dummy;
+  controls = [];
+}
+
+let make_args normal_args labeled_args = {
+  normal_args = normal_args;
+  labeled_args = labeled_args;  
+}
+
+let create_frame () = {
+  vars = VarMap.empty;
+  methods = MethodMap.empty;
+  exported_vars = VarSet.empty;
+  exported_methods = MethodSet.empty;
 }
 
 let rec show_value value =
@@ -94,14 +104,14 @@ let rec show_value value =
 
 and show_args {normal_args;labeled_args} =
   let str_normal = SnString.concat_map ", " show_value normal_args in
-  let str_labeled = SnString.concat_map ", " show_keyword_arg labeled_args in
+  let str_labeled = SnString.concat_map ", " show_labeled_arg labeled_args in
   if List.length normal_args <> 0 && List.length labeled_args <> 0 then
     sprintf "(%s, %s)" str_normal str_labeled
   else
     sprintf "(%s%s)" str_normal str_labeled
 
-and show_keyword_arg (key, value) =
-  sprintf ":%s %s" key (show_value value)
+and show_labeled_arg (label, value) =
+  sprintf ":%s %s" label (show_value value)
 
 let required vm req_str got_value =
   InternalError (vm, sprintf "%s required, but got %s\n" req_str (show_value got_value))
@@ -421,9 +431,28 @@ let execute vm insn =
       else
         vm.insns <- else_insns @ vm.insns
     | Insn.Return ->
-      ()
+      let value = pop_value vm in
+      let Dump (insns, stack, env, pos) = List.hd vm.controls in
+      vm.insns <- insns;
+      vm.stack <- value::stack;
+      vm.env <- env;
+      vm.pos <- pos;
+      vm.controls <- List.tl vm.controls
     | Insn.MakeClosure insns ->
       push_value vm (Closure (vm.env, insns))
+    | Insn.MakeArgs (count, labels) ->
+      let labeled_args = List.fold_right begin fun label labeled_args ->
+          let value = pop_value vm in
+          (label, value)::labeled_args
+        end labels []
+      in
+      let normal_args = ref [] in
+      for i = 1 to count do
+        let value = pop_value vm in
+        normal_args := value::!normal_args
+      done;
+      let normal_args = !normal_args in
+      push_value vm (Args (make_args normal_args labeled_args))
   end
 
 let rec run vm =
