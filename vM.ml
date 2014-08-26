@@ -19,7 +19,7 @@ module MethodSet = Set.Make(OrderedMethod)
 type t = {
   mutable insns : Insn.t list;
   mutable stack : value list;
-  mutable env : modl list;
+  mutable env : frame list;
   mutable pos : Pos.t;
 }
 
@@ -30,11 +30,11 @@ and value =
   | Char of char
   | String of string
   | Class of string
-  | Module of modl
+  | Module of frame
   | Args of args
   | Variant of string * args
 
-and modl = {
+and frame = {
   vars : value VarMap.t;
   methods : value MethodMap.t;
   exported_vars : VarSet.t;
@@ -51,17 +51,17 @@ exception Error of Pos.t * string * Pos.t list
 exception InternalError of t * string
 exception Not_exported
 
-let create_module () = {
+let create_frame () = {
   vars = VarMap.empty;
   methods = MethodMap.empty;
   exported_vars = VarSet.empty;
   exported_methods = MethodSet.empty;
 }
 
-let create insns modl = {
+let create insns env = {
   insns = insns;
   stack = [];
-  env = [modl];
+  env = env;
   pos = Pos.dummy;
 }
 
@@ -126,16 +126,16 @@ let value_of_literal lit =
       String s
   end
 
-let rec find proc mods =
-  begin match mods with
+let rec find proc frames =
+  begin match frames with
     | [] ->
       raise Not_found
-    | modl::mods ->
+    | frame::frames ->
       begin try
-        proc modl
+        proc frame
         with
         | Not_found ->
-          find proc mods
+          find proc frames
       end
   end
 
@@ -159,20 +159,20 @@ let access_method {methods;exported_methods} klass sel =
   else
     raise Not_exported
 
-let update_current_module proc mods =
-  proc (List.hd mods)::List.tl mods
+let update_current_frame proc frames =
+  proc (List.hd frames)::List.tl frames
 
-let add_var vm x value =
-  let proc modl =
-    {modl with vars = VarMap.add x value modl.vars}
+let add_var env x value =
+  let proc frame =
+    {frame with vars = VarMap.add x value frame.vars}
   in
-  update_current_module proc vm.env
+  update_current_frame proc env
 
-let add_method vm klass sel value =
-  let proc modl =
-    {modl with methods = MethodMap.add (klass, sel) value modl.methods}
+let add_method env klass sel value =
+  let proc frame =
+    {frame with methods = MethodMap.add (klass, sel) value frame.methods}
   in
-  update_current_module proc vm.env
+  update_current_frame proc env
 
 let unit_of_value vm value =
   begin match value with
@@ -368,12 +368,12 @@ let execute vm insn =
         raise (required vm (Literal.show lit) top)
     | Insn.AddVar x ->
       let value = pop_value vm in
-      vm.env <- add_var vm x value;
+      vm.env <- add_var vm.env x value;
     | Insn.AddMethod sel ->
       let klass = pop_value vm in
       let klass = class_of_value vm klass in
       let value = pop_value vm in
-      vm.env <- add_method vm klass (Selector.string_of sel) value
+      vm.env <- add_method vm.env klass (Selector.string_of sel) value
     | Insn.GetNth n ->
       let args = peek_value vm in
       let args = args_of_value vm args in
@@ -431,6 +431,3 @@ let rec run vm =
     | InternalError (vm, message) ->
       raise (Error (vm.pos, message, []))
   end
-
-let get_current_module vm =
-  List.hd vm.env
