@@ -33,7 +33,7 @@ and value =
   | Class of string
   | Module of frame
   | Args of args
-  | Variant of string * args
+  | Variant of string * string * args
   | Closure of env * Insn.t list
 
 and args = {
@@ -78,6 +78,30 @@ let create_frame () = {
   exported_methods = MethodSet.empty;
 }
 
+let get_class value =
+  begin match value with
+    | Unit ->
+      "Unit::C"
+    | Int _ ->
+      "Int::C"
+    | Bool _ ->
+      "Bool::C"
+    | Char _ ->
+      "Char::C"
+    | String _ ->
+      "String::C"
+    | Class _ ->
+      "Class::C"
+    | Module _ ->
+      "Module::C"
+    | Args _ ->
+      "Args::C"
+    | Variant (klass, _, _) ->
+      klass
+    | Closure (_, _) ->
+      "Proc::C"
+  end
+
 let rec show_value value =
   begin match value with
     | Unit ->
@@ -96,7 +120,7 @@ let rec show_value value =
       "<module>"
     | Args args ->
       show_args args
-    | Variant (tag, args) ->
+    | Variant (_, tag, args) ->
       sprintf "%s%s" tag (show_args args)
     | Closure (_, _) ->
       "<closure>"
@@ -253,14 +277,6 @@ let args_of_value vm value =
       raise (required vm "arguments" value)
   end
 
-let variant_of_value vm value =
-  begin match value with
-    | Variant (tag, args) ->
-      (tag, args)
-    | _ ->
-      raise (required vm "variant" value)
-  end
-
 let value_of_unit u = Unit
 let value_of_int i = Int i
 let value_of_bool b = Bool b
@@ -297,7 +313,7 @@ let rec test_pattern pattern value =
       true
     | (Insn.Params params, Args args) ->
       test_params params args
-    | (Insn.Variant (tag1, params), Variant (tag2, args)) when tag1 = tag2 ->
+    | (Insn.Variant (tag1, params), Variant (_, tag2, args)) when tag1 = tag2 ->
       test_params params args
     | (Insn.Or (lhs, rhs), _) ->
       test_pattern lhs value || test_pattern rhs value
@@ -327,6 +343,26 @@ and test_labeled_params labeled_params labeled_args =
     | (_, (_, _))::_ ->
       false
   end
+
+let call vm func args =
+  let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
+  begin match func with
+    | Closure (env, insns) ->
+      vm.insns <- insns;
+      vm.stack <- [args];
+      vm.env <- create_frame ()::env;
+      vm.controls <- dump::vm.controls;
+    | _ ->
+      raise (required vm "function" func)
+  end
+
+let return vm value =
+  let Dump (insns, stack, env, pos) = List.hd vm.controls in
+  vm.insns <- insns;
+  vm.stack <- value::stack;
+  vm.env <- env;
+  vm.pos <- pos;
+  vm.controls <- List.tl vm.controls
 
 let execute vm insn =
   begin match insn with
@@ -414,11 +450,12 @@ let execute vm insn =
       end
     | Insn.RemoveTag tag ->
       let value = pop_value vm in
-      let (tag2, args) = variant_of_value vm value in
-      if tag2 = tag then
-        push_value vm (Args args)
-      else
-        raise (required vm tag value)
+      begin match value with
+        | Variant (_, tag2, args) when tag2 = tag ->
+          push_value vm (Args args)
+        | _ ->
+          raise (required vm tag value)
+      end
     | Insn.Test pattern ->
       let value = peek_value vm in
       let result = test_pattern pattern value in
@@ -433,24 +470,21 @@ let execute vm insn =
     | Insn.Call ->
       let args = pop_value vm in
       let func = pop_value vm in
-      let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
-      vm.controls <- dump::vm.controls;
-      begin match func with
-        | Closure (env, insns) ->
-          vm.insns <- insns;
-          vm.stack <- [args];
-          vm.env <- create_frame ()::env;
-        | _ ->
-          raise (required vm "function" func)
+      call vm func args
+    | Insn.Send sel ->
+      let args = pop_value vm in
+      let recv = pop_value vm in
+      let klass = get_class recv in
+      begin try
+          let func = find_method vm.env klass (Selector.string_of sel) in
+          call vm func args
+        with
+        | Not_found ->
+          raise (InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
       end
     | Insn.Return ->
       let value = pop_value vm in
-      let Dump (insns, stack, env, pos) = List.hd vm.controls in
-      vm.insns <- insns;
-      vm.stack <- value::stack;
-      vm.env <- env;
-      vm.pos <- pos;
-      vm.controls <- List.tl vm.controls
+      return vm value
     | Insn.MakeArgs (count, labels) ->
       let labeled_args = List.fold_right begin fun label labeled_args ->
           let value = pop_value vm in

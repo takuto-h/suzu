@@ -94,7 +94,9 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       compile_args args insns;
       Stack.push Insn.Call insns
     | Expr.MethodCall (recv, sel, args) ->
-      Stack.push (Insn.Push Literal.Unit) insns
+      compile_expr recv insns;
+      compile_args args insns;
+      Stack.push (Insn.Send sel) insns
     | Expr.And (lhs, rhs) ->
       compile_expr lhs insns;
       let rhs = compile_with (compile_expr rhs) in

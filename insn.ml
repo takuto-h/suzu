@@ -31,6 +31,7 @@ type t =
   | Test of pattern
   | Branch of t list * t list
   | Call
+  | Send of Selector.t
   | Return
   | MakeArgs of int * string list
   | MakeClosure of t list
