@@ -16,18 +16,18 @@ and params = {
 type t =
   | At of Pos.t
   | Push of Literal.t
+  | Pop
+  | Dup
   | FindVar of string
   | FindMethod of Selector.t
   | AccessVar of string
   | AccessMethod of Selector.t
-  | Pop
-  | AssertEqual of Literal.t
   | AddVar of string
   | AddMethod of Selector.t
+  | AssertEqual of Literal.t
   | GetNth of int
   | GetLabeled of string * (t list) option
   | RemoveTag of string
-  | Dup
   | Test of pattern
   | Branch of t list * t list
 

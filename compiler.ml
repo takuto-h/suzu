@@ -88,9 +88,13 @@ let rec compile_expr insns {Expr.pos;Expr.raw} =
     | Expr.MethodCall (recv, sel, args) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.And (lhs, rhs) ->
-      Stack.push (Insn.Push Literal.Unit) insns
+      compile_expr insns lhs;
+      let rhs = compile_with compile_expr rhs in
+      Stack.push (Insn.Branch (rhs, [])) insns
     | Expr.Or (lhs, rhs) ->
-      Stack.push (Insn.Push Literal.Unit) insns
+      compile_expr insns lhs;
+      let rhs = compile_with compile_expr rhs in
+      Stack.push (Insn.Branch ([], rhs)) insns
     | Expr.Module (name, exprs) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Export voms ->

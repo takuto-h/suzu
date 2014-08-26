@@ -319,6 +319,11 @@ let execute vm insn =
       vm.pos <- pos
     | Insn.Push lit ->
       push_value vm (value_of_literal lit)
+    | Insn.Pop ->
+      ignore (pop_value vm)
+    | Insn.Dup ->
+      let top = peek_value vm in
+      push_value vm top
     | Insn.FindVar x ->
       begin try
           push_value vm (find_var vm.env x)
@@ -359,13 +364,6 @@ let execute vm insn =
         | Not_exported ->
           raise (InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel)))
       end
-    | Insn.Pop ->
-      ignore (pop_value vm)
-    | Insn.AssertEqual lit ->
-      let value = value_of_literal lit in
-      let top = pop_value vm in
-      if top <> value then
-        raise (required vm (Literal.show lit) top)
     | Insn.AddVar x ->
       let value = pop_value vm in
       vm.env <- add_var vm.env x value;
@@ -374,6 +372,11 @@ let execute vm insn =
       let klass = class_of_value vm klass in
       let value = pop_value vm in
       vm.env <- add_method vm.env klass (Selector.string_of sel) value
+    | Insn.AssertEqual lit ->
+      let value = value_of_literal lit in
+      let top = pop_value vm in
+      if top <> value then
+        raise (required vm (Literal.show lit) top)
     | Insn.GetNth n ->
       let args = peek_value vm in
       let args = args_of_value vm args in
@@ -401,9 +404,6 @@ let execute vm insn =
         push_value vm (Args args)
       else
         raise (required vm tag value)
-    | Insn.Dup ->
-      let top = peek_value vm in
-      push_value vm top
     | Insn.Test pattern ->
       let value = peek_value vm in
       let result = test_pattern pattern value in
