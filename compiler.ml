@@ -90,7 +90,9 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       in
       Stack.push (Insn.MakeClosure body) insns
     | Expr.FunCall (func, args) ->
-      Stack.push (Insn.Push Literal.Unit) insns
+      compile_expr func insns;
+      compile_args args insns;
+      Stack.push Insn.Call insns
     | Expr.MethodCall (recv, sel, args) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.And (lhs, rhs) ->

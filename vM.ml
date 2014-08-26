@@ -430,6 +430,19 @@ let execute vm insn =
         vm.insns <- then_insns @ vm.insns
       else
         vm.insns <- else_insns @ vm.insns
+    | Insn.Call ->
+      let args = pop_value vm in
+      let func = pop_value vm in
+      let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
+      vm.controls <- dump::vm.controls;
+      begin match func with
+        | Closure (env, insns) ->
+          vm.insns <- insns;
+          vm.stack <- [args];
+          vm.env <- create_frame ()::env;
+        | _ ->
+          raise (required vm "function" func)
+      end
     | Insn.Return ->
       let value = pop_value vm in
       let Dump (insns, stack, env, pos) = List.hd vm.controls in
@@ -438,8 +451,6 @@ let execute vm insn =
       vm.env <- env;
       vm.pos <- pos;
       vm.controls <- List.tl vm.controls
-    | Insn.MakeClosure insns ->
-      push_value vm (Closure (vm.env, insns))
     | Insn.MakeArgs (count, labels) ->
       let labeled_args = List.fold_right begin fun label labeled_args ->
           let value = pop_value vm in
@@ -453,6 +464,8 @@ let execute vm insn =
       done;
       let normal_args = !normal_args in
       push_value vm (Args (make_args normal_args labeled_args))
+    | Insn.MakeClosure insns ->
+      push_value vm (Closure (vm.env, insns))
   end
 
 let rec run vm =
