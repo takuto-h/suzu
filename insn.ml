@@ -30,6 +30,8 @@ type t =
   | RemoveTag of string
   | Test of pattern
   | Branch of t list * t list
+  | Return
+  | MakeClosure of t list
 
 let make_params normal_params labeled_params = {
   normal_params = normal_params;

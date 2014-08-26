@@ -82,7 +82,13 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       compile_bind pat insns;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Lambda (params, body) ->
-      Stack.push (Insn.Push Literal.Unit) insns
+      let body = compile_with begin fun insns ->
+          compile_multiple_bind params insns;
+          compile_exprs body insns;
+          Stack.push Insn.Return insns
+        end
+      in
+      Stack.push (Insn.MakeClosure body) insns
     | Expr.FunCall (func, args) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.MethodCall (recv, sel, args) ->
@@ -118,6 +124,9 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
     | Expr.Tuple args ->
       Stack.push (Insn.Push Literal.Unit) insns
   end
+
+and compile_exprs exprs insns =
+  List.iter (fun expr -> compile_expr expr insns) exprs
 
 and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
   Stack.push (Insn.At pat_pos) insns;

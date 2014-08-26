@@ -35,6 +35,11 @@ and value =
   | Variant of string * args
   | Closure of env * Insn.t list
 
+and args = {
+  normal_args : value list;
+  labeled_args : (string * value) list;
+}
+
 and env = frame list
 
 and frame = {
@@ -42,11 +47,6 @@ and frame = {
   methods : value MethodMap.t;
   exported_vars : VarSet.t;
   exported_methods : MethodSet.t;
-}
-
-and args = {
-  normal_args : value list;
-  labeled_args : (string * value) list;
 }
 
 exception Error of Pos.t * string * Pos.t list
@@ -131,16 +131,16 @@ let value_of_literal lit =
       String s
   end
 
-let rec find proc frames =
-  begin match frames with
+let rec find proc env =
+  begin match env with
     | [] ->
       raise Not_found
-    | frame::frames ->
+    | frame::env ->
       begin try
         proc frame
         with
         | Not_found ->
-          find proc frames
+          find proc env
       end
   end
 
@@ -164,8 +164,8 @@ let access_method {methods;exported_methods} klass sel =
   else
     raise Not_exported
 
-let update_current_frame proc frames =
-  proc (List.hd frames)::List.tl frames
+let update_current_frame proc env =
+  proc (List.hd env)::List.tl env
 
 let add_var env x value =
   let proc frame =
@@ -420,6 +420,10 @@ let execute vm insn =
         vm.insns <- then_insns @ vm.insns
       else
         vm.insns <- else_insns @ vm.insns
+    | Insn.Return ->
+      ()
+    | Insn.MakeClosure insns ->
+      push_value vm (Closure (vm.env, insns))
   end
 
 let rec run vm =
