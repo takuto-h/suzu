@@ -127,11 +127,11 @@ and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
     | Expr.PatConst lit ->
       Stack.push (Insn.AssertEqual lit) insns;
     | Expr.PatTuple params ->
-      compile_params params insns;
+      compile_multiple_bind params insns;
       Stack.push Insn.Pop insns
     | Expr.PatVariant (tag, params) ->
       Stack.push (Insn.RemoveTag tag) insns;
-      compile_params params insns;
+      compile_multiple_bind params insns;
       Stack.push Insn.Pop insns
     | Expr.PatBind (VarOrMethod.Var x) ->
       Stack.push (Insn.AddVar x) insns
@@ -150,7 +150,7 @@ and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
       Stack.push (Insn.AddVar x) insns
   end
 
-and compile_params {Expr.normal_params;Expr.labeled_params} insns =
+and compile_multiple_bind {Expr.normal_params;Expr.labeled_params} insns =
   List.iteri begin fun i pat ->
     Stack.push (Insn.GetNth i) insns;
     compile_bind pat insns
