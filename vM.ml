@@ -19,7 +19,7 @@ module MethodSet = Set.Make(OrderedMethod)
 type t = {
   mutable insns : Insn.t list;
   mutable stack : value list;
-  mutable env : frame list;
+  mutable env : env;
   mutable pos : Pos.t;
 }
 
@@ -33,6 +33,8 @@ and value =
   | Module of frame
   | Args of args
   | Variant of string * args
+
+and env = frame list
 
 and frame = {
   vars : value VarMap.t;

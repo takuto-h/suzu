@@ -3,7 +3,7 @@ open SnPervasives
 open Printf
 
 type t = {
-  mutable env : VM.frame list;
+  mutable env : VM.env;
 }
 
 let initial_buffer_size = 64
