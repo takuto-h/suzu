@@ -102,11 +102,14 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
     | Expr.And (lhs, rhs) ->
       compile_expr lhs insns;
       let rhs = compile_with (compile_expr rhs) in
-      Stack.push (Insn.Branch (rhs, [])) insns
+      Stack.push (Insn.Branch (rhs, [Insn.Push (Literal.Bool false)])) insns
     | Expr.Or (lhs, rhs) ->
       compile_expr lhs insns;
       let rhs = compile_with (compile_expr rhs) in
-      Stack.push (Insn.Branch ([], rhs)) insns
+      Stack.push (Insn.Branch ([Insn.Push (Literal.Bool true)], rhs)) insns
+    | Expr.Match (args, cases) ->
+      compile_args args insns;
+      (*compile_cases cases insns*)
     | Expr.Module (name, exprs) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Export voms ->
@@ -125,9 +128,25 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Except (modl, voms) ->
       Stack.push (Insn.Push Literal.Unit) insns
-    | Expr.Match (args, cases) ->
-      Stack.push (Insn.Push Literal.Unit) insns
   end
+
+(*and compile_cases cases insns =
+  begin match cases with
+    | [] ->
+      Stack.push Insn.Fail insns
+    | (params, guard, body)::cases ->
+      let params = compile_params params in
+      begin match guard with
+        | None ->
+          ()
+        | Some guard ->
+          let guard = compile_with (compile_expr guard) in
+          Stack.push (Insn.Branch (guard, [Insn.Push (Literal.Bool false)])) insns
+      end;
+      let then_insns = compile_with (compile_exprs body) in
+      let else_insns = compile_with (compile_cases cases) in
+      Stack.push (Insn.Branch (then_insns, else_insns)) insns
+  end*)
 
 and compile_args {Expr.normal_args;Expr.labeled_args} insns =
   let count = List.length normal_args in
@@ -138,9 +157,6 @@ and compile_args {Expr.normal_args;Expr.labeled_args} insns =
     end [] labeled_args
   in
   Stack.push (Insn.MakeArgs (count, List.rev rev_labels)) insns
-
-and compile_exprs exprs insns =
-  List.iter (fun expr -> compile_expr expr insns) exprs
 
 and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
   Stack.push (Insn.At pat_pos) insns;
@@ -188,6 +204,9 @@ and compile_multiple_bind {Expr.normal_params;Expr.labeled_params} insns =
     end;
     compile_bind pat insns
   end labeled_params
+
+and compile_exprs exprs insns =
+  List.iter (fun expr -> compile_expr expr insns) exprs
 
 let compile expr =
   compile_with (compile_expr expr)
