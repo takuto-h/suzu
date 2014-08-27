@@ -500,6 +500,9 @@ let execute vm insn =
       push_value vm (Args (make_args normal_args labeled_args))
     | Insn.MakeClosure insns ->
       push_value vm (Closure (vm.env, insns))
+    | Insn.Fail ->
+      let value = pop_value vm in
+      raise (InternalError (vm, sprintf "match failure of %s\n" (show_value value)))
   end
 
 let rec run vm =

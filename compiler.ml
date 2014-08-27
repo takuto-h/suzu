@@ -84,7 +84,7 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
     | Expr.Lambda (params, body) ->
       let body = compile_with begin fun insns ->
           compile_multiple_bind params insns;
-          compile_exprs body insns;
+          compile_body body insns;
           Stack.push Insn.Return insns
         end
       in
@@ -109,7 +109,7 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.Branch ([Insn.Push (Literal.Bool true)], rhs)) insns
     | Expr.Match (args, cases) ->
       compile_args args insns;
-      (*compile_cases cases insns*)
+      compile_cases cases insns
     | Expr.Module (name, exprs) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Export voms ->
@@ -130,12 +130,12 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.Push Literal.Unit) insns
   end
 
-(*and compile_cases cases insns =
+and compile_cases cases insns =
   begin match cases with
     | [] ->
       Stack.push Insn.Fail insns
     | (params, guard, body)::cases ->
-      let params = compile_params params in
+      Stack.push (Insn.Test (Insn.Params (compile_params params))) insns;
       begin match guard with
         | None ->
           ()
@@ -143,14 +143,18 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
           let guard = compile_with (compile_expr guard) in
           Stack.push (Insn.Branch (guard, [Insn.Push (Literal.Bool false)])) insns
       end;
-      let then_insns = compile_with (compile_exprs body) in
+      let then_insns = compile_with begin fun insns ->
+          compile_multiple_bind params insns;
+          compile_body body insns
+        end
+      in
       let else_insns = compile_with (compile_cases cases) in
       Stack.push (Insn.Branch (then_insns, else_insns)) insns
-  end*)
+  end
 
 and compile_args {Expr.normal_args;Expr.labeled_args} insns =
   let count = List.length normal_args in
-  compile_exprs normal_args insns;
+  List.iter (fun expr -> compile_expr expr insns) normal_args;
   let rev_labels = List.fold_left begin fun labels (label, expr) ->
       compile_expr expr insns;
       label::labels
@@ -205,8 +209,15 @@ and compile_multiple_bind {Expr.normal_params;Expr.labeled_params} insns =
     compile_bind pat insns
   end labeled_params
 
-and compile_exprs exprs insns =
-  List.iter (fun expr -> compile_expr expr insns) exprs
+and compile_body exprs insns =
+  List.iter begin fun expr ->
+    compile_expr expr insns;
+    Stack.push (Insn.AssertEqual Literal.Unit) insns
+  end exprs;
+  if Stack.is_empty insns then
+    Stack.push (Insn.Push Literal.Unit) insns
+  else
+    ignore (Stack.pop insns)
 
 let compile expr =
   compile_with (compile_expr expr)

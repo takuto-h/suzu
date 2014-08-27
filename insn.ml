@@ -35,6 +35,7 @@ type t =
   | Return
   | MakeArgs of int * string list
   | MakeClosure of t list
+  | Fail
 
 let make_params normal_params labeled_params = {
   normal_params = normal_params;
