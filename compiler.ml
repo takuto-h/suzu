@@ -97,6 +97,8 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       compile_expr recv insns;
       compile_args args insns;
       Stack.push (Insn.Send sel) insns
+    | Expr.Tuple args ->
+      compile_args args insns
     | Expr.And (lhs, rhs) ->
       compile_expr lhs insns;
       let rhs = compile_with (compile_expr rhs) in
@@ -124,8 +126,6 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
     | Expr.Except (modl, voms) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Match (args, cases) ->
-      Stack.push (Insn.Push Literal.Unit) insns
-    | Expr.Tuple args ->
       Stack.push (Insn.Push Literal.Unit) insns
   end
 
