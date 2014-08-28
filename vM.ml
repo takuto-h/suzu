@@ -784,5 +784,9 @@ let rec run vm =
       end
     with
     | InternalError (vm, message) ->
-      raise (Error (vm.pos, message, []))
+      let stack_trace = List.fold_right begin fun (Dump (_, _, _, pos)) stack_trace ->
+          pos::stack_trace
+        end vm.controls []
+      in
+      raise (Error (vm.pos, message, stack_trace))
   end

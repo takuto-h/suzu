@@ -4,7 +4,7 @@ BYTE_ENABLED = true
 
 SUZU_FILES[] =\
   snPervasives snString snChar pos source token lexer literal selector varOrMethod expr parser\
-  eva interp pattern insn compiler vM loader builtin prelude main
+  pattern insn compiler vM loader builtin prelude main
 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)
