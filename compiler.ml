@@ -136,19 +136,26 @@ and compile_cases cases insns =
       Stack.push Insn.Fail insns
     | (params, guard, body)::cases ->
       Stack.push (Insn.Test (Insn.Params (compile_params params))) insns;
-      begin match guard with
-        | None ->
-          ()
-        | Some guard ->
-          let guard = compile_with (compile_expr guard) in
-          Stack.push (Insn.Branch (guard, [Insn.Push (Literal.Bool false)])) insns
-      end;
+      let else_insns = compile_with (compile_cases cases) in
       let then_insns = compile_with begin fun insns ->
+          Stack.push Insn.Begin insns;
           compile_multiple_bind params insns;
-          compile_body body insns
+          begin match guard with
+            | None ->
+              compile_body body insns;
+              Stack.push Insn.End insns
+            | Some guard ->
+              compile_expr guard insns;
+              let then_insns = compile_with begin fun insns ->
+                  compile_body body insns;
+                  Stack.push Insn.End insns
+                end
+              in
+              let else_insns = Insn.End::else_insns in
+              Stack.push (Insn.Branch (then_insns, else_insns)) insns
+          end;
         end
       in
-      let else_insns = compile_with (compile_cases cases) in
       Stack.push (Insn.Branch (then_insns, else_insns)) insns
   end
 

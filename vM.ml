@@ -503,6 +503,10 @@ let execute vm insn =
     | Insn.Fail ->
       let value = pop_value vm in
       raise (InternalError (vm, sprintf "match failure of %s\n" (show_value value)))
+    | Insn.Begin ->
+      vm.env <- create_frame ()::vm.env
+    | Insn.End ->
+      vm.env <- List.tl vm.env
   end
 
 let rec run vm =
