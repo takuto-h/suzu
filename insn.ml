@@ -30,5 +30,7 @@ type t =
   | AddMethod of Selector.t
   | ExportVar of string
   | ExportMethod of Selector.t
+  | UnexportVar of string
+  | UnexportMethod of Selector.t
   | Open
   | Include

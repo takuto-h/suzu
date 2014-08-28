@@ -153,8 +153,17 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
         end
       in
       Stack.push (Insn.MakeClosure body) insns
-    | Expr.Except (modl, voms) ->
-      Stack.push (Insn.Push Literal.Unit) insns
+    | Expr.Except (expr, voms) ->
+      compile_expr expr insns;
+      List.iter begin fun vom ->
+        begin match vom with
+          | VarOrMethod.Var x ->
+            Stack.push (Insn.UnexportVar x) insns
+          | VarOrMethod.Method (mods_k, klass, sel) ->
+            compile_class mods_k klass insns;
+            Stack.push (Insn.UnexportMethod sel) insns
+        end
+      end voms;
     | Expr.Record (klass, ctor, fields) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Variant (klass, ctors) ->

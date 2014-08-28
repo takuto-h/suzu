@@ -166,6 +166,12 @@ let variable_not_found vm x =
 let method_not_found vm klass sel = 
   InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel))
 
+let variable_not_exported vm x =
+  InternalError (vm, sprintf "variable not exported: %s\n" x)
+
+let method_not_exported vm klass sel = 
+  InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel))
+
 let push_value vm value =
   vm.stack <- value::vm.stack
 
@@ -252,6 +258,18 @@ let export_method env klass sel =
     else
       raise Not_found
   end env
+
+let unexport_var frame x =
+  if VarMap.mem x frame.vars then
+    {frame with exported_vars = VarSet.add x frame.exported_vars}
+  else
+    raise Not_exported
+
+let unexport_method frame klass sel =
+  if MethodMap.mem (klass, sel) frame.methods then
+    {frame with exported_methods = MethodSet.add (klass, sel) frame.exported_methods}
+  else
+    raise Not_exported
 
 let open_module vm modl =
   VarSet.iter begin fun x ->
@@ -596,7 +614,7 @@ let execute vm insn =
         | Not_found ->
           raise (variable_not_found vm x)
         | Not_exported ->
-          raise (InternalError (vm, sprintf "variable not exported: %s\n" x))
+          raise (variable_not_exported vm x)
       end
     | Insn.AccessMethod sel ->
       let klass = pop_value vm in
@@ -609,7 +627,7 @@ let execute vm insn =
         | Not_found ->
           raise (method_not_found vm klass sel)
         | Not_exported ->
-          raise (InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel)))
+          raise (method_not_exported vm klass sel)
       end
     | Insn.AddVar x ->
       let value = pop_value vm in
@@ -634,6 +652,26 @@ let execute vm insn =
         with
         | Not_found ->
           raise (method_not_found vm klass sel)
+      end
+    | Insn.UnexportVar x ->
+      let modl = pop_value vm in
+      let modl = module_of_value vm modl in
+      begin try
+          push_value vm (Module (unexport_var modl x))
+        with
+        | Not_exported ->
+          raise (variable_not_exported vm x)
+      end
+    | Insn.UnexportMethod sel ->
+      let klass = pop_value vm in
+      let klass = class_of_value vm klass in
+      let modl = pop_value vm in
+      let modl = module_of_value vm modl in
+      begin try
+          push_value vm (Module (unexport_method modl klass (Selector.string_of sel)))
+        with
+        | Not_exported ->
+          raise (method_not_exported vm klass sel)
       end
     | Insn.Open ->
       let modl = pop_value vm in
