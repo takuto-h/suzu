@@ -57,6 +57,7 @@ and control =
 exception Error of Pos.t * string * Pos.t list
 
 exception InternalError of t * string
+exception Match_failure of exn
 exception Not_exported
 
 let create insns env = {
@@ -322,43 +323,50 @@ let opt_labeled args label =
       None
   end
 
-let rec test_pattern pat value =
+let rec check_value vm pat value =
   begin match (pat, value) with
     | (Insn.Any, _) ->
-      true
+      ()
     | (Insn.Const lit, _) when value_of_literal lit = value ->
-      true
+      ()
     | (Insn.Params params, Args args) ->
-      test_params params args
+      check_args vm params args
     | (Insn.Variant (tag1, params), Variant (_, tag2, args)) when tag1 = tag2 ->
-      test_params params args
+      check_args vm params args
     | (Insn.Or (lhs, rhs), _) ->
-      test_pattern lhs value || test_pattern rhs value
+      begin try check_value vm lhs value with Match_failure _ ->
+        begin try check_value vm rhs value with Match_failure _ ->
+          raise (Match_failure (required vm (Insn.show_pattern pat) value))
+        end
+      end
     | _ ->
-      false
+      raise (Match_failure (required vm (Insn.show_pattern pat) value))
   end
 
-and test_params params args =
-  begin try
-      List.for_all2 test_pattern params.Insn.normal_params args.normal_args
-    with
-    | Invalid_argument _ ->
-      false
-  end
-  && test_labeled_params params.Insn.labeled_params args.labeled_args
+and check_args vm {Insn.normal_params;Insn.labeled_params} {normal_args;labeled_args} =
+  let req_count = List.length normal_params in
+  let got_count = List.length normal_args in
+  begin if req_count <> got_count then
+      raise (Match_failure (wrong_number_of_arguments vm req_count got_count))
+  end;
+  List.iter2 (check_value vm) normal_params normal_args;
+  check_labeled_args vm labeled_params labeled_args
 
-and test_labeled_params labeled_params labeled_args =
+and check_labeled_args vm labeled_params labeled_args =
   begin match labeled_params with
+    | [] when List.length labeled_args = 0 ->
+      ()
     | [] ->
-      List.length labeled_args = 0
+      raise (Match_failure (extra_labeled_arguments vm labeled_args))
     | (label, (param, _))::labeled_params when List.mem_assoc label labeled_args ->
       let arg = List.assoc label labeled_args in
       let labeled_args = List.remove_assoc label labeled_args in
-      test_pattern param arg && test_labeled_params labeled_params labeled_args
+      check_value vm param arg;
+      check_labeled_args vm labeled_params labeled_args
     | (_, (_, has_default))::labeled_params when has_default ->
-      test_labeled_params labeled_params labeled_args
-    | (_, (_, _))::_ ->
-      false
+      check_labeled_args vm labeled_params labeled_args
+    | (label, (_, _))::_ ->
+      ()
   end
 
 let call_subr vm req_count allows_rest req_labels opt_labels proc args =
@@ -500,15 +508,21 @@ let execute vm insn =
       end
     | Insn.Test pat ->
       let value = peek_value vm in
-      let result = test_pattern pat value in
-      push_value vm (value_of_bool result)
+      begin try
+          check_value vm pat value;
+          push_value vm (Bool true)
+        with
+        | Match_failure _ ->
+          push_value vm (Bool false)
+      end
     | Insn.Check pat ->
       let value = peek_value vm in
-      let result = test_pattern pat value in
-      if not result then
-        let str_value = show_value value in
-        let str_pat = Insn.show_pattern pat in
-        raise (InternalError (vm, sprintf "match failure of %s with %s\n" str_value str_pat))
+      begin try
+          check_value vm pat value
+        with
+        | Match_failure exn ->
+          raise exn
+      end
     | Insn.Branch (then_insns, else_insns) ->
       let cond = pop_value vm in
       let cond = bool_of_value vm cond in

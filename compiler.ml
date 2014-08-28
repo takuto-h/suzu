@@ -79,7 +79,6 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.AccessMethod sel) insns
     | Expr.Let (pat, expr) ->
       compile_expr expr insns;
-      Stack.push (Insn.At pat.Expr.pat_pos) insns;
       Stack.push (Insn.Check (compile_pattern pat)) insns;
       compile_bind pat insns;
       Stack.push (Insn.Push Literal.Unit) insns
