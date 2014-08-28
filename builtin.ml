@@ -189,38 +189,38 @@ let subr_read_line =
   end
 
 let initialize loader =
-  let env = ref [VM.create_frame ()] in
-  env := VM.add_var !env "gt" subr_gt ~export:true;
-  env := VM.add_var !env "lt" subr_lt ~export:true;
-  env := VM.add_var !env "ge" subr_ge ~export:true;
-  env := VM.add_var !env "le" subr_le ~export:true;
-  env := VM.add_var !env "eq" subr_eq ~export:true;
-  env := VM.add_var !env "ne" subr_ne ~export:true;
-  env := VM.add_var !env "compare" subr_compare ~export:true;
-  env := VM.add_var !env "show" subr_show ~export:true;
-  env := VM.add_var !env "add" (make_binary_arith_subr ( + )) ~export:true;
-  env := VM.add_var !env "sub" (make_binary_arith_subr ( - )) ~export:true;
-  env := VM.add_var !env "mul" (make_binary_arith_subr ( * )) ~export:true;
-  env := VM.add_var !env "div" (make_binary_arith_subr ( / )) ~export:true;
-  env := VM.add_var !env "mod" (make_binary_arith_subr ( mod )) ~export:true;
-  env := VM.add_var !env "plus" (make_unary_arith_subr ( ~+ )) ~export:true;
-  env := VM.add_var !env "minus" (make_unary_arith_subr ( ~- )) ~export:true;
-  env := VM.add_var !env "not" subr_not ~export:true;
-  env := VM.add_var !env "char_to_string" subr_char_to_string ~export:true;
-  env := VM.add_var !env "class_of" subr_class_of ~export:true;
-  env := VM.add_var !env "write_line" subr_write_line ~export:true;
-  env := VM.add_var !env "read_line" subr_read_line ~export:true;
-  loader.Loader.env <- VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd !env));
-  loader.Loader.env <- VM.add_var loader.Loader.env "debug" begin
-      VM.create_subr 0 begin fun vm args ->
-        List.iter begin fun {VM.vars;VM.methods} ->
-          VM.VarMap.iter begin fun x value ->
-            printf "%s = %s\n" x (VM.show_value value)
-          end vars;
-          VM.MethodMap.iter begin fun (klass, sel) value ->
-            printf "%s#%s = %s\n" klass sel (VM.show_value value)
-          end methods
-        end vm.VM.env;
-        VM.Unit
-      end
-    end;
+  let env = [VM.create_frame ()] in
+  VM.add_var env "gt" subr_gt ~export:true;
+  VM.add_var env "lt" subr_lt ~export:true;
+  VM.add_var env "ge" subr_ge ~export:true;
+  VM.add_var env "le" subr_le ~export:true;
+  VM.add_var env "eq" subr_eq ~export:true;
+  VM.add_var env "ne" subr_ne ~export:true;
+  VM.add_var env "compare" subr_compare ~export:true;
+  VM.add_var env "show" subr_show ~export:true;
+  VM.add_var env "add" (make_binary_arith_subr ( + )) ~export:true;
+  VM.add_var env "sub" (make_binary_arith_subr ( - )) ~export:true;
+  VM.add_var env "mul" (make_binary_arith_subr ( * )) ~export:true;
+  VM.add_var env "div" (make_binary_arith_subr ( / )) ~export:true;
+  VM.add_var env "mod" (make_binary_arith_subr ( mod )) ~export:true;
+  VM.add_var env "plus" (make_unary_arith_subr ( ~+ )) ~export:true;
+  VM.add_var env "minus" (make_unary_arith_subr ( ~- )) ~export:true;
+  VM.add_var env "not" subr_not ~export:true;
+  VM.add_var env "char_to_string" subr_char_to_string ~export:true;
+  VM.add_var env "class_of" subr_class_of ~export:true;
+  VM.add_var env "write_line" subr_write_line ~export:true;
+  VM.add_var env "read_line" subr_read_line ~export:true;
+  VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd env));
+  VM.add_var loader.Loader.env "debug" begin
+    VM.create_subr 0 begin fun vm args ->
+      List.iter begin fun {VM.vars;VM.methods} ->
+        Hashtbl.iter begin fun x value ->
+          printf "%s = %s\n" x (VM.show_value value)
+        end vars;
+        Hashtbl.iter begin fun (klass, sel) value ->
+          printf "%s#%s = %s\n" klass sel (VM.show_value value)
+        end methods
+      end vm.VM.env;
+      VM.Unit
+    end
+  end

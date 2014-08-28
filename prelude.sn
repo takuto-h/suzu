@@ -1,7 +1,12 @@
 
 module Pervasives:
   def if(cond, then_thunk, :else else_thunk=^{}):
-    cond && (then_thunk() || true) || else_thunk()
+    match(cond):
+    case(true):
+      then_thunk()
+    case(false):
+      else_thunk()
+    end
   end
 
   def while(test_thunk, :do body_thunk):

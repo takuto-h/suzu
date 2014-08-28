@@ -1,20 +1,8 @@
 
 open Printf
 
-module OrderedVar = struct
-  type t = string
-  let compare = Pervasives.compare
-end
-
-module OrderedMethod = struct
-  type t = string * string
-  let compare = Pervasives.compare
-end
-
-module VarMap = Map.Make(OrderedVar)
-module VarSet = Set.Make(OrderedVar)
-module MethodMap = Map.Make(OrderedMethod)
-module MethodSet = Set.Make(OrderedMethod)
+module VarSet = Set.Make(struct type t = string let compare = Pervasives.compare end)
+module MethodSet = Set.Make(struct type t = string * string let compare = Pervasives.compare end)
 
 type t = {
   mutable insns : Insn.t list;
@@ -47,10 +35,10 @@ and args = {
 and env = frame list
 
 and frame = {
-  vars : value VarMap.t;
-  methods : value MethodMap.t;
-  exported_vars : VarSet.t;
-  exported_methods : MethodSet.t;
+  vars : (string, value) Hashtbl.t;
+  methods : (string * string, value) Hashtbl.t;
+  mutable exported_vars : VarSet.t;
+  mutable exported_methods : MethodSet.t;
 }
 
 and control =
@@ -62,6 +50,7 @@ exception InternalError of string
 exception Match_failure of exn
 exception Not_exported
 
+let initial_binding_table_size = 4
 let initial_field_table_size = 4
 
 let create insns env = {
@@ -79,8 +68,8 @@ let make_args normal_args labeled_args = {
 }
 
 let create_frame () = {
-  vars = VarMap.empty;
-  methods = MethodMap.empty;
+  vars = Hashtbl.create initial_binding_table_size;
+  methods = Hashtbl.create initial_binding_table_size;
   exported_vars = VarSet.empty;
   exported_methods = MethodSet.empty;
 }
@@ -225,91 +214,85 @@ let rec find proc env =
   end
 
 let find_var env x =
-  find (fun {vars} -> VarMap.find x vars) env
+  find (fun {vars} -> Hashtbl.find vars x) env
 
 let find_method env klass sel =
-  find (fun {methods} -> MethodMap.find (klass, sel) methods) env
+  find (fun {methods} -> Hashtbl.find methods (klass, sel)) env
 
 let access_var {vars;exported_vars} x =
-  let value = VarMap.find x vars in
+  let value = Hashtbl.find vars x in
   if VarSet.mem x exported_vars then
     value
   else
     raise Not_exported
 
 let access_method {methods;exported_methods} klass sel =
-  let value = MethodMap.find (klass, sel) methods in
+  let value = Hashtbl.find methods (klass, sel) in
   if MethodSet.mem (klass, sel) exported_methods then
     value
   else
     raise Not_exported
 
-let update_current_frame proc env =
-  proc (List.hd env)::List.tl env
+let with_current_frame proc env =
+  proc (List.hd env)
 
 let export_var env x =
-  update_current_frame begin fun frame ->
-    if VarMap.mem x frame.vars then
-      {frame with exported_vars = VarSet.add x frame.exported_vars}
+  with_current_frame begin fun frame ->
+    if Hashtbl.mem frame.vars x then
+      frame.exported_vars <- VarSet.add x frame.exported_vars
     else
       raise Not_found
   end env
 
 let export_method env klass sel =
-  update_current_frame begin fun frame ->
-    if MethodMap.mem (klass, sel) frame.methods then
-      {frame with exported_methods = MethodSet.add (klass, sel) frame.exported_methods}
+  with_current_frame begin fun frame ->
+    if Hashtbl.mem frame.methods (klass, sel) then
+      frame.exported_methods <- MethodSet.add (klass, sel) frame.exported_methods
     else
       raise Not_found
   end env
 
 let add_var ?(export=false) env x value =
-  let env = update_current_frame begin fun frame ->
-      {frame with vars = VarMap.add x value frame.vars}
-    end env
-  in
+  with_current_frame begin fun frame ->
+    Hashtbl.add frame.vars x value
+  end env;
   if export then
     export_var env x
-  else
-    env
 
 let add_method ?(export=false) env klass sel value =
-  let env = update_current_frame begin fun frame ->
-      {frame with methods = MethodMap.add (klass, sel) value frame.methods}
-    end env
-  in
+  with_current_frame begin fun frame ->
+    Hashtbl.add frame.methods (klass, sel) value
+  end env;
   if export then
     export_method env klass sel
-  else
-    env
 
 let unexport_var frame x =
-  if VarMap.mem x frame.vars then
-    {frame with exported_vars = VarSet.add x frame.exported_vars}
+  if VarSet.mem x frame.exported_vars then
+    frame.exported_vars <- VarSet.remove x frame.exported_vars
   else
     raise Not_exported
 
 let unexport_method frame klass sel =
-  if MethodMap.mem (klass, sel) frame.methods then
-    {frame with exported_methods = MethodSet.add (klass, sel) frame.exported_methods}
+  if MethodSet.mem (klass, sel) frame.exported_methods then
+    frame.exported_methods <- MethodSet.remove (klass, sel) frame.exported_methods
   else
     raise Not_exported
 
 let open_module vm modl =
   VarSet.iter begin fun x ->
-    vm.env <- add_var vm.env x (access_var modl x)
+    add_var vm.env x (access_var modl x)
   end modl.exported_vars;
   MethodSet.iter begin fun (klass, sel) ->
-    vm.env <- add_method vm.env klass sel (access_method modl klass sel)
+    add_method vm.env klass sel (access_method modl klass sel)
   end modl.exported_methods
 
 let include_module vm modl =
   open_module vm modl;
   VarSet.iter begin fun x ->
-    vm.env <- export_var vm.env x
+    export_var vm.env x
   end modl.exported_vars;
   MethodSet.iter begin fun (klass, sel) ->
-    vm.env <- export_method vm.env klass sel
+    export_method vm.env klass sel
   end modl.exported_methods
 
 let unit_of_value value =
@@ -644,7 +627,8 @@ let execute vm insn =
       vm.curr_mod_path <- name::vm.curr_mod_path
     | Insn.EndModule name ->
       let modl = List.hd vm.env in
-      vm.env <- add_var (List.tl vm.env) name (Module modl);
+      vm.env <- List.tl vm.env;
+      add_var vm.env name (Module modl);
       vm.curr_mod_path <- List.tl vm.curr_mod_path
     | Insn.FindVar x ->
       begin try
@@ -688,15 +672,15 @@ let execute vm insn =
       end
     | Insn.AddVar x ->
       let value = pop_value vm in
-      vm.env <- add_var vm.env x value;
+      add_var vm.env x value;
     | Insn.AddMethod sel ->
       let klass = pop_value vm in
       let klass = class_of_value klass in
       let value = pop_value vm in
-      vm.env <- add_method vm.env klass (Selector.string_of sel) value
+      add_method vm.env klass (Selector.string_of sel) value
     | Insn.ExportVar x ->
       begin try
-          vm.env <- export_var vm.env x
+          export_var vm.env x
         with
         | Not_found ->
           raise (variable_not_found x)
@@ -705,7 +689,7 @@ let execute vm insn =
       let klass = pop_value vm in
       let klass = class_of_value klass in
       begin try
-          vm.env <- export_method vm.env klass (Selector.string_of sel)
+          export_method vm.env klass (Selector.string_of sel)
         with
         | Not_found ->
           raise (method_not_found klass sel)
@@ -714,7 +698,8 @@ let execute vm insn =
       let modl = pop_value vm in
       let modl = module_of_value modl in
       begin try
-          push_value vm (Module (unexport_var modl x))
+          unexport_var modl x;
+          push_value vm (Module modl)
         with
         | Not_exported ->
           raise (variable_not_exported x)
@@ -725,7 +710,8 @@ let execute vm insn =
       let modl = pop_value vm in
       let modl = module_of_value modl in
       begin try
-          push_value vm (Module (unexport_method modl klass (Selector.string_of sel)))
+          unexport_method modl klass (Selector.string_of sel);
+          push_value vm (Module modl)
         with
         | Not_exported ->
           raise (method_not_exported klass sel)
