@@ -4,16 +4,10 @@ type t =
   | Push of Literal.t
   | Pop
   | Dup
-  | FindVar of string
-  | FindMethod of Selector.t
-  | AccessVar of string
-  | AccessMethod of Selector.t
-  | AddVar of string
-  | AddMethod of Selector.t
-  | AssertEqual of Literal.t
   | GetNth of int
   | GetLabeled of string * (t list) option
   | RemoveTag of string
+  | AssertEqual of Literal.t
   | Test of Pattern.t
   | Check of Pattern.t
   | Branch of t list * t list
@@ -27,3 +21,11 @@ type t =
   | End
   | BeginModule of string
   | EndModule of string
+  | FindVar of string
+  | FindMethod of Selector.t
+  | AccessVar of string
+  | AccessMethod of Selector.t
+  | AddVar of string
+  | AddMethod of Selector.t
+  | ExportVar of string
+  | ExportMethod of Selector.t

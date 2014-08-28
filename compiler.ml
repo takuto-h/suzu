@@ -122,6 +122,15 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.Push Literal.Unit) insns;
       Stack.push (Insn.EndModule name) insns
     | Expr.Export voms ->
+      List.iter begin fun vom ->
+        begin match vom with
+          | VarOrMethod.Var x ->
+            Stack.push (Insn.ExportVar x) insns
+          | VarOrMethod.Method (mods_k, klass, sel) ->
+            compile_class mods_k klass insns;
+            Stack.push (Insn.ExportMethod sel) insns
+        end
+      end voms;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Open expr ->
       Stack.push (Insn.Push Literal.Unit) insns

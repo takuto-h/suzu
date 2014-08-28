@@ -160,6 +160,12 @@ let lack_of_labeled_argument vm label =
 let extra_labeled_arguments vm labeled_args =
   InternalError (vm, sprintf "extra labeled arguments: %s\n" (SnString.concat_map ", " fst labeled_args))
 
+let variable_not_found vm x =
+  InternalError (vm, sprintf "variable not found: %s\n" x)
+
+let method_not_found vm klass sel = 
+  InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel))
+
 let push_value vm value =
   vm.stack <- value::vm.stack
 
@@ -230,6 +236,24 @@ let add_var env x value =
 let add_method env klass sel value =
   let proc frame =
     {frame with methods = MethodMap.add (klass, sel) value frame.methods}
+  in
+  update_current_frame proc env
+
+let export_var env x =
+  let proc frame =
+    if VarMap.mem x frame.vars then
+      {frame with exported_vars = VarSet.add x frame.exported_vars}
+    else
+      raise Not_found
+  in
+  update_current_frame proc env
+
+let export_method env klass sel =
+  let proc frame =
+    if MethodMap.mem (klass, sel) frame.methods then
+      {frame with exported_methods = MethodSet.add (klass, sel) frame.exported_methods}
+    else
+      raise Not_found
   in
   update_current_frame proc env
 
@@ -427,59 +451,6 @@ let execute vm insn =
     | Insn.Dup ->
       let top = peek_value vm in
       push_value vm top
-    | Insn.FindVar x ->
-      begin try
-          push_value vm (find_var vm.env x)
-        with
-        | Not_found ->
-          raise (InternalError (vm, sprintf "variable not found: %s\n" x))
-      end
-    | Insn.FindMethod sel ->
-      let klass = pop_value vm in
-      let klass = class_of_value vm klass in
-      begin try
-          push_value vm (find_method vm.env klass (Selector.string_of sel))
-        with
-        | Not_found ->
-          raise (InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
-      end
-    | Insn.AccessVar x ->
-      let modl = pop_value vm in
-      let modl = module_of_value vm modl in
-      begin try
-          push_value vm (access_var modl x)
-        with
-        | Not_found ->
-          raise (InternalError (vm, sprintf "variable not found: %s\n" x))
-        | Not_exported ->
-          raise (InternalError (vm, sprintf "variable not exported: %s\n" x))
-      end
-    | Insn.AccessMethod sel ->
-      let klass = pop_value vm in
-      let klass = class_of_value vm klass in
-      let modl = pop_value vm in
-      let modl = module_of_value vm modl in
-      begin try
-          push_value vm (access_method modl klass (Selector.string_of sel))
-        with
-        | Not_found ->
-          raise (InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
-        | Not_exported ->
-          raise (InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel)))
-      end
-    | Insn.AddVar x ->
-      let value = pop_value vm in
-      vm.env <- add_var vm.env x value;
-    | Insn.AddMethod sel ->
-      let klass = pop_value vm in
-      let klass = class_of_value vm klass in
-      let value = pop_value vm in
-      vm.env <- add_method vm.env klass (Selector.string_of sel) value
-    | Insn.AssertEqual lit ->
-      let value = value_of_literal lit in
-      let top = pop_value vm in
-      if top <> value then
-        raise (required vm (Literal.show lit) top)
     | Insn.GetNth n ->
       let args = peek_value vm in
       let args = args_of_value vm args in
@@ -508,6 +479,11 @@ let execute vm insn =
         | _ ->
           raise (required vm tag value)
       end
+    | Insn.AssertEqual lit ->
+      let value = value_of_literal lit in
+      let top = pop_value vm in
+      if top <> value then
+        raise (required vm (Literal.show lit) top)
     | Insn.Test pat ->
       let value = peek_value vm in
       begin try
@@ -545,7 +521,7 @@ let execute vm insn =
           call vm func args
         with
         | Not_found ->
-          raise (InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel)))
+          raise (method_not_found vm klass sel)
       end
     | Insn.Return ->
       let value = pop_value vm in
@@ -567,7 +543,7 @@ let execute vm insn =
       push_value vm (Closure (vm.env, insns))
     | Insn.Fail ->
       let value = pop_value vm in
-      raise (InternalError (vm, sprintf "match failure of %s\n" (show_value value)))
+      raise (InternalError (vm, sprintf "%s didn't match any cases\n" (show_value value)))
     | Insn.Begin ->
       vm.env <- create_frame ()::vm.env
     | Insn.End ->
@@ -579,6 +555,70 @@ let execute vm insn =
       let modl = List.hd vm.env in
       vm.env <- add_var (List.tl vm.env) name (Module modl);
       vm.curr_mod_path <- List.tl vm.curr_mod_path
+    | Insn.FindVar x ->
+      begin try
+          push_value vm (find_var vm.env x)
+        with
+        | Not_found ->
+          raise (variable_not_found vm x)
+      end
+    | Insn.FindMethod sel ->
+      let klass = pop_value vm in
+      let klass = class_of_value vm klass in
+      begin try
+          push_value vm (find_method vm.env klass (Selector.string_of sel))
+        with
+        | Not_found ->
+          raise (method_not_found vm klass sel)
+      end
+    | Insn.AccessVar x ->
+      let modl = pop_value vm in
+      let modl = module_of_value vm modl in
+      begin try
+          push_value vm (access_var modl x)
+        with
+        | Not_found ->
+          raise (variable_not_found vm x)
+        | Not_exported ->
+          raise (InternalError (vm, sprintf "variable not exported: %s\n" x))
+      end
+    | Insn.AccessMethod sel ->
+      let klass = pop_value vm in
+      let klass = class_of_value vm klass in
+      let modl = pop_value vm in
+      let modl = module_of_value vm modl in
+      begin try
+          push_value vm (access_method modl klass (Selector.string_of sel))
+        with
+        | Not_found ->
+          raise (method_not_found vm klass sel)
+        | Not_exported ->
+          raise (InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel)))
+      end
+    | Insn.AddVar x ->
+      let value = pop_value vm in
+      vm.env <- add_var vm.env x value;
+    | Insn.AddMethod sel ->
+      let klass = pop_value vm in
+      let klass = class_of_value vm klass in
+      let value = pop_value vm in
+      vm.env <- add_method vm.env klass (Selector.string_of sel) value
+    | Insn.ExportVar x ->
+      begin try
+          vm.env <- export_var vm.env x
+        with
+        | Not_found ->
+          raise (variable_not_found vm x)
+      end
+    | Insn.ExportMethod sel ->
+      let klass = pop_value vm in
+      let klass = class_of_value vm klass in
+      begin try
+          vm.env <- export_method vm.env klass (Selector.string_of sel)
+        with
+        | Not_found ->
+          raise (method_not_found vm klass sel)
+      end
   end
 
 let rec run vm =
