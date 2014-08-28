@@ -58,7 +58,7 @@ and control =
 
 exception Error of Pos.t * string * Pos.t list
 
-exception InternalError of t * string
+exception InternalError of string
 exception Match_failure of exn
 exception Not_exported
 
@@ -162,29 +162,29 @@ and show_fields table =
   in
   SnString.concat ", " (List.rev rev_strs)
 
-let required vm req_str got_value =
-  InternalError (vm, sprintf "%s required, but got %s\n" req_str (show_value got_value))
+let required req_str got_value =
+  InternalError (sprintf "%s required, but got %s\n" req_str (show_value got_value))
 
-let wrong_number_of_arguments vm req_count got_count =
-  InternalError (vm, sprintf "wrong number of arguments: required %d, but got %d\n" req_count got_count)
+let wrong_number_of_arguments req_count got_count =
+  InternalError (sprintf "wrong number of arguments: required %d, but got %d\n" req_count got_count)
 
-let lack_of_labeled_argument vm label =
-  InternalError (vm, sprintf "lack of labeled argument: %s\n" label)
+let lack_of_labeled_argument label =
+  InternalError (sprintf "lack of labeled argument: %s\n" label)
 
-let extra_labeled_arguments vm labeled_args =
-  InternalError (vm, sprintf "extra labeled arguments: %s\n" (SnString.concat_map ", " fst labeled_args))
+let extra_labeled_arguments labeled_args =
+  InternalError (sprintf "extra labeled arguments: %s\n" (SnString.concat_map ", " fst labeled_args))
 
-let variable_not_found vm x =
-  InternalError (vm, sprintf "variable not found: %s\n" x)
+let variable_not_found x =
+  InternalError (sprintf "variable not found: %s\n" x)
 
-let method_not_found vm klass sel = 
-  InternalError (vm, sprintf "method not found: %s#%s\n" klass (Selector.show sel))
+let method_not_found klass sel = 
+  InternalError (sprintf "method not found: %s#%s\n" klass (Selector.show sel))
 
-let variable_not_exported vm x =
-  InternalError (vm, sprintf "variable not exported: %s\n" x)
+let variable_not_exported x =
+  InternalError (sprintf "variable not exported: %s\n" x)
 
-let method_not_exported vm klass sel = 
-  InternalError (vm, sprintf "method not exported: %s#%s\n" klass (Selector.show sel))
+let method_not_exported klass sel = 
+  InternalError (sprintf "method not exported: %s#%s\n" klass (Selector.show sel))
 
 let push_value vm value =
   vm.stack <- value::vm.stack
@@ -312,68 +312,68 @@ let include_module vm modl =
     vm.env <- export_method vm.env klass sel
   end modl.exported_methods
 
-let unit_of_value vm value =
+let unit_of_value value =
   begin match value with
     | Unit ->
       ()
     | _ ->
-      raise (required vm "unit" value)
+      raise (required "unit" value)
   end
 
-let int_of_value vm value =
+let int_of_value value =
   begin match value with
     | Int i ->
       i
     | _ ->
-      raise (required vm "int" value)
+      raise (required "int" value)
   end
 
-let bool_of_value vm value =
+let bool_of_value value =
   begin match value with
     | Bool b ->
       b
     | _ ->
-      raise (required vm "bool" value)
+      raise (required "bool" value)
   end
 
-let char_of_value vm value =
+let char_of_value value =
   begin match value with
     | Char c ->
       c
     | _ ->
-      raise (required vm "char" value)
+      raise (required "char" value)
   end
 
-let string_of_value vm value =
+let string_of_value value =
   begin match value with
     | String str ->
       str
     | _ ->
-      raise (required vm "string" value)
+      raise (required "string" value)
   end
 
-let class_of_value vm value =
+let class_of_value value =
   begin match value with
     | Class klass ->
       klass
     | _ ->
-      raise (required vm "class" value)
+      raise (required "class" value)
   end
 
-let module_of_value vm value =
+let module_of_value value =
   begin match value with
     | Module modl ->
       modl
     | _ ->
-      raise (required vm "module" value)
+      raise (required "module" value)
   end
 
-let args_of_value vm value =
+let args_of_value value =
   begin match value with
     | Args args ->
       args
     | _ ->
-      raise (required vm "arguments" value)
+      raise (required "arguments" value)
   end
 
 let value_of_unit u = Unit
@@ -404,64 +404,63 @@ let opt_labeled args label =
       None
   end
 
-let rec check_value vm pat value =
+let rec check_value pat value =
   begin match (pat, value) with
     | (Pattern.Any, _) ->
       ()
     | (Pattern.Const lit, _) when value_of_literal lit = value ->
       ()
     | (Pattern.Params params, Args args) ->
-      check_args vm params args
+      check_args params args
     | (Pattern.Variant (tag1, params), Variant (_, tag2, args)) when tag1 = tag2 ->
-      check_args vm params args
+      check_args params args
     | (Pattern.Or (lhs, rhs), _) ->
-      begin try check_value vm lhs value with Match_failure _ ->
-        begin try check_value vm rhs value with Match_failure _ ->
-          raise (Match_failure (required vm (Pattern.show pat) value))
+      begin try check_value lhs value with Match_failure _ ->
+        begin try check_value rhs value with Match_failure _ ->
+          raise (Match_failure (required (Pattern.show pat) value))
         end
       end
     | _ ->
-      raise (Match_failure (required vm (Pattern.show pat) value))
+      raise (Match_failure (required (Pattern.show pat) value))
   end
 
-and check_args vm {Pattern.normal_params;Pattern.labeled_params} {normal_args;labeled_args} =
+and check_args {Pattern.normal_params;Pattern.labeled_params} {normal_args;labeled_args} =
   let req_count = List.length normal_params in
   let got_count = List.length normal_args in
   begin if req_count <> got_count then
-      raise (Match_failure (wrong_number_of_arguments vm req_count got_count))
+      raise (Match_failure (wrong_number_of_arguments req_count got_count))
   end;
-  List.iter2 (check_value vm) normal_params normal_args;
-  check_labeled_args vm labeled_params labeled_args
+  List.iter2 check_value normal_params normal_args;
+  check_labeled_args labeled_params labeled_args
 
-and check_labeled_args vm labeled_params labeled_args =
+and check_labeled_args labeled_params labeled_args =
   begin match labeled_params with
     | [] when List.length labeled_args = 0 ->
       ()
     | [] ->
-      raise (Match_failure (extra_labeled_arguments vm labeled_args))
+      raise (Match_failure (extra_labeled_arguments labeled_args))
     | (label, (param, _))::labeled_params when List.mem_assoc label labeled_args ->
       let arg = List.assoc label labeled_args in
       let labeled_args = List.remove_assoc label labeled_args in
-      check_value vm param arg;
-      check_labeled_args vm labeled_params labeled_args
+      check_value param arg;
+      check_labeled_args labeled_params labeled_args
     | (_, (_, has_default))::labeled_params when has_default ->
-      check_labeled_args vm labeled_params labeled_args
+      check_labeled_args labeled_params labeled_args
     | (label, (_, _))::_ ->
       ()
   end
 
-let call_subr vm req_count allows_rest req_labels opt_labels proc args =
-  let args = args_of_value vm args in
+let check_args_for_subr req_count allows_rest req_labels opt_labels args =
   let {normal_args;labeled_args} = args in
   let got_count = List.length normal_args in
   begin if got_count < req_count || got_count > req_count && not allows_rest then
-      raise (wrong_number_of_arguments vm req_count got_count)
+      raise (wrong_number_of_arguments req_count got_count)
   end;
   let labeled_args = List.fold_left begin fun labeled_args req_label ->
       if List.mem_assoc req_label labeled_args then
         List.remove_assoc req_label labeled_args
       else
-        raise (lack_of_labeled_argument vm req_label)
+        raise (lack_of_labeled_argument req_label)
     end labeled_args req_labels
   in
   let labeled_args = List.fold_left begin fun labeled_args opt_label ->
@@ -469,11 +468,9 @@ let call_subr vm req_count allows_rest req_labels opt_labels proc args =
     end labeled_args opt_labels
   in
   begin if List.length labeled_args <> 0 then
-      raise (extra_labeled_arguments vm labeled_args)
-  end;
-  let result = proc vm args in
-  push_value vm result
-
+      raise (extra_labeled_arguments labeled_args)
+  end
+  
 let call vm func args =
   begin match func with
     | Closure (env, insns) ->
@@ -483,9 +480,11 @@ let call vm func args =
       vm.env <- create_frame ()::env;
       vm.controls <- dump::vm.controls;
     | Subr (req_count, allows_rest, req_labels, opt_labels, proc) ->
-      call_subr vm req_count allows_rest req_labels opt_labels proc args
+      let args = args_of_value args in
+      check_args_for_subr req_count allows_rest req_labels opt_labels args;
+      push_value vm (proc vm args)
     | _ ->
-      raise (required vm "procedure" func)
+      raise (required "procedure" func)
   end
 
 let return vm value =
@@ -512,7 +511,7 @@ let make_getter klass field =
       | Record (klass2, table) when klass2 = klass ->
         Hashtbl.find table field
       | _ ->
-        raise (required vm klass self)
+        raise (required klass self)
     end
   end      
 
@@ -525,7 +524,7 @@ let make_setter klass field =
         Hashtbl.replace table field value;
         value
       | _ ->
-        raise (required vm klass self)
+        raise (required klass self)
     end
   end     
 
@@ -555,23 +554,23 @@ let execute vm insn =
       push_value vm top
     | Insn.GetNth n ->
       let args = peek_value vm in
-      let args = args_of_value vm args in
+      let args = args_of_value args in
       begin match (opt_nth args n) with
         | Some value ->
           push_value vm value 
         | None ->
-          raise (InternalError (vm, sprintf "argument not found at '%d': %s\n" n (show_args args)))
+          raise (InternalError (sprintf "argument not found at '%d': %s\n" n (show_args args)))
       end
     | Insn.GetLabeled (label, default) ->
       let args = peek_value vm in
-      let args = args_of_value vm args in
+      let args = args_of_value args in
       begin match (opt_labeled args label, default)  with
         | (Some value, _) ->
           push_value vm value
         | (None, Some insns) ->
           vm.insns <- insns @ vm.insns
         | (None, None) ->
-          raise (InternalError (vm, sprintf "argument not found for '%s': %s\n" label (show_args args)))
+          raise (InternalError (sprintf "argument not found for '%s': %s\n" label (show_args args)))
       end
     | Insn.RemoveTag tag ->
       let value = pop_value vm in
@@ -579,17 +578,17 @@ let execute vm insn =
         | Variant (_, tag2, args) when tag2 = tag ->
           push_value vm (Args args)
         | _ ->
-          raise (required vm tag value)
+          raise (required tag value)
       end
     | Insn.AssertEqual lit ->
       let value = value_of_literal lit in
       let top = pop_value vm in
       if top <> value then
-        raise (required vm (Literal.show lit) top)
+        raise (required (Literal.show lit) top)
     | Insn.Test pat ->
       let value = peek_value vm in
       begin try
-          check_value vm pat value;
+          check_value pat value;
           push_value vm (Bool true)
         with
         | Match_failure _ ->
@@ -598,14 +597,14 @@ let execute vm insn =
     | Insn.Check pat ->
       let value = peek_value vm in
       begin try
-          check_value vm pat value
+          check_value pat value
         with
         | Match_failure exn ->
           raise exn
       end
     | Insn.Branch (then_insns, else_insns) ->
       let cond = pop_value vm in
-      let cond = bool_of_value vm cond in
+      let cond = bool_of_value cond in
       if cond then
         vm.insns <- then_insns @ vm.insns
       else
@@ -617,7 +616,7 @@ let execute vm insn =
     | Insn.Send sel ->
       let args = pop_value vm in
       let recv = pop_value vm in
-      let args = args_of_value vm args in
+      let args = args_of_value args in
       let args = Args {args with normal_args = recv::args.normal_args} in
       let klass = get_class recv in
       begin try
@@ -625,7 +624,7 @@ let execute vm insn =
           call vm func args
         with
         | Not_found ->
-          raise (method_not_found vm klass sel)
+          raise (method_not_found klass sel)
       end
     | Insn.Return ->
       let value = pop_value vm in
@@ -635,7 +634,7 @@ let execute vm insn =
       return vm value
     | Insn.Fail ->
       let value = pop_value vm in
-      raise (InternalError (vm, sprintf "%s didn't match any cases\n" (show_value value)))
+      raise (InternalError (sprintf "%s didn't match any cases\n" (show_value value)))
     | Insn.Begin ->
       vm.env <- create_frame ()::vm.env
     | Insn.End ->
@@ -652,47 +651,47 @@ let execute vm insn =
           push_value vm (find_var vm.env x)
         with
         | Not_found ->
-          raise (variable_not_found vm x)
+          raise (variable_not_found x)
       end
     | Insn.FindMethod sel ->
       let klass = pop_value vm in
-      let klass = class_of_value vm klass in
+      let klass = class_of_value klass in
       begin try
           push_value vm (find_method vm.env klass (Selector.string_of sel))
         with
         | Not_found ->
-          raise (method_not_found vm klass sel)
+          raise (method_not_found klass sel)
       end
     | Insn.AccessVar x ->
       let modl = pop_value vm in
-      let modl = module_of_value vm modl in
+      let modl = module_of_value modl in
       begin try
           push_value vm (access_var modl x)
         with
         | Not_found ->
-          raise (variable_not_found vm x)
+          raise (variable_not_found x)
         | Not_exported ->
-          raise (variable_not_exported vm x)
+          raise (variable_not_exported x)
       end
     | Insn.AccessMethod sel ->
       let klass = pop_value vm in
-      let klass = class_of_value vm klass in
+      let klass = class_of_value klass in
       let modl = pop_value vm in
-      let modl = module_of_value vm modl in
+      let modl = module_of_value modl in
       begin try
           push_value vm (access_method modl klass (Selector.string_of sel))
         with
         | Not_found ->
-          raise (method_not_found vm klass sel)
+          raise (method_not_found klass sel)
         | Not_exported ->
-          raise (method_not_exported vm klass sel)
+          raise (method_not_exported klass sel)
       end
     | Insn.AddVar x ->
       let value = pop_value vm in
       vm.env <- add_var vm.env x value;
     | Insn.AddMethod sel ->
       let klass = pop_value vm in
-      let klass = class_of_value vm klass in
+      let klass = class_of_value klass in
       let value = pop_value vm in
       vm.env <- add_method vm.env klass (Selector.string_of sel) value
     | Insn.ExportVar x ->
@@ -700,44 +699,44 @@ let execute vm insn =
           vm.env <- export_var vm.env x
         with
         | Not_found ->
-          raise (variable_not_found vm x)
+          raise (variable_not_found x)
       end
     | Insn.ExportMethod sel ->
       let klass = pop_value vm in
-      let klass = class_of_value vm klass in
+      let klass = class_of_value klass in
       begin try
           vm.env <- export_method vm.env klass (Selector.string_of sel)
         with
         | Not_found ->
-          raise (method_not_found vm klass sel)
+          raise (method_not_found klass sel)
       end
     | Insn.UnexportVar x ->
       let modl = pop_value vm in
-      let modl = module_of_value vm modl in
+      let modl = module_of_value modl in
       begin try
           push_value vm (Module (unexport_var modl x))
         with
         | Not_exported ->
-          raise (variable_not_exported vm x)
+          raise (variable_not_exported x)
       end
     | Insn.UnexportMethod sel ->
       let klass = pop_value vm in
-      let klass = class_of_value vm klass in
+      let klass = class_of_value klass in
       let modl = pop_value vm in
-      let modl = module_of_value vm modl in
+      let modl = module_of_value modl in
       begin try
           push_value vm (Module (unexport_method modl klass (Selector.string_of sel)))
         with
         | Not_exported ->
-          raise (method_not_exported vm klass sel)
+          raise (method_not_exported klass sel)
       end
     | Insn.Open ->
       let modl = pop_value vm in
-      let modl = module_of_value vm modl in
+      let modl = module_of_value modl in
       open_module vm modl
     | Insn.Include ->
       let modl = pop_value vm in
-      let modl = module_of_value vm modl in
+      let modl = module_of_value modl in
       include_module vm modl
     | Insn.MakeArgs (count, labels) ->
       let labeled_args = List.fold_right begin fun label labeled_args ->
@@ -783,7 +782,7 @@ let rec run vm =
           run vm
       end
     with
-    | InternalError (vm, message) ->
+    | InternalError message ->
       let stack_trace = List.fold_right begin fun (Dump (_, _, _, pos)) stack_trace ->
           pos::stack_trace
         end vm.controls []

@@ -5,13 +5,13 @@ let make_binary_subr proc_out proc_body proc_in =
   VM.create_subr 2 begin fun vm args ->
     let arg0 = VM.nth args 0 in
     let arg1 = VM.nth args 1 in
-    proc_out (proc_body (proc_in vm arg0) (proc_in vm arg1))
+    proc_out (proc_body (proc_in arg0) (proc_in arg1))
   end
 
 let make_unary_subr proc_out proc_body proc_in =
   VM.create_subr 1 begin fun vm args ->
     let arg0 = VM.nth args 0 in
-    proc_out (proc_body (proc_in vm arg0))
+    proc_out (proc_body (proc_in arg0))
   end
 
 let make_binary_cmp_subr proc =
@@ -179,7 +179,7 @@ let subr_class_of =
 let subr_write_line =
   VM.create_subr 1 begin fun vm args ->
     let arg0 = VM.nth args 0 in
-    print_endline (VM.string_of_value vm arg0);
+    print_endline (VM.string_of_value arg0);
     VM.Unit
   end
 
