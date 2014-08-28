@@ -25,3 +25,5 @@ type t =
   | Fail
   | Begin
   | End
+  | BeginModule of string
+  | EndModule of string

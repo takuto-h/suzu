@@ -114,7 +114,13 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       compile_args args insns;
       compile_cases cases insns
     | Expr.Module (name, exprs) ->
-      Stack.push (Insn.Push Literal.Unit) insns
+      Stack.push (Insn.BeginModule name) insns;
+      List.iter begin fun expr ->
+        compile_expr expr insns;
+        Stack.push (Insn.AssertEqual Literal.Unit) insns
+      end exprs;
+      Stack.push (Insn.Push Literal.Unit) insns;
+      Stack.push (Insn.EndModule name) insns
     | Expr.Export voms ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Open expr ->

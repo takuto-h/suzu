@@ -22,6 +22,7 @@ type t = {
   mutable env : env;
   mutable pos : Pos.t;
   mutable controls  : control list;
+  mutable curr_mod_path : string list;
 }
 
 and value =
@@ -66,6 +67,7 @@ let create insns env = {
   env = env;
   pos = Pos.dummy;
   controls = [];
+  curr_mod_path = [];
 }
 
 let make_args normal_args labeled_args = {
@@ -570,6 +572,13 @@ let execute vm insn =
       vm.env <- create_frame ()::vm.env
     | Insn.End ->
       vm.env <- List.tl vm.env
+    | Insn.BeginModule name ->
+      vm.env <- create_frame ()::vm.env;
+      vm.curr_mod_path <- name::vm.curr_mod_path
+    | Insn.EndModule name ->
+      let modl = List.hd vm.env in
+      vm.env <- add_var (List.tl vm.env) name (Module modl);
+      vm.curr_mod_path <- List.tl vm.curr_mod_path
   end
 
 let rec run vm =
