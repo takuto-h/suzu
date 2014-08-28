@@ -35,6 +35,7 @@ and value =
   | Args of args
   | Variant of string * string * args
   | Closure of env * Insn.t list
+  | Subr of int * bool * string list * string list * (t -> args -> unit)
 
 and args = {
   normal_args : value list;
@@ -78,6 +79,9 @@ let create_frame () = {
   exported_methods = MethodSet.empty;
 }
 
+let create_subr req_count ?(allows_rest=false) ?(req_labels=[]) ?(opt_labels=[]) proc =
+  Subr (req_count, allows_rest, req_labels, opt_labels, proc)
+
 let get_class value =
   begin match value with
     | Unit ->
@@ -99,6 +103,8 @@ let get_class value =
     | Variant (klass, _, _) ->
       klass
     | Closure (_, _) ->
+      "Proc::C"
+    | Subr (_, _, _, _, _) ->
       "Proc::C"
   end
 
@@ -124,6 +130,8 @@ let rec show_value value =
       sprintf "%s%s" tag (show_args args)
     | Closure (_, _) ->
       "<closure>"
+    | Subr (_, _, _, _, _) ->
+      "<subr>"
   end
 
 and show_args {normal_args;labeled_args} =
@@ -139,6 +147,15 @@ and show_labeled_arg (label, value) =
 
 let required vm req_str got_value =
   InternalError (vm, sprintf "%s required, but got %s\n" req_str (show_value got_value))
+
+let wrong_number_of_arguments vm req_count got_count =
+  InternalError (vm, sprintf "wrong number of arguments: required %d, but got %d\n" req_count got_count)
+
+let lack_of_labeled_argument vm label =
+  InternalError (vm, sprintf "lack of labeled argument: %s\n" label)
+
+let extra_labeled_arguments vm labeled_args =
+  InternalError (vm, sprintf "extra labeled arguments: %s\n" (SnString.concat_map ", " fst labeled_args))
 
 let push_value vm value =
   vm.stack <- value::vm.stack
@@ -344,6 +361,28 @@ and test_labeled_params labeled_params labeled_args =
       false
   end
 
+let call_subr vm req_count allows_rest req_labels opt_labels proc args =
+  let {normal_args;labeled_args} = args in
+  let got_count = List.length normal_args in
+  begin if got_count < req_count || got_count > req_count && not allows_rest then
+      raise (wrong_number_of_arguments vm req_count got_count)
+  end;
+  let labeled_args = List.fold_left begin fun labeled_args req_label ->
+      if List.mem_assoc req_label labeled_args then
+        List.remove_assoc req_label labeled_args
+      else
+        raise (lack_of_labeled_argument vm req_label)
+    end labeled_args req_labels
+  in
+  let labeled_args = List.fold_left begin fun labeled_args opt_label ->
+      List.remove_assoc opt_label labeled_args
+    end labeled_args opt_labels
+  in
+  begin if List.length labeled_args <> 0 then
+      raise (extra_labeled_arguments vm labeled_args)
+  end;
+  proc vm args
+
 let call vm func args =
   let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
   begin match func with
@@ -352,8 +391,11 @@ let call vm func args =
       vm.stack <- [args];
       vm.env <- create_frame ()::env;
       vm.controls <- dump::vm.controls;
+    | Subr (req_count, allows_rest, req_labels, opt_labels, proc) ->
+      let args = args_of_value vm args in
+      call_subr vm req_count allows_rest req_labels opt_labels proc args
     | _ ->
-      raise (required vm "function" func)
+      raise (required vm "procedure" func)
   end
 
 let return vm value =
