@@ -37,17 +37,17 @@ let compile_with proc =
 let rec compile_pattern {Expr.pat_raw} =
   begin match pat_raw with
     | Expr.PatWildCard ->
-      Insn.Any
+      Pattern.Any
     | Expr.PatConst lit ->
-      Insn.Const lit
+      Pattern.Const lit
     | Expr.PatTuple params ->
-      Insn.Params (compile_params params)
+      Pattern.Params (compile_params params)
     | Expr.PatVariant (tag, params) ->
-      Insn.Variant (tag, compile_params params)
+      Pattern.Variant (tag, compile_params params)
     | Expr.PatBind _ ->
-      Insn.Any
+      Pattern.Any
     | Expr.PatOr (lhs, rhs) ->
-      Insn.Or (compile_pattern lhs, compile_pattern rhs)
+      Pattern.Or (compile_pattern lhs, compile_pattern rhs)
     | Expr.PatAs (pat, _) ->
       compile_pattern pat
   end
@@ -58,7 +58,7 @@ and compile_params {Expr.normal_params;Expr.labeled_params} =
       (label, (compile_pattern pat, default <> None))
     end labeled_params
   in
-  Insn.make_params normal_params labeled_params
+  Pattern.make_params normal_params labeled_params
 
 let rec compile_expr {Expr.pos;Expr.raw} insns =
   Stack.push (Insn.At pos) insns;
@@ -85,7 +85,7 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
     | Expr.Lambda (params, body) ->
       let body = compile_with begin fun insns ->
           Stack.push (Insn.At pos) insns;
-          Stack.push (Insn.Check (Insn.Params (compile_params params))) insns;
+          Stack.push (Insn.Check (Pattern.Params (compile_params params))) insns;
           compile_multiple_bind params insns;
           compile_body body insns;
           Stack.push Insn.Return insns
@@ -138,7 +138,7 @@ and compile_cases cases insns =
     | [] ->
       Stack.push Insn.Fail insns
     | (params, guard, body)::cases ->
-      Stack.push (Insn.Test (Insn.Params (compile_params params))) insns;
+      Stack.push (Insn.Test (Pattern.Params (compile_params params))) insns;
       let else_insns = compile_with (compile_cases cases) in
       let then_insns = compile_with begin fun insns ->
           Stack.push Insn.Begin insns;

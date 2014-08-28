@@ -325,25 +325,25 @@ let opt_labeled args label =
 
 let rec check_value vm pat value =
   begin match (pat, value) with
-    | (Insn.Any, _) ->
+    | (Pattern.Any, _) ->
       ()
-    | (Insn.Const lit, _) when value_of_literal lit = value ->
+    | (Pattern.Const lit, _) when value_of_literal lit = value ->
       ()
-    | (Insn.Params params, Args args) ->
+    | (Pattern.Params params, Args args) ->
       check_args vm params args
-    | (Insn.Variant (tag1, params), Variant (_, tag2, args)) when tag1 = tag2 ->
+    | (Pattern.Variant (tag1, params), Variant (_, tag2, args)) when tag1 = tag2 ->
       check_args vm params args
-    | (Insn.Or (lhs, rhs), _) ->
+    | (Pattern.Or (lhs, rhs), _) ->
       begin try check_value vm lhs value with Match_failure _ ->
         begin try check_value vm rhs value with Match_failure _ ->
-          raise (Match_failure (required vm (Insn.show_pattern pat) value))
+          raise (Match_failure (required vm (Pattern.show pat) value))
         end
       end
     | _ ->
-      raise (Match_failure (required vm (Insn.show_pattern pat) value))
+      raise (Match_failure (required vm (Pattern.show pat) value))
   end
 
-and check_args vm {Insn.normal_params;Insn.labeled_params} {normal_args;labeled_args} =
+and check_args vm {Pattern.normal_params;Pattern.labeled_params} {normal_args;labeled_args} =
   let req_count = List.length normal_params in
   let got_count = List.length normal_args in
   begin if req_count <> got_count then
