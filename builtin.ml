@@ -5,20 +5,20 @@ let make_binary_subr proc_out proc_body proc_in =
   VM.create_subr 2 begin fun vm args ->
     let arg0 = VM.nth args 0 in
     let arg1 = VM.nth args 1 in
-    VM.push_value vm (proc_out (proc_body (proc_in vm arg0) (proc_in vm arg1)))
+    proc_out (proc_body (proc_in vm arg0) (proc_in vm arg1))
   end
 
 let make_unary_subr proc_out proc_body proc_in =
   VM.create_subr 1 begin fun vm args ->
     let arg0 = VM.nth args 0 in
-    VM.push_value vm (proc_out (proc_body (proc_in vm arg0)))
+    proc_out (proc_body (proc_in vm arg0))
   end
 
 let make_binary_cmp_subr proc =
   VM.create_subr 2 begin fun vm args ->
     let arg0 = VM.nth args 0 in
     let arg1 = VM.nth args 1 in
-    VM.push_value vm (VM.value_of_bool (proc arg0 arg1))
+    VM.value_of_bool (proc arg0 arg1)
   end
 
 let make_binary_arith_subr proc =
@@ -38,13 +38,13 @@ let subr_compare =
   VM.create_subr 2 begin fun vm args ->
     let arg0 = VM.nth args 0 in
     let arg1 = VM.nth args 1 in
-    VM.push_value vm (VM.Int (compare arg0 arg1))
+    VM.Int (compare arg0 arg1)
   end
 
 let subr_show =
   VM.create_subr 1 begin fun vm args ->
     let arg0 = VM.nth args 0 in
-    VM.push_value vm (VM.String (VM.show_value arg0))
+    VM.String (VM.show_value arg0)
   end
 
 let subr_not =
@@ -166,26 +166,26 @@ let subr_char_to_string =
       end
       in
       let buf = Buffer.create initial_formatted_buffer_size in
-      VM.push_value vm (VM.value_of_string (execute_format_insns vm insns (List.tl args.VM.normal_args) buf))
+      VM.value_of_string (execute_format_insns vm insns (List.tl args.VM.normal_args) buf)
     end
 end*)
 
 let subr_class_of =
   VM.create_subr 1 begin fun vm args ->
     let arg0 = VM.nth args 0 in
-    VM.push_value vm (VM.Class (VM.get_class arg0))
+    VM.Class (VM.get_class arg0)
   end
 
 let subr_write_line =
   VM.create_subr 1 begin fun vm args ->
     let arg0 = VM.nth args 0 in
     print_endline (VM.string_of_value vm arg0);
-    VM.push_value vm VM.Unit
+    VM.Unit
   end
 
 let subr_read_line =
   VM.create_subr 0 begin fun vm args ->
-    VM.push_value vm (VM.String (read_line ()))
+    VM.String (read_line ())
   end
 
 let initialize loader =

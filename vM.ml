@@ -36,7 +36,7 @@ and value =
   | Args of args
   | Variant of string * string * args
   | Closure of env * Insn.t list
-  | Subr of int * bool * string list * string list * (t -> args -> unit)
+  | Subr of int * bool * string list * string list * (t -> args -> value)
 
 and args = {
   normal_args : value list;
@@ -456,7 +456,8 @@ let call_subr vm req_count allows_rest req_labels opt_labels proc args =
   begin if List.length labeled_args <> 0 then
       raise (extra_labeled_arguments vm labeled_args)
   end;
-  proc vm args
+  let result = proc vm args in
+  push_value vm result
 
 let call vm func args =
   begin match func with
