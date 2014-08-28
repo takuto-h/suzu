@@ -210,4 +210,17 @@ let initialize loader =
   env := VM.add_var !env "class_of" subr_class_of ~export:true;
   env := VM.add_var !env "write_line" subr_write_line ~export:true;
   env := VM.add_var !env "read_line" subr_read_line ~export:true;
-  loader.Loader.env <- VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd !env))
+  loader.Loader.env <- VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd !env));
+  loader.Loader.env <- VM.add_var loader.Loader.env "debug" begin
+      VM.create_subr 0 begin fun vm args ->
+        List.iter begin fun {VM.vars;VM.methods} ->
+          VM.VarMap.iter begin fun x value ->
+            printf "%s = %s\n" x (VM.show_value value)
+          end vars;
+          VM.MethodMap.iter begin fun (klass, sel) value ->
+            printf "%s#%s = %s\n" klass sel (VM.show_value value)
+          end methods
+        end vm.VM.env;
+        VM.Unit
+      end
+    end;

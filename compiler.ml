@@ -1,4 +1,6 @@
 
+open Printf
+
 let compile_mods modl mods insns =
   Stack.push (Insn.FindVar modl) insns;
   List.iter begin fun modl ->
@@ -61,24 +63,29 @@ and compile_params {Expr.normal_params;Expr.labeled_params} =
   Pattern.make_params normal_params labeled_params
 
 let rec compile_expr {Expr.pos;Expr.raw} insns =
-  Stack.push (Insn.At pos) insns;
   begin match raw with
     | Expr.Const lit ->
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.Push lit) insns
     | Expr.Get ([], VarOrMethod.Var x) ->
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.FindVar x) insns
     | Expr.Get ([], VarOrMethod.Method (mods_k, klass, sel)) ->
+      Stack.push (Insn.At pos) insns;
       compile_class mods_k klass insns;
       Stack.push (Insn.FindMethod sel) insns
     | Expr.Get (modl::mods, VarOrMethod.Var x) ->
+      Stack.push (Insn.At pos) insns;
       compile_mods modl mods insns;
       Stack.push (Insn.AccessVar x) insns
     | Expr.Get (modl::mods, VarOrMethod.Method (mods_k, klass, sel)) ->
+      Stack.push (Insn.At pos) insns;
       compile_mods modl mods insns;
       compile_class mods_k klass insns;
       Stack.push (Insn.AccessMethod sel) insns
     | Expr.Let (pat, expr) ->
       compile_expr expr insns;
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.Check (compile_pattern pat)) insns;
       compile_bind pat insns;
       Stack.push (Insn.Push Literal.Unit) insns
@@ -91,29 +98,36 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
           Stack.push Insn.Return insns
         end
       in
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.MakeClosure body) insns
     | Expr.FunCall (func, args) ->
       compile_expr func insns;
       compile_args args insns;
+      Stack.push (Insn.At pos) insns;
       Stack.push Insn.Call insns
     | Expr.MethodCall (recv, sel, args) ->
       compile_expr recv insns;
       compile_args args insns;
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.Send sel) insns
     | Expr.Tuple args ->
       compile_args args insns
     | Expr.And (lhs, rhs) ->
       compile_expr lhs insns;
       let rhs = compile_with (compile_expr rhs) in
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.Branch (rhs, [Insn.Push (Literal.Bool false)])) insns
     | Expr.Or (lhs, rhs) ->
       compile_expr lhs insns;
       let rhs = compile_with (compile_expr rhs) in
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.Branch ([Insn.Push (Literal.Bool true)], rhs)) insns
     | Expr.Match (args, cases) ->
       compile_args args insns;
+      Stack.push (Insn.At pos) insns;
       compile_cases cases insns
     | Expr.Module (name, exprs) ->
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.BeginModule name) insns;
       List.iter begin fun expr ->
         compile_expr expr insns;
@@ -122,6 +136,7 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.Push Literal.Unit) insns;
       Stack.push (Insn.EndModule name) insns
     | Expr.Export voms ->
+      Stack.push (Insn.At pos) insns;
       List.iter begin fun vom ->
         begin match vom with
           | VarOrMethod.Var x ->
@@ -134,10 +149,12 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Open expr ->
       compile_expr expr insns;
+      Stack.push (Insn.At pos) insns;
       Stack.push Insn.Open insns;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Include expr ->
       compile_expr expr insns;
+      Stack.push (Insn.At pos) insns;
       Stack.push Insn.Include insns;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Trait (params, body) ->
@@ -152,9 +169,11 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
           Stack.push Insn.ReturnModule insns
         end
       in
+      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.MakeClosure body) insns
     | Expr.Except (expr, voms) ->
       compile_expr expr insns;
+      Stack.push (Insn.At pos) insns;
       List.iter begin fun vom ->
         begin match vom with
           | VarOrMethod.Var x ->
@@ -165,10 +184,36 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
         end
       end voms;
     | Expr.Record (klass, ctor, fields) ->
+      Stack.push (Insn.At pos) insns;
+      Stack.push (Insn.MakeClass klass) insns;
+      Stack.push (Insn.AddVar klass) insns;
+      Stack.push (Insn.MakeRecordCtor (klass, List.map fst fields)) insns;
+      Stack.push (Insn.AddVar ctor) insns;
+      List.iter begin fun (field, is_mutable) ->
+        Stack.push (Insn.MakeGetter (klass, field)) insns;
+        Stack.push (Insn.MakeClass klass) insns;
+        Stack.push (Insn.AddMethod (Selector.Ident field)) insns;
+        if is_mutable then begin
+          Stack.push (Insn.MakeSetter (klass, field)) insns;
+          Stack.push (Insn.MakeClass klass) insns;
+          Stack.push (Insn.AddMethod (Selector.Op (sprintf "%s=" field))) insns;
+        end
+      end fields;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Variant (klass, ctors) ->
+      Stack.push (Insn.At pos) insns;
+      Stack.push (Insn.MakeClass klass) insns;
+      Stack.push (Insn.AddVar klass) insns;
+      List.iter begin fun (ctor, params) ->
+        let params = compile_params params in
+        Stack.push (Insn.MakeVariantCtor (klass, ctor, params)) insns;
+        Stack.push (Insn.AddVar ctor) insns
+      end ctors;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Phantom klass ->
+      Stack.push (Insn.At pos) insns;
+      Stack.push (Insn.MakeClass klass) insns;
+      Stack.push (Insn.AddVar klass) insns;
       Stack.push (Insn.Push Literal.Unit) insns
   end
 

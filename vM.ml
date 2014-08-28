@@ -35,6 +35,7 @@ and value =
   | Module of frame
   | Args of args
   | Variant of string * string * args
+  | Record of string * (string, value) Hashtbl.t
   | Closure of env * Insn.t list
   | Subr of int * bool * string list * string list * (t -> args -> value)
 
@@ -60,6 +61,8 @@ exception Error of Pos.t * string * Pos.t list
 exception InternalError of t * string
 exception Match_failure of exn
 exception Not_exported
+
+let initial_field_table_size = 4
 
 let create insns env = {
   insns = insns;
@@ -109,6 +112,8 @@ let get_class value =
       "Proc::C"
     | Subr (_, _, _, _, _) ->
       "Proc::C"
+    | Record (klass, _) ->
+      klass
   end
 
 let rec show_value value =
@@ -135,6 +140,8 @@ let rec show_value value =
       "<closure>"
     | Subr (_, _, _, _, _) ->
       "<subr>"
+    | Record (_, fields) ->
+      sprintf "{%s}" (show_fields fields)
   end
 
 and show_args {normal_args;labeled_args} =
@@ -147,6 +154,13 @@ and show_args {normal_args;labeled_args} =
 
 and show_labeled_arg (label, value) =
   sprintf ":%s %s" label (show_value value)
+
+and show_fields table =
+  let rev_strs = Hashtbl.fold begin fun key value acc ->
+      (sprintf "%s=%s" key (show_value value))::acc
+  end table []
+  in
+  SnString.concat ", " (List.rev rev_strs)
 
 let required vm req_str got_value =
   InternalError (vm, sprintf "%s required, but got %s\n" req_str (show_value got_value))
@@ -437,6 +451,7 @@ and check_labeled_args vm labeled_params labeled_args =
   end
 
 let call_subr vm req_count allows_rest req_labels opt_labels proc args =
+  let args = args_of_value vm args in
   let {normal_args;labeled_args} = args in
   let got_count = List.length normal_args in
   begin if got_count < req_count || got_count > req_count && not allows_rest then
@@ -468,7 +483,6 @@ let call vm func args =
       vm.env <- create_frame ()::env;
       vm.controls <- dump::vm.controls;
     | Subr (req_count, allows_rest, req_labels, opt_labels, proc) ->
-      let args = args_of_value vm args in
       call_subr vm req_count allows_rest req_labels opt_labels proc args
     | _ ->
       raise (required vm "procedure" func)
@@ -481,6 +495,52 @@ let return vm value =
   vm.env <- env;
   vm.pos <- pos;
   vm.controls <- List.tl vm.controls
+
+let make_record_ctor klass fields =
+  create_subr (List.length fields) begin fun vm args ->
+    let table = Hashtbl.create initial_field_table_size in
+    List.iter2 begin fun field arg ->
+      Hashtbl.add table field arg
+    end fields args.normal_args;
+    Record (klass, table)
+  end
+
+let make_getter klass field =
+  create_subr 1 begin fun vm args ->
+    let self = nth args 0 in
+    begin match self with
+      | Record (klass2, table) when klass2 = klass ->
+        Hashtbl.find table field
+      | _ ->
+        raise (required vm klass self)
+    end
+  end      
+
+let make_setter klass field =
+  create_subr 2 begin fun vm args ->
+    let self = nth args 0 in
+    let value = nth args 1 in
+    begin match self with
+      | Record (klass2, table) when klass2 = klass ->
+        Hashtbl.replace table field value;
+        value
+      | _ ->
+        raise (required vm klass self)
+    end
+  end     
+
+let make_variant_ctor klass ctor {Pattern.normal_params;Pattern.labeled_params} =
+  let count = List.length normal_params in
+  let (req, opt) = List.fold_right begin fun (label, (_, has_default)) (req, opt) ->
+      if has_default then
+        (req, label::opt)
+      else
+        (label::req, opt)
+    end labeled_params ([], [])
+  in
+  create_subr count ~req_labels:req ~opt_labels:opt begin fun vm args ->
+    Variant (klass, ctor, args)
+  end
 
 let execute vm insn =
   begin match insn with
@@ -557,6 +617,8 @@ let execute vm insn =
     | Insn.Send sel ->
       let args = pop_value vm in
       let recv = pop_value vm in
+      let args = args_of_value vm args in
+      let args = Args {args with normal_args = recv::args.normal_args} in
       let klass = get_class recv in
       begin try
           let func = find_method vm.env klass (Selector.string_of sel) in
@@ -571,21 +633,6 @@ let execute vm insn =
     | Insn.ReturnModule ->
       let value = Module (List.hd vm.env) in
       return vm value
-    | Insn.MakeArgs (count, labels) ->
-      let labeled_args = List.fold_right begin fun label labeled_args ->
-          let value = pop_value vm in
-          (label, value)::labeled_args
-        end labels []
-      in
-      let normal_args = ref [] in
-      for i = 1 to count do
-        let value = pop_value vm in
-        normal_args := value::!normal_args
-      done;
-      let normal_args = !normal_args in
-      push_value vm (Args (make_args normal_args labeled_args))
-    | Insn.MakeClosure insns ->
-      push_value vm (Closure (vm.env, insns))
     | Insn.Fail ->
       let value = pop_value vm in
       raise (InternalError (vm, sprintf "%s didn't match any cases\n" (show_value value)))
@@ -692,6 +739,36 @@ let execute vm insn =
       let modl = pop_value vm in
       let modl = module_of_value vm modl in
       include_module vm modl
+    | Insn.MakeArgs (count, labels) ->
+      let labeled_args = List.fold_right begin fun label labeled_args ->
+          let value = pop_value vm in
+          (label, value)::labeled_args
+        end labels []
+      in
+      let normal_args = ref [] in
+      for i = 1 to count do
+        let value = pop_value vm in
+        normal_args := value::!normal_args
+      done;
+      let normal_args = !normal_args in
+      push_value vm (Args (make_args normal_args labeled_args))
+    | Insn.MakeClosure insns ->
+      push_value vm (Closure (vm.env, insns))
+    | Insn.MakeClass klass ->
+      let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
+      push_value vm (Class klass)
+    | Insn.MakeRecordCtor (klass, fields) ->
+      let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
+      push_value vm (make_record_ctor klass fields)
+    | Insn.MakeGetter (klass, field) ->
+      let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
+      push_value vm (make_getter klass field)
+    | Insn.MakeSetter (klass, field) ->
+      let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
+      push_value vm (make_setter klass field)
+    | Insn.MakeVariantCtor (klass, ctor, params) ->
+      let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
+      push_value vm (make_variant_ctor klass ctor params)
   end
 
 let rec run vm =
@@ -701,6 +778,7 @@ let rec run vm =
           pop_value vm
         | insn::insns ->
           vm.insns <- insns;
+          (*printf "%s\n" (Insn.show insn);*)
           execute vm insn;
           run vm
       end

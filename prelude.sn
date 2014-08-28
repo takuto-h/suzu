@@ -107,7 +107,7 @@ end
 module String:
   class C
 
-  let format = Builtin::format
+  //let format = Builtin::format
 
   module Open:
     include DefaultCompare(C)
@@ -117,7 +117,8 @@ module String:
     export C#to_string
   end
   
-  export C, format, Open
+  //export C, format, Open
+  export C, Open
 end
 
 module Tuple:
