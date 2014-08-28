@@ -30,3 +30,4 @@ type t =
   | ExportVar of string
   | ExportMethod of Selector.t
   | Open
+  | Include

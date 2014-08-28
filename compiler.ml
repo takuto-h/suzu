@@ -137,6 +137,8 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push Insn.Open insns;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Include expr ->
+      compile_expr expr insns;
+      Stack.push Insn.Include insns;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Record (klass, ctor, fields) ->
       Stack.push (Insn.Push Literal.Unit) insns

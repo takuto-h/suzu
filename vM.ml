@@ -254,13 +254,21 @@ let export_method env klass sel =
   end env
 
 let open_module vm modl =
-  let {exported_vars;exported_methods} = List.hd vm.env in
   VarSet.iter begin fun x ->
     vm.env <- add_var vm.env x (access_var modl x)
-  end exported_vars;
+  end modl.exported_vars;
   MethodSet.iter begin fun (klass, sel) ->
     vm.env <- add_method vm.env klass sel (access_method modl klass sel)
-  end exported_methods
+  end modl.exported_methods
+
+let include_module vm modl =
+  open_module vm modl;
+  VarSet.iter begin fun x ->
+    vm.env <- export_var vm.env x
+  end modl.exported_vars;
+  MethodSet.iter begin fun (klass, sel) ->
+    vm.env <- export_method vm.env klass sel
+  end modl.exported_methods
 
 let unit_of_value vm value =
   begin match value with
@@ -628,6 +636,10 @@ let execute vm insn =
       let modl = pop_value vm in
       let modl = module_of_value vm modl in
       open_module vm modl
+    | Insn.Include ->
+      let modl = pop_value vm in
+      let modl = module_of_value vm modl in
+      include_module vm modl
   end
 
 let rec run vm =
