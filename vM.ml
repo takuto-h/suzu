@@ -322,8 +322,8 @@ let opt_labeled args label =
       None
   end
 
-let rec test_pattern pattern value =
-  begin match (pattern, value) with
+let rec test_pattern pat value =
+  begin match (pat, value) with
     | (Insn.Any, _) ->
       true
     | (Insn.Const lit, _) when value_of_literal lit = value ->
@@ -498,10 +498,17 @@ let execute vm insn =
         | _ ->
           raise (required vm tag value)
       end
-    | Insn.Test pattern ->
+    | Insn.Test pat ->
       let value = peek_value vm in
-      let result = test_pattern pattern value in
+      let result = test_pattern pat value in
       push_value vm (value_of_bool result)
+    | Insn.Check pat ->
+      let value = peek_value vm in
+      let result = test_pattern pat value in
+      if not result then
+        let str_value = show_value value in
+        let str_pat = Insn.show_pattern pat in
+        raise (InternalError (vm, sprintf "match failure of %s with %s\n" str_value str_pat))
     | Insn.Branch (then_insns, else_insns) ->
       let cond = pop_value vm in
       let cond = bool_of_value vm cond in

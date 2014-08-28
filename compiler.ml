@@ -79,10 +79,14 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.AccessMethod sel) insns
     | Expr.Let (pat, expr) ->
       compile_expr expr insns;
+      Stack.push (Insn.At pat.Expr.pat_pos) insns;
+      Stack.push (Insn.Check (compile_pattern pat)) insns;
       compile_bind pat insns;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Lambda (params, body) ->
       let body = compile_with begin fun insns ->
+          Stack.push (Insn.At pos) insns;
+          Stack.push (Insn.Check (Insn.Params (compile_params params))) insns;
           compile_multiple_bind params insns;
           compile_body body insns;
           Stack.push Insn.Return insns
