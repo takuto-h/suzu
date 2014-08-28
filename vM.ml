@@ -228,34 +228,39 @@ let update_current_frame proc env =
   proc (List.hd env)::List.tl env
 
 let add_var env x value =
-  let proc frame =
+  update_current_frame begin fun frame ->
     {frame with vars = VarMap.add x value frame.vars}
-  in
-  update_current_frame proc env
+  end env
 
 let add_method env klass sel value =
-  let proc frame =
+  update_current_frame begin fun frame ->
     {frame with methods = MethodMap.add (klass, sel) value frame.methods}
-  in
-  update_current_frame proc env
+  end env
 
 let export_var env x =
-  let proc frame =
+  update_current_frame begin fun frame ->
     if VarMap.mem x frame.vars then
       {frame with exported_vars = VarSet.add x frame.exported_vars}
     else
       raise Not_found
-  in
-  update_current_frame proc env
+  end env
 
 let export_method env klass sel =
-  let proc frame =
+  update_current_frame begin fun frame ->
     if MethodMap.mem (klass, sel) frame.methods then
       {frame with exported_methods = MethodSet.add (klass, sel) frame.exported_methods}
     else
       raise Not_found
-  in
-  update_current_frame proc env
+  end env
+
+let open_module vm modl =
+  let {exported_vars;exported_methods} = List.hd vm.env in
+  VarSet.iter begin fun x ->
+    vm.env <- add_var vm.env x (access_var modl x)
+  end exported_vars;
+  MethodSet.iter begin fun (klass, sel) ->
+    vm.env <- add_method vm.env klass sel (access_method modl klass sel)
+  end exported_methods
 
 let unit_of_value vm value =
   begin match value with
@@ -619,6 +624,10 @@ let execute vm insn =
         | Not_found ->
           raise (method_not_found vm klass sel)
       end
+    | Insn.Open ->
+      let modl = pop_value vm in
+      let modl = module_of_value vm modl in
+      open_module vm modl
   end
 
 let rec run vm =

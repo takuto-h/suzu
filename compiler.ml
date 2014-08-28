@@ -133,6 +133,8 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       end voms;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Open expr ->
+      compile_expr expr insns;
+      Stack.push Insn.Open insns;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Include expr ->
       Stack.push (Insn.Push Literal.Unit) insns
