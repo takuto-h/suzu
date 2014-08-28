@@ -224,7 +224,7 @@ and compile_body exprs insns =
     compile_expr expr insns;
     Stack.push (Insn.AssertEqual Literal.Unit) insns
   end exprs;
-  if Stack.is_empty insns then
+  if exprs = [] then
     Stack.push (Insn.Push Literal.Unit) insns
   else
     ignore (Stack.pop insns)
