@@ -539,6 +539,9 @@ let execute vm insn =
     | Insn.Return ->
       let value = pop_value vm in
       return vm value
+    | Insn.ReturnModule ->
+      let value = Module (List.hd vm.env) in
+      return vm value
     | Insn.MakeArgs (count, labels) ->
       let labeled_args = List.fold_right begin fun label labeled_args ->
           let value = pop_value vm in

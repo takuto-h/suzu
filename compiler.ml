@@ -140,15 +140,26 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       compile_expr expr insns;
       Stack.push Insn.Include insns;
       Stack.push (Insn.Push Literal.Unit) insns
+    | Expr.Trait (params, body) ->
+      let body = compile_with begin fun insns ->
+          Stack.push (Insn.At pos) insns;
+          Stack.push (Insn.Check (Pattern.Params (compile_params params))) insns;
+          compile_multiple_bind params insns;
+          List.iter begin fun expr ->
+            compile_expr expr insns;
+            Stack.push (Insn.AssertEqual Literal.Unit) insns
+          end body;
+          Stack.push Insn.ReturnModule insns
+        end
+      in
+      Stack.push (Insn.MakeClosure body) insns
+    | Expr.Except (modl, voms) ->
+      Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Record (klass, ctor, fields) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Variant (klass, ctors) ->
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.Phantom klass ->
-      Stack.push (Insn.Push Literal.Unit) insns
-    | Expr.Trait (params, body) ->
-      Stack.push (Insn.Push Literal.Unit) insns
-    | Expr.Except (modl, voms) ->
       Stack.push (Insn.Push Literal.Unit) insns
   end
 

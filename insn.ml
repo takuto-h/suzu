@@ -14,6 +14,7 @@ type t =
   | Call
   | Send of Selector.t
   | Return
+  | ReturnModule
   | MakeArgs of int * string list
   | MakeClosure of t list
   | Fail
