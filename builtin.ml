@@ -2,30 +2,30 @@
 open Printf
 
 let make_binary_subr proc_out proc_body proc_in =
-  Eva.create_subr 2 begin fun eva pos args ->
-    let arg0 = Eva.Args.nth args 0 in
-    let arg1 = Eva.Args.nth args 1 in
-    proc_out (proc_body (proc_in pos arg0) (proc_in pos arg1))
+  VM.create_subr 2 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    let arg1 = VM.nth args 1 in
+    VM.push_value vm (proc_out (proc_body (proc_in vm arg0) (proc_in vm arg1)))
   end
 
 let make_unary_subr proc_out proc_body proc_in =
-  Eva.create_subr 1 begin fun eva pos args ->
-    let arg0 = Eva.Args.nth args 0 in
-    proc_out (proc_body (proc_in pos arg0))
+  VM.create_subr 1 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    VM.push_value vm (proc_out (proc_body (proc_in vm arg0)))
   end
 
 let make_binary_cmp_subr proc =
-  Eva.create_subr 2 begin fun eva pos args ->
-    let arg0 = Eva.Args.nth args 0 in
-    let arg1 = Eva.Args.nth args 1 in
-    Eva.value_of_bool (proc arg0 arg1)
+  VM.create_subr 2 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    let arg1 = VM.nth args 1 in
+    VM.push_value vm (VM.value_of_bool (proc arg0 arg1))
   end
 
 let make_binary_arith_subr proc =
-  make_binary_subr Eva.value_of_int proc Eva.int_of_value
+  make_binary_subr VM.value_of_int proc VM.int_of_value
 
 let make_unary_arith_subr proc =
-  make_unary_subr Eva.value_of_int proc Eva.int_of_value
+  make_unary_subr VM.value_of_int proc VM.int_of_value
 
 let subr_eq = make_binary_cmp_subr ( = )
 let subr_ne = make_binary_cmp_subr ( <> )
@@ -35,25 +35,25 @@ let subr_lt = make_binary_cmp_subr ( < )
 let subr_le = make_binary_cmp_subr ( <= )
 
 let subr_compare =
-  Eva.create_subr 2 begin fun eva pos args ->
-    let arg0 = Eva.Args.nth args 0 in
-    let arg1 = Eva.Args.nth args 1 in
-    Eva.value_of_int (compare arg0 arg1)
+  VM.create_subr 2 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    let arg1 = VM.nth args 1 in
+    VM.push_value vm (VM.Int (compare arg0 arg1))
   end
 
 let subr_show =
-  Eva.create_subr 1 begin fun eva pos args ->
-    let arg0 = Eva.Args.nth args 0 in
-    Eva.value_of_string (Eva.Value.show arg0)
+  VM.create_subr 1 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    VM.push_value vm (VM.String (VM.show_value arg0))
   end
 
 let subr_not =
-  make_unary_subr Eva.value_of_bool not Eva.bool_of_value
+  make_unary_subr VM.value_of_bool not VM.bool_of_value
 
 let subr_char_to_string =
-  make_unary_subr Eva.value_of_string (sprintf "%c") Eva.char_of_value
+  make_unary_subr VM.value_of_string (sprintf "%c") VM.char_of_value
 
-module Format = struct
+(*module Format = struct
 
   type format_insn =
     | String of string
@@ -136,79 +136,78 @@ module Format = struct
     in
     loop ()
 
-  let rec execute_format_insns eva pos insns args buf =
+  let rec execute_format_insns vm insns args buf =
     begin match insns with
       | [] ->
         Buffer.contents buf
       | (String str)::insns ->
         Buffer.add_string buf str;
-        execute_format_insns eva pos insns args buf
+        execute_format_insns vm insns args buf
       | (Placeholder n)::insns ->
-        let str = Eva.string_of_value pos begin try
-              Eva.call_method eva pos (List.nth args n) (Selector.Ident "to_string") (Eva.Args.make [] [])
+        let str = VM.string_of_value vm begin try
+              VM.send vm (List.nth args n) (Selector.Ident "to_string") (VM.make_args [] [])
             with
             | Failure "nth" ->
-              raise (Eva.Error (pos, sprintf "argument not supplied: {%d}\n" n, []))
+              raise (VM.InternalError (vm, sprintf "argument not supplied: {%d}\n" n))
           end
         in
         Buffer.add_string buf str;
-        execute_format_insns eva pos insns args buf
+        execute_format_insns vm insns args buf
     end
 
   let subr =
-    Eva.create_subr 1 ~allows_rest:true begin fun eva pos args ->
-      let self = Eva.Args.nth args 0 in
+    VM.create_subr 1 ~allows_rest:true begin fun vm args ->
+      let self = VM.nth args 0 in
       let insns = begin try
-          parse_format_insns (Stream.of_string (Eva.string_of_value pos self)) []
+          parse_format_insns (Stream.of_string (VM.string_of_value vm self)) []
         with
         | Illigal_format ->
-          raise (Eva.Error (pos, sprintf "illegal format string: %s\n" (Eva.Value.show self), []))
+          raise (VM.InternalError (vm, sprintf "illegal format string: %s\n" (VM.show_value self)))
       end
       in
       let buf = Buffer.create initial_formatted_buffer_size in
-      Eva.String (execute_format_insns eva pos insns (List.tl args.Eva.normal_args) buf)
+      VM.push_value vm (VM.value_of_string (execute_format_insns vm insns (List.tl args.VM.normal_args) buf))
     end
-end
+end*)
 
 let subr_class_of =
-  Eva.create_subr 1 begin fun eva pos args ->
-    let arg0 = Eva.Args.nth args 0 in
-    Eva.Class (Eva.Value.class_of arg0)
+  VM.create_subr 1 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    VM.push_value vm (VM.Class (VM.get_class arg0))
   end
 
 let subr_write_line =
-  Eva.create_subr 1 ~allows_rest:true begin fun eva pos args ->
-    let str = Eva.call_fun eva pos Format.subr args in
-    print_endline (Eva.string_of_value pos str);
-    Eva.Unit
+  VM.create_subr 1 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    print_endline (VM.string_of_value vm arg0);
+    VM.push_value vm VM.Unit
   end
 
 let subr_read_line =
-  Eva.create_subr 0 begin fun eva pos args ->
-      Eva.String (read_line ())
+  VM.create_subr 0 begin fun vm args ->
+    VM.push_value vm (VM.String (read_line ()))
   end
 
-let initialize {Interp.eva={Eva.env}} =
-  let mod_builtin = Eva.Env.create_local env in
-  Eva.Env.add_var env "Builtin" (Eva.Module mod_builtin);
-  Eva.Env.add_var mod_builtin "gt" subr_gt ~export:true;
-  Eva.Env.add_var mod_builtin "lt" subr_lt ~export:true;
-  Eva.Env.add_var mod_builtin "ge" subr_ge ~export:true;
-  Eva.Env.add_var mod_builtin "le" subr_le ~export:true;
-  Eva.Env.add_var mod_builtin "eq" subr_eq ~export:true;
-  Eva.Env.add_var mod_builtin "ne" subr_ne ~export:true;
-  Eva.Env.add_var mod_builtin "compare" subr_compare ~export:true;
-  Eva.Env.add_var mod_builtin "show" subr_show ~export:true;
-  Eva.Env.add_var mod_builtin "add" (make_binary_arith_subr ( + )) ~export:true;
-  Eva.Env.add_var mod_builtin "sub" (make_binary_arith_subr ( - )) ~export:true;
-  Eva.Env.add_var mod_builtin "mul" (make_binary_arith_subr ( * )) ~export:true;
-  Eva.Env.add_var mod_builtin "div" (make_binary_arith_subr ( / )) ~export:true;
-  Eva.Env.add_var mod_builtin "mod" (make_binary_arith_subr ( mod )) ~export:true;
-  Eva.Env.add_var mod_builtin "plus" (make_unary_arith_subr ( ~+ )) ~export:true;
-  Eva.Env.add_var mod_builtin "minus" (make_unary_arith_subr ( ~- )) ~export:true;
-  Eva.Env.add_var mod_builtin "not" subr_not ~export:true;
-  Eva.Env.add_var mod_builtin "char_to_string" subr_char_to_string ~export:true;
-  Eva.Env.add_var mod_builtin "format" Format.subr ~export:true;
-  Eva.Env.add_var mod_builtin "class_of" subr_class_of ~export:true;
-  Eva.Env.add_var mod_builtin "write_line" subr_write_line ~export:true;
-  Eva.Env.add_var mod_builtin "read_line" subr_read_line ~export:true;
+let initialize loader =
+  let env = ref [VM.create_frame ()] in
+  env := VM.add_var !env "gt" subr_gt ~export:true;
+  env := VM.add_var !env "lt" subr_lt ~export:true;
+  env := VM.add_var !env "ge" subr_ge ~export:true;
+  env := VM.add_var !env "le" subr_le ~export:true;
+  env := VM.add_var !env "eq" subr_eq ~export:true;
+  env := VM.add_var !env "ne" subr_ne ~export:true;
+  env := VM.add_var !env "compare" subr_compare ~export:true;
+  env := VM.add_var !env "show" subr_show ~export:true;
+  env := VM.add_var !env "add" (make_binary_arith_subr ( + )) ~export:true;
+  env := VM.add_var !env "sub" (make_binary_arith_subr ( - )) ~export:true;
+  env := VM.add_var !env "mul" (make_binary_arith_subr ( * )) ~export:true;
+  env := VM.add_var !env "div" (make_binary_arith_subr ( / )) ~export:true;
+  env := VM.add_var !env "mod" (make_binary_arith_subr ( mod )) ~export:true;
+  env := VM.add_var !env "plus" (make_unary_arith_subr ( ~+ )) ~export:true;
+  env := VM.add_var !env "minus" (make_unary_arith_subr ( ~- )) ~export:true;
+  env := VM.add_var !env "not" subr_not ~export:true;
+  env := VM.add_var !env "char_to_string" subr_char_to_string ~export:true;
+  env := VM.add_var !env "class_of" subr_class_of ~export:true;
+  env := VM.add_var !env "write_line" subr_write_line ~export:true;
+  env := VM.add_var !env "read_line" subr_read_line ~export:true;
+  loader.Loader.env <- VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd !env))

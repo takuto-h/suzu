@@ -4,19 +4,12 @@ open Printf
 let usage_msg = sprintf "usage: %s [source_files]" Sys.argv.(0)
 
 let main () =
-  let interp = Interp.create () in
-  Builtin.initialize interp;
-  Prelude.initialize interp;
-  Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun file_name ->
-    Interp.load_file interp file_name
-  end usage_msg;
-  Interp.repl interp
-
-let main2 () =
   let loader = Loader.create () in
+  Builtin.initialize loader;
+  (*Prelude.initialize loader;*)
   Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun file_name ->
     Loader.load_file loader file_name
   end usage_msg;
   Loader.repl loader
 
-let () = main2 ()
+let () = main ()

@@ -233,16 +233,6 @@ let access_method {methods;exported_methods} klass sel =
 let update_current_frame proc env =
   proc (List.hd env)::List.tl env
 
-let add_var env x value =
-  update_current_frame begin fun frame ->
-    {frame with vars = VarMap.add x value frame.vars}
-  end env
-
-let add_method env klass sel value =
-  update_current_frame begin fun frame ->
-    {frame with methods = MethodMap.add (klass, sel) value frame.methods}
-  end env
-
 let export_var env x =
   update_current_frame begin fun frame ->
     if VarMap.mem x frame.vars then
@@ -258,6 +248,26 @@ let export_method env klass sel =
     else
       raise Not_found
   end env
+
+let add_var ?(export=false) env x value =
+  let env = update_current_frame begin fun frame ->
+      {frame with vars = VarMap.add x value frame.vars}
+    end env
+  in
+  if export then
+    export_var env x
+  else
+    env
+
+let add_method ?(export=false) env klass sel value =
+  let env = update_current_frame begin fun frame ->
+      {frame with methods = MethodMap.add (klass, sel) value frame.methods}
+    end env
+  in
+  if export then
+    export_method env klass sel
+  else
+    env
 
 let unexport_var frame x =
   if VarMap.mem x frame.vars then
@@ -449,9 +459,9 @@ let call_subr vm req_count allows_rest req_labels opt_labels proc args =
   proc vm args
 
 let call vm func args =
-  let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
   begin match func with
     | Closure (env, insns) ->
+      let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
       vm.insns <- insns;
       vm.stack <- [args];
       vm.env <- create_frame ()::env;
