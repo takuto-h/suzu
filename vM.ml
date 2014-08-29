@@ -406,19 +406,21 @@ and check_args {Pattern.normal_params;Pattern.labeled_params} {normal_args;label
   check_labeled_args labeled_params labeled_args
 
 and check_labeled_args labeled_params labeled_args =
-  begin match labeled_params with
-    | [] ->
-      ()
-    | (label, (param, _))::labeled_params when List.mem_assoc label labeled_args ->
-      let arg = List.assoc label labeled_args in
-      let labeled_args = List.remove_assoc label labeled_args in
-      check_value param arg;
-      check_labeled_args labeled_params labeled_args
-    | (_, (_, has_default))::labeled_params when has_default ->
-      check_labeled_args labeled_params labeled_args
-    | (label, (_, _))::_ ->
-      ()
-  end
+  let labeled_args = List.fold_left begin fun labeles_args labeled_param ->
+      begin match labeled_param with
+        | (label, (param, _)) when List.mem_assoc label labeled_args ->
+          let arg = List.assoc label labeled_args in
+          let labeled_args = List.remove_assoc label labeled_args in
+          check_value param arg;
+          labeled_args
+        | (_, (_, has_default)) when has_default ->
+          labeled_args
+        | (label, (_, _)) ->
+          raise (Match_failure (lack_of_labeled_argument label))
+      end
+    end labeled_args labeled_params
+  in
+  ignore labeled_args
 
 let check_args_for_subr req_count allows_rest req_labels args =
   let {normal_args;labeled_args} = args in
