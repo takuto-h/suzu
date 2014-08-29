@@ -818,10 +818,10 @@ and parse_list_pattern parser pos =
 and parse_parens_pattern parser =
   let pos = parser.pos in
   let params = parse_params parser in
-  begin match (params.Expr.normal_params, params.Expr.labeled_params) with
-    | ([], []) ->
+  begin match (params.Expr.normal_params, params.Expr.rest_param, params.Expr.labeled_params) with
+    | ([], None, []) ->
       Expr.Pattern.at pos (Expr.PatConst Literal.Unit)
-    | (pat::[], []) ->
+    | (pat::[], None, []) ->
       pat
     | _ ->
       Expr.Pattern.at pos (Expr.PatParams params)
