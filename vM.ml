@@ -705,7 +705,14 @@ let execute vm insn =
       in
       let (normal_args, labeled_args) = if has_rest then
           let args = args_of_value (pop_value vm) in
-          (args.normal_args, args.labeled_args @ labeled_args)
+          let labeled_args = List.fold_right begin fun (label, value) labeled ->
+              if List.mem_assoc label labeled_args then
+                labeled
+              else
+                (label, value)::labeled
+            end args.labeled_args labeled_args
+          in
+          (args.normal_args, labeled_args)
         else
           ([], labeled_args)
       in

@@ -530,8 +530,12 @@ and parse_rev_labeled_args parser =
         lookahead parser;
         rev_labeled
       | Token.Reserved ":" ->
+        let pos_label = parser.pos in
         lookahead parser;
         let label = parse_ident parser in
+        begin if List.mem_assoc label rev_labeled then
+            raise (expected_at pos_label (sprintf "'%s'" label) "other label")
+        end;
         let value = parse_expr parser in
         begin match parser.token with
           | Token.Reserved ")" ->
@@ -586,8 +590,12 @@ and parse_extra_labeled_args parser rev_labeled_args =
       rev_labeled_args
     end
   else
-    let labeled_arg = parse_extra_labeled_arg parser in
-    parse_extra_labeled_args parser (labeled_arg::rev_labeled_args)
+    let pos_label = parser.pos in
+    let (label, value) = parse_extra_labeled_arg parser in
+    begin if List.mem_assoc label rev_labeled_args then
+        raise (expected_at pos_label (sprintf "'%s'" label) "other label")
+    end;
+    parse_extra_labeled_args parser ((label, value)::rev_labeled_args)
 
 and parse_extra_labeled_arg parser =
   let label = parse_ident parser in
