@@ -42,7 +42,7 @@ let rec compile_pattern {Expr.pat_raw} =
       Pattern.Any
     | Expr.PatConst lit ->
       Pattern.Const lit
-    | Expr.PatTuple params ->
+    | Expr.PatParams params ->
       Pattern.Params (compile_params params)
     | Expr.PatVariant (tag, params) ->
       Pattern.Variant (tag, compile_params params)
@@ -110,7 +110,7 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       compile_args args insns;
       Stack.push (Insn.At pos) insns;
       Stack.push (Insn.Send sel) insns
-    | Expr.Tuple args ->
+    | Expr.Args args ->
       compile_args args insns
     | Expr.And (lhs, rhs) ->
       compile_expr lhs insns;
@@ -263,7 +263,7 @@ and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
       Stack.push Insn.Pop insns
     | Expr.PatConst lit ->
       Stack.push (Insn.AssertEqual lit) insns;
-    | Expr.PatTuple params ->
+    | Expr.PatParams params ->
       compile_multiple_bind params insns;
       Stack.push Insn.Pop insns
     | Expr.PatVariant (tag, params) ->

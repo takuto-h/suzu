@@ -27,7 +27,7 @@ and raw =
   | Trait of params * t list
   | Except of t * VarOrMethod.t list
   | Match of args * (params * t option * t list) list
-  | Tuple of args
+  | Args of args
 
 and pat = {
   pat_pos : Pos.t;
@@ -41,7 +41,7 @@ and pat_raw =
   | PatOr of pat * pat
   | PatAs of pat * string
   | PatVariant of string * params
-  | PatTuple of params
+  | PatParams of params
 
 and params = {
   normal_params : pat list;
@@ -73,7 +73,7 @@ let rec show_pattern {pat_raw} =
       sprintf "(%s as %s)" (show_pattern pat) x
     | PatVariant (ctor, params) ->
       sprintf "%s%s" ctor (show_params params)
-    | PatTuple params ->
+    | PatParams params ->
       sprintf "%s" (show_params params)
   end
 
@@ -138,8 +138,8 @@ let rec show {raw} =
       sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " VarOrMethod.show voms)
     | Match (args, cases) ->
       sprintf "(Match %s %s)" (show_args args) (SnString.concat_map " " show_case cases)
-    | Tuple args ->
-      sprintf "(Tuple %s)" (show_args args)
+    | Args args ->
+      sprintf "(Args %s)" (show_args args)
   end
 
 and show_case (params, guard, body) =

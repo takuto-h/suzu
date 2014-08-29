@@ -671,7 +671,7 @@ and parse_parens parser =
     | (expr::[], []) ->
       expr
     | _ ->
-      Expr.at pos (Expr.Tuple (Expr.Args.make (List.rev rev_normal) (List.rev rev_labeled)))
+      Expr.at pos (Expr.Args (Expr.Args.make (List.rev rev_normal) (List.rev rev_labeled)))
   end
 
 and parse_lambda parser pos =
@@ -824,7 +824,7 @@ and parse_parens_pattern parser =
     | (pat::[], []) ->
       pat
     | _ ->
-      Expr.Pattern.at pos (Expr.PatTuple params)
+      Expr.Pattern.at pos (Expr.PatParams params)
   end
 
 and parse_params parser =

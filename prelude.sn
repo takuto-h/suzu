@@ -126,7 +126,7 @@ module String:
   export C, Open
 end
 
-module Tuple:
+module Args:
   class C
 
   module Open:
@@ -257,7 +257,7 @@ open Bool::Open
 open Int::Open
 open Char::Open
 open String::Open
-open Tuple::Open
+open Args::Open
 open Class::Open
 open Module::Open
 open Proc::Open
