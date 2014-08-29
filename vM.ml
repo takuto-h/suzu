@@ -25,7 +25,7 @@ and value =
   | Variant of string * string * args
   | Record of string * (string, value) Hashtbl.t
   | Closure of env * Insn.t list
-  | Subr of int * bool * string list * string list * (t -> args -> value)
+  | Subr of int * bool * string list * (t -> args -> value)
 
 and args = {
   normal_args : value list;
@@ -74,8 +74,8 @@ let create_frame () = {
   exported_methods = MethodSet.empty;
 }
 
-let create_subr req_count ?(allows_rest=false) ?(req_labels=[]) ?(opt_labels=[]) proc =
-  Subr (req_count, allows_rest, req_labels, opt_labels, proc)
+let create_subr req_count ?(allows_rest=false) ?(req_labels=[]) proc =
+  Subr (req_count, allows_rest, req_labels, proc)
 
 let get_class value =
   begin match value with
@@ -99,7 +99,7 @@ let get_class value =
       klass
     | Closure (_, _) ->
       "Proc::C"
-    | Subr (_, _, _, _, _) ->
+    | Subr (_, _, _, _) ->
       "Proc::C"
     | Record (klass, _) ->
       klass
@@ -127,7 +127,7 @@ let rec show_value value =
       sprintf "%s%s" tag (show_args args)
     | Closure (_, _) ->
       "<closure>"
-    | Subr (_, _, _, _, _) ->
+    | Subr (_, _, _, _) ->
       "<subr>"
     | Record (_, fields) ->
       sprintf "{%s}" (show_fields fields)
@@ -159,9 +159,6 @@ let wrong_number_of_arguments req_count got_count =
 
 let lack_of_labeled_argument label =
   InternalError (sprintf "lack of labeled argument: %s\n" label)
-
-let extra_labeled_arguments labeled_args =
-  InternalError (sprintf "extra labeled arguments: %s\n" (SnString.concat_map ", " fst labeled_args))
 
 let variable_not_found x =
   InternalError (sprintf "variable not found: %s\n" x)
@@ -371,14 +368,6 @@ let nth {normal_args} n =
 let labeled {labeled_args} label =
   List.assoc label labeled_args
 
-let opt_nth args n =
-  begin try
-      Some (nth args n)
-    with
-    | Failure "nth" ->
-      None
-  end
-
 let opt_labeled args label =
   begin try
       Some (labeled args label)
@@ -418,10 +407,8 @@ and check_args {Pattern.normal_params;Pattern.labeled_params} {normal_args;label
 
 and check_labeled_args labeled_params labeled_args =
   begin match labeled_params with
-    | [] when List.length labeled_args = 0 ->
-      ()
     | [] ->
-      raise (Match_failure (extra_labeled_arguments labeled_args))
+      ()
     | (label, (param, _))::labeled_params when List.mem_assoc label labeled_args ->
       let arg = List.assoc label labeled_args in
       let labeled_args = List.remove_assoc label labeled_args in
@@ -433,7 +420,7 @@ and check_labeled_args labeled_params labeled_args =
       ()
   end
 
-let check_args_for_subr req_count allows_rest req_labels opt_labels args =
+let check_args_for_subr req_count allows_rest req_labels args =
   let {normal_args;labeled_args} = args in
   let got_count = List.length normal_args in
   begin if got_count < req_count || got_count > req_count && not allows_rest then
@@ -446,14 +433,8 @@ let check_args_for_subr req_count allows_rest req_labels opt_labels args =
         raise (lack_of_labeled_argument req_label)
     end labeled_args req_labels
   in
-  let labeled_args = List.fold_left begin fun labeled_args opt_label ->
-      List.remove_assoc opt_label labeled_args
-    end labeled_args opt_labels
-  in
-  begin if List.length labeled_args <> 0 then
-      raise (extra_labeled_arguments labeled_args)
-  end
-  
+  ignore labeled_args
+
 let call vm func args =
   begin match func with
     | Closure (env, insns) ->
@@ -462,9 +443,9 @@ let call vm func args =
       vm.stack <- [args];
       vm.env <- create_frame ()::env;
       vm.controls <- dump::vm.controls;
-    | Subr (req_count, allows_rest, req_labels, opt_labels, proc) ->
+    | Subr (req_count, allows_rest, req_labels, proc) ->
       let args = args_of_value args in
-      check_args_for_subr req_count allows_rest req_labels opt_labels args;
+      check_args_for_subr req_count allows_rest req_labels args;
       push_value vm (proc vm args)
     | _ ->
       raise (required "procedure" func)
@@ -513,14 +494,14 @@ let make_setter klass field =
 
 let make_variant_ctor klass ctor {Pattern.normal_params;Pattern.labeled_params} =
   let count = List.length normal_params in
-  let (req, opt) = List.fold_right begin fun (label, (_, has_default)) (req, opt) ->
+  let req_labels = List.fold_right begin fun (label, (_, has_default)) req_labels ->
       if has_default then
-        (req, label::opt)
+        req_labels
       else
-        (label::req, opt)
-    end labeled_params ([], [])
+        label::req_labels
+    end labeled_params []
   in
-  create_subr count ~req_labels:req ~opt_labels:opt begin fun vm args ->
+  create_subr count ~req_labels:req_labels begin fun vm args ->
     Variant (klass, ctor, args)
   end
 
@@ -538,12 +519,7 @@ let execute vm insn =
     | Insn.GetNth n ->
       let args = peek_value vm in
       let args = args_of_value args in
-      begin match (opt_nth args n) with
-        | Some value ->
-          push_value vm value 
-        | None ->
-          raise (InternalError (sprintf "argument not found at '%d': %s\n" n (show_args args)))
-      end
+      push_value vm (nth args n)
     | Insn.GetLabeled (label, default) ->
       let args = peek_value vm in
       let args = args_of_value args in
@@ -553,7 +529,7 @@ let execute vm insn =
         | (None, Some insns) ->
           vm.insns <- insns @ vm.insns
         | (None, None) ->
-          raise (InternalError (sprintf "argument not found for '%s': %s\n" label (show_args args)))
+          raise (lack_of_labeled_argument label)
       end
     | Insn.RemoveTag tag ->
       let value = pop_value vm in
