@@ -535,7 +535,7 @@ and parse_extra_args parser rev_normal rev_labeled =
         end
       else
         let exprs = parse_elems parser semi_or_newline_or_undent parse_expr in
-        let lambda = Expr.at pos_lambda (Expr.Lambda (Expr.Params.make [] [], exprs)) in
+        let lambda = Expr.at pos_lambda (Expr.Lambda (Expr.Params.make [] None [], exprs)) in
         (lambda::rev_normal, parse_extra_labeled_args parser rev_labeled)
     | Token.Reserved "{" ->
       let lambda = parse_block parser in
@@ -685,12 +685,12 @@ and parse_function parser =
     (params, body)
   else
     let body = parse_block_like_elems parser parse_expr in
-    (Expr.Params.make [] [], body)
+    (Expr.Params.make [] None [], body)
 
 and parse_block parser =
   let pos = parser.pos in
   let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.Lambda (Expr.Params.make [] [], exprs))
+  Expr.at pos (Expr.Lambda (Expr.Params.make [] None [], exprs))
 
 and parse_match_expr parser pos =
   let (rev_normal, rev_labeled) = parse_paren_args parser in
@@ -785,9 +785,9 @@ and parse_variant_pattern parser pos_vom vom =
   end
 
 and parse_list_pattern parser pos =
-  let nil = Expr.Pattern.at pos (Expr.PatVariant ("Nil", Expr.Params.make [] [])) in
+  let nil = Expr.Pattern.at pos (Expr.PatVariant ("Nil", Expr.Params.make [] None [])) in
   let cons head tail =
-    Expr.Pattern.at pos (Expr.PatVariant ("Cons", Expr.Params.make [head; tail] []))
+    Expr.Pattern.at pos (Expr.PatVariant ("Cons", Expr.Params.make [head; tail] None []))
   in
   let rec loop () =
     begin match parser.token with
@@ -828,46 +828,62 @@ and parse_parens_pattern parser =
   end
 
 and parse_params parser =
-  let rec loop rev_normal rev_labeled =
+  let rec loop rev_normal =
     begin match parser.token with
       | Token.Reserved ")" ->
         lookahead parser;
-        (rev_normal, rev_labeled)
+        (List.rev rev_normal, None, [])
+      | Token.Reserved ":" ->
+        let labeled = parse_labeled_params parser in
+        (List.rev rev_normal, None, labeled)
       | _ ->
-        let (rev_normal, rev_labeled) = parse_param parser rev_normal rev_labeled in
+        let pat = parse_pattern parser in
         begin match parser.token with
           | Token.Reserved ")" ->
             lookahead parser;
-            (rev_normal, rev_labeled)
+            (List.rev (pat::rev_normal), None, [])
           | Token.Reserved "," ->
             lookahead parser;
-            loop rev_normal rev_labeled
+            loop (pat::rev_normal)
           | _ ->
             raise (expected parser "',' or ')'")
         end
     end
   in
-  let (rev_normal, rev_labeled) = if parser.token = Token.Reserved "(" then
+  if parser.token = Token.Reserved "(" then
       begin
         lookahead parser;
-        loop [] []
+        let (normal, rest, labeled) = loop [] in
+        Expr.Params.make normal rest labeled
       end
     else
-      ([], [])
-  in
-  Expr.Params.make (List.rev rev_normal) (List.rev rev_labeled)
+      Expr.Params.make [] None []
 
-and parse_param parser rev_normal rev_labeled =
-  if parser.token = Token.Reserved ":" then
-    begin
-      lookahead parser;
-      let label = parse_ident parser in
-      let pattern_and_default = parse_pattern_and_default parser in
-      (rev_normal, (label, pattern_and_default)::rev_labeled)
+and parse_labeled_params parser =
+  let rec loop rev_labeled =
+    begin match parser.token with
+      | Token.Reserved ")" ->
+        lookahead parser;
+        List.rev rev_labeled
+      | Token.Reserved ":" ->
+        lookahead parser;
+        let label = parse_ident parser in
+        let pattern_and_default = parse_pattern_and_default parser in
+        begin match parser.token with
+          | Token.Reserved ")" ->
+            lookahead parser;
+            List.rev ((label, pattern_and_default)::rev_labeled)
+          | Token.Reserved "," ->
+            lookahead parser;
+            loop ((label, pattern_and_default)::rev_labeled)
+          | _ ->
+            raise (expected parser "',' or ')'")
+        end
+      | _ ->
+        raise (expected parser "':' or ')'")
     end
-  else
-    let param = parse_pattern parser in
-    (param::rev_normal, rev_labeled)
+  in
+  loop []
 
 and parse_pattern_and_default parser =
   let pat = parse_pattern parser in

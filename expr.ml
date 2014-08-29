@@ -45,6 +45,7 @@ and pat_raw =
 
 and params = {
   normal_params : pat list;
+  rest_param : pat option;
   labeled_params : (string * (pat * t option)) list;
 }
 
@@ -76,13 +77,16 @@ let rec show_pattern {pat_raw} =
       sprintf "%s" (show_params params)
   end
 
-and show_params {normal_params;labeled_params;} =
+and show_params {normal_params;rest_param;labeled_params;} =
   let str_normal = SnString.concat_map ", " show_pattern normal_params in
   let str_labeled = SnString.concat_map ", " show_labeled_param labeled_params in
-  if List.length normal_params <> 0 && List.length labeled_params <> 0 then
-    sprintf "(%s, %s)" str_normal str_labeled
-  else
-    sprintf "(%s%s)" str_normal str_labeled
+  begin match rest_param with
+    | Some rest_param ->
+      let str_rest = sprintf "*%s" (show_pattern rest_param) in
+      sprintf "(%s)" (SnString.concat ", " [str_normal; str_rest; str_labeled])
+    | None ->
+      sprintf "(%s)" (SnString.concat ", " [str_normal; str_labeled])
+  end
 
 and show_labeled_param (label, (pat, _)) =
   sprintf ":%s %s = <expr>" label (show_pattern pat)
@@ -171,8 +175,9 @@ end
 module Params = struct
   type t = params
 
-  let make normal labeled = {
+  let make normal rest labeled = {
     normal_params = normal;
+    rest_param = rest;
     labeled_params = labeled;
   }
   
