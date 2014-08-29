@@ -51,6 +51,7 @@ and params = {
 
 and args = {
   normal_args : t list;
+  rest_arg : t option;
   labeled_args : (string * t) list;
 }
 
@@ -150,13 +151,16 @@ and show_case (params, guard, body) =
       sprintf "(Case %s None %s)" (show_params params) (SnString.concat_map " " show body)
   end
 
-and show_args {normal_args;labeled_args;} =
+and show_args {normal_args;rest_arg;labeled_args} =
   let str_normal = SnString.concat_map ", " show normal_args in
   let str_labeled = SnString.concat_map ", " show_labeled_arg labeled_args in
-  if List.length normal_args <> 0 && List.length labeled_args <> 0 then
-    sprintf "(%s, %s)" str_normal str_labeled
-  else
-    sprintf "(%s%s)" str_normal str_labeled
+  begin match rest_arg with
+    | Some rest_arg ->
+      let str_rest = sprintf "*%s" (show rest_arg) in
+      sprintf "(%s)" (SnString.concat ", " [str_normal; str_rest; str_labeled])
+    | None ->
+      sprintf "(%s)" (SnString.concat ", " [str_normal; str_labeled])
+  end
 
 and show_labeled_arg (label, value) =
   sprintf ":%s %s" label (show value)
@@ -187,8 +191,9 @@ end
 module Args = struct
   type t = args
 
-  let make normal labeled = {
+  let make normal rest labeled = {
     normal_args = normal;
+    rest_arg = rest;
     labeled_args = labeled;
   }
   

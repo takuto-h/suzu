@@ -63,7 +63,7 @@ let parse_non_assoc parser get_op parse_lower =
       let op = Selector.Op str in
       lookahead parser;
       let rhs = parse_lower parser in
-      Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] []))
+      Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None []))
   end
 
 let rec parse_right_assoc parser get_op parse_lower =
@@ -76,7 +76,7 @@ let rec parse_right_assoc parser get_op parse_lower =
       let op = Selector.Op str in
       lookahead parser;
       let rhs = parse_right_assoc parser get_op parse_lower in
-      Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] []))
+      Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None []))
   end
 
 let rec parse_left_assoc parser get_op parse_lower =
@@ -90,7 +90,7 @@ let rec parse_left_assoc parser get_op parse_lower =
         let op = Selector.Op str in
         lookahead parser;
         let rhs = parse_lower parser in
-        loop (Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] [])))
+        loop (Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None [])))
     end
   in
   loop lhs
@@ -419,15 +419,15 @@ and parse_unary_expr parser =
     | Token.AddOp "-" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~-", Expr.Args.make [] []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~-", Expr.Args.make [] None []))
     | Token.AddOp "+" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~+", Expr.Args.make [] []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~+", Expr.Args.make [] None []))
     | Token.CmpOp "!" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "!", Expr.Args.make [] []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.Op "!", Expr.Args.make [] None []))
     | _ ->
       parse_dot_expr parser
   end
@@ -447,9 +447,9 @@ and parse_dot_expr parser =
           | Token.Reserved "=" ->
             lookahead parser;
             let expr = parse_expr parser in
-            Expr.at pos (Expr.MethodCall (recv, Selector.Op (sprintf "%s=" (Selector.string_of sel)), Expr.Args.make [expr] []))
+            Expr.at pos (Expr.MethodCall (recv, Selector.Op (sprintf "%s=" (Selector.string_of sel)), Expr.Args.make [expr] None []))
           | _ ->
-            Expr.at pos (Expr.MethodCall (recv, sel, Expr.Args.make [] []))
+            Expr.at pos (Expr.MethodCall (recv, sel, Expr.Args.make [] None []))
         end
       | _ ->
         recv
@@ -472,50 +472,82 @@ and parse_prim_expr parser =
   loop expr
 
 and parse_args parser =
-  let (rev_normal, rev_labeled) = if parser.token = Token.Reserved "(" then
+  let (rev_normal, rest, rev_labeled) = if parser.token = Token.Reserved "(" then
       begin
-        parse_paren_args parser
+        parse_rev_paren_args parser
       end
     else
-      ([], [])
+      ([], None, [])
   in
   let (rev_normal, rev_labeled) = parse_extra_args parser rev_normal rev_labeled in
-  Expr.Args.make (List.rev rev_normal) (List.rev rev_labeled)
+  Expr.Args.make (List.rev rev_normal) rest (List.rev rev_labeled)
 
-and parse_paren_args parser =
+and parse_rev_paren_args parser =
   lookahead parser;
-  let rec loop rev_normal rev_labeled =
+  let rec loop rev_normal =
     begin match parser.token with
       | Token.Reserved ")" ->
         lookahead parser;
-        (rev_normal, rev_labeled)
+        (rev_normal, None, [])
+      | Token.MulOp "*" ->
+        lookahead parser;
+        let rest = parse_expr parser in
+        let rev_labeled = begin match parser.token with
+          | Token.Reserved ")" ->
+            lookahead parser;
+            []
+          | Token.Reserved "," ->
+            lookahead parser;
+            parse_rev_labeled_args parser
+          | _ ->
+            raise (expected parser "',' or ')'")
+        end
+        in
+        (rev_normal, Some rest, rev_labeled)
+      | Token.Reserved ":" ->
+        let rev_labeled = parse_rev_labeled_args parser in
+        (rev_normal, None, rev_labeled)
       | _ ->
-        let (rev_normal, rev_labeled) = parse_paren_arg parser rev_normal rev_labeled in
+        let arg = parse_expr parser in
         begin match parser.token with
           | Token.Reserved ")" ->
             lookahead parser;
-            (rev_normal, rev_labeled)
+            (arg::rev_normal, None, [])
           | Token.Reserved "," ->
             lookahead parser;
-            loop rev_normal rev_labeled
+            loop (arg::rev_normal)
           | _ ->
             raise (expected parser "',' or ')'")
         end
     end
   in
-  loop [] []
+  loop []
 
-and parse_paren_arg parser rev_normal rev_labeled =
-  if parser.token = Token.Reserved ":" then
-    begin
-      lookahead parser;
-      let label = parse_ident parser in
-      let value = parse_expr parser in
-      (rev_normal, (label, value)::rev_labeled)
+and parse_rev_labeled_args parser =
+  let rec loop rev_labeled =
+    begin match parser.token with
+      | Token.Reserved ")" ->
+        lookahead parser;
+        rev_labeled
+      | Token.Reserved ":" ->
+        lookahead parser;
+        let label = parse_ident parser in
+        let value = parse_expr parser in
+        begin match parser.token with
+          | Token.Reserved ")" ->
+            lookahead parser;
+            (label, value)::rev_labeled
+          | Token.Reserved "," ->
+            lookahead parser;
+            loop ((label, value)::rev_labeled)
+          | _ ->
+            raise (expected parser "',' or ')'")
+        end
+      | _ ->
+        raise (expected parser "':' or ')'")
     end
-  else
-    let arg = parse_expr parser in
-    (arg::rev_normal, rev_labeled)
+  in
+  loop []
 
 and parse_extra_args parser rev_normal rev_labeled =
   begin match parser.token with
@@ -634,7 +666,7 @@ and parse_list parser pos =
     Expr.at pos
       (Expr.FunCall
          (Expr.at pos (Expr.Get (["List"], VarOrMethod.Var "Cons")),
-          Expr.Args.make [head; tail] []))
+          Expr.Args.make [head; tail] None []))
   in    
   let rec loop () =
     begin match parser.token with
@@ -664,14 +696,14 @@ and parse_list parser pos =
 
 and parse_parens parser =
   let pos = parser.pos in
-  let (rev_normal, rev_labeled) = parse_paren_args parser in
-  begin match (rev_normal, rev_labeled) with
-    | ([], []) ->
+  let (rev_normal, rest, rev_labeled) = parse_rev_paren_args parser in
+  begin match (rev_normal, rest, rev_labeled) with
+    | ([], None, []) ->
       Expr.at pos (Expr.Const Literal.Unit)
-    | (expr::[], []) ->
+    | (expr::[], None, []) ->
       expr
     | _ ->
-      Expr.at pos (Expr.Args (Expr.Args.make (List.rev rev_normal) (List.rev rev_labeled)))
+      Expr.at pos (Expr.Args (Expr.Args.make (List.rev rev_normal) rest (List.rev rev_labeled)))
   end
 
 and parse_lambda parser pos =
@@ -693,8 +725,8 @@ and parse_block parser =
   Expr.at pos (Expr.Lambda (Expr.Params.make [] None [], exprs))
 
 and parse_match_expr parser pos =
-  let (rev_normal, rev_labeled) = parse_paren_args parser in
-  let args = Expr.Args.make (List.rev rev_normal) (List.rev rev_labeled) in
+  let (rev_normal, rest, rev_labeled) = parse_rev_paren_args parser in
+  let args = Expr.Args.make (List.rev rev_normal) rest (List.rev rev_labeled) in
   skip parser (Token.Reserved ":");
   let rec loop rev_case_clauses =
     skip parser Token.Newline;
