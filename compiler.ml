@@ -253,15 +253,23 @@ and compile_cases cases insns =
       Stack.push (Insn.Branch (then_insns, else_insns)) insns
   end
 
-and compile_args {Expr.normal_args;Expr.labeled_args} insns =
+and compile_args {Expr.normal_args;Expr.rest_arg;Expr.labeled_args} insns =
   let count = List.length normal_args in
   List.iter (fun expr -> compile_expr expr insns) normal_args;
+  let has_rest = begin match rest_arg with
+    | None ->
+      false
+    | Some rest_arg ->
+      compile_expr rest_arg insns;
+      true
+  end
+  in
   let rev_labels = List.fold_left begin fun labels (label, expr) ->
       compile_expr expr insns;
       label::labels
     end [] labeled_args
   in
-  Stack.push (Insn.MakeArgs (count, List.rev rev_labels)) insns
+  Stack.push (Insn.MakeArgs (count, has_rest, List.rev rev_labels)) insns
 
 and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
   Stack.push (Insn.At pat_pos) insns;

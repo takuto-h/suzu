@@ -712,13 +712,19 @@ let execute vm insn =
       let modl = pop_value vm in
       let modl = module_of_value modl in
       include_module vm modl
-    | Insn.MakeArgs (count, labels) ->
+    | Insn.MakeArgs (count, has_rest, labels) ->
       let labeled_args = List.fold_right begin fun label labeled_args ->
           let value = pop_value vm in
           (label, value)::labeled_args
         end labels []
       in
-      let normal_args = ref [] in
+      let (normal_args, labeled_args) = if has_rest then
+          let args = args_of_value (pop_value vm) in
+          (args.normal_args, args.labeled_args @ labeled_args)
+        else
+          ([], labeled_args)
+      in
+      let normal_args = ref normal_args in
       for i = 1 to count do
         let value = pop_value vm in
         normal_args := value::!normal_args

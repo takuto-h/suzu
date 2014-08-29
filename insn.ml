@@ -1,6 +1,8 @@
 
 open Printf
 
+type has_rest = bool
+
 type t =
   | At of Pos.t
   | Push of Literal.t
@@ -34,7 +36,7 @@ type t =
   | UnexportMethod of Selector.t
   | Open
   | Include
-  | MakeArgs of int * string list
+  | MakeArgs of int * has_rest * string list
   | MakeClosure of t list
   | MakeClass of string
   | MakeRecordCtor of string * string list
@@ -110,8 +112,8 @@ let rec show insn =
       "Open"
     | Include ->
       "Include"
-    | MakeArgs (count, labels) ->
-      sprintf "(MakeArgs %d (%s)))" count (SnString.concat " " labels)
+    | MakeArgs (count, has_rest, labels) ->
+      sprintf "(MakeArgs %d %B (%s)))" count has_rest (SnString.concat " " labels)
     | MakeClosure insns ->
       sprintf "(MakeClosure (%s)))" (SnString.concat_map " " show insns)
     | MakeClass klass ->
