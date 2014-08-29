@@ -54,13 +54,20 @@ let rec compile_pattern {Expr.pat_raw} =
       compile_pattern pat
   end
   
-and compile_params {Expr.normal_params;Expr.labeled_params} =
+and compile_params {Expr.normal_params;Expr.rest_param;Expr.labeled_params} =
   let normal_params = List.map compile_pattern normal_params in
+  let rest_param = begin match rest_param with
+    | None ->
+      None
+    | Some rest_param ->
+      Some (compile_pattern rest_param)
+  end
+  in
   let labeled_params = List.map begin fun (label, (pat, default)) ->
       (label, (compile_pattern pat, default <> None))
     end labeled_params
   in
-  Pattern.make_params normal_params labeled_params
+  Pattern.make_params normal_params rest_param labeled_params
 
 let rec compile_expr {Expr.pos;Expr.raw} insns =
   begin match raw with
@@ -287,11 +294,18 @@ and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
       Stack.push (Insn.AddVar x) insns
   end
 
-and compile_multiple_bind {Expr.normal_params;Expr.labeled_params} insns =
+and compile_multiple_bind {Expr.normal_params;Expr.rest_param;Expr.labeled_params} insns =
   List.iteri begin fun i pat ->
-    Stack.push (Insn.GetNth i) insns;
+    Stack.push Insn.Split insns;
     compile_bind pat insns
   end normal_params;
+  begin match rest_param with
+    | None ->
+      ()
+    | Some rest_param ->
+      Stack.push Insn.Dup insns;
+      compile_bind rest_param insns
+  end;
   List.iter begin fun (label, (pat, default)) ->
     begin match default with
       | None ->

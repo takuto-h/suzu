@@ -12,11 +12,13 @@ type t =
 
 and params = {
   normal_params : t list;
+  rest_param : t option;
   labeled_params : (string * (t * has_default)) list;
 }
 
-let make_params normal_params labeled_params = {
+let make_params normal_params rest_param labeled_params = {
   normal_params = normal_params;
+  rest_param = rest_param;
   labeled_params = labeled_params;
 }
 
@@ -34,13 +36,16 @@ let rec show pat =
       sprintf "(%s | %s)" (show lhs) (show rhs)
   end
 
-and show_params {normal_params;labeled_params} =
+and show_params {normal_params;rest_param;labeled_params} =
   let str_normal = SnString.concat_map ", " show normal_params in
   let str_labeled = SnString.concat_map ", " show_labeled_param labeled_params in
-  if List.length normal_params <> 0 && List.length labeled_params <> 0 then
-    sprintf "(%s, %s)" str_normal str_labeled
-  else
-    sprintf "(%s%s)" str_normal str_labeled
+  begin match rest_param with
+    | Some rest_param ->
+      let str_rest = sprintf "*%s" (show rest_param) in
+      sprintf "(%s)" (SnString.concat ", " [str_normal; str_rest; str_labeled])
+    | None ->
+      sprintf "(%s)" (SnString.concat ", " [str_normal; str_labeled])
+  end
 
 and show_labeled_param (label, (pat, has_default)) =
   if has_default then

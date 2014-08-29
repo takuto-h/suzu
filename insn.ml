@@ -6,7 +6,7 @@ type t =
   | Push of Literal.t
   | Pop
   | Dup
-  | GetNth of int
+  | Split
   | GetLabeled of string * (t list) option
   | RemoveTag of string
   | AssertEqual of Literal.t
@@ -52,8 +52,8 @@ let rec show insn =
       "Pop"
     | Dup ->
       "Pop"
-    | GetNth n ->
-      sprintf "(GetNth %d)" n
+    | Split ->
+      "Split"
     | GetLabeled (label, None) ->
       sprintf "(GetLabeled %s)" label
     | GetLabeled (label, Some insns) ->

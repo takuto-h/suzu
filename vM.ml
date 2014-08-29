@@ -396,13 +396,19 @@ let rec check_value pat value =
       raise (Match_failure (required (Pattern.show pat) value))
   end
 
-and check_args {Pattern.normal_params;Pattern.labeled_params} {normal_args;labeled_args} =
+and check_args {Pattern.normal_params;Pattern.rest_param;Pattern.labeled_params} {normal_args;labeled_args} =
   let req_count = List.length normal_params in
   let got_count = List.length normal_args in
-  begin if req_count <> got_count then
+  let allows_rest = rest_param <> None in
+  begin if got_count < req_count || got_count > req_count && not allows_rest then
       raise (Match_failure (wrong_number_of_arguments req_count got_count))
   end;
-  List.iter2 check_value normal_params normal_args;
+  let normal_args = List.fold_left begin fun normal_args normal_param ->
+      check_value normal_param (List.hd normal_args);
+      List.tl normal_args
+    end normal_args normal_params
+  in
+  ignore normal_args;
   check_labeled_args labeled_params labeled_args
 
 and check_labeled_args labeled_params labeled_args =
@@ -494,8 +500,9 @@ let make_setter klass field =
     end
   end     
 
-let make_variant_ctor klass ctor {Pattern.normal_params;Pattern.labeled_params} =
+let make_variant_ctor klass ctor {Pattern.normal_params;Pattern.rest_param;Pattern.labeled_params} =
   let count = List.length normal_params in
+  let allows_rest = rest_param <> None in
   let req_labels = List.fold_right begin fun (label, (_, has_default)) req_labels ->
       if has_default then
         req_labels
@@ -503,7 +510,7 @@ let make_variant_ctor klass ctor {Pattern.normal_params;Pattern.labeled_params} 
         label::req_labels
     end labeled_params []
   in
-  create_subr count ~req_labels:req_labels begin fun vm args ->
+  create_subr count ~allows_rest:allows_rest ~req_labels:req_labels begin fun vm args ->
     Variant (klass, ctor, args)
   end
 
@@ -518,10 +525,13 @@ let execute vm insn =
     | Insn.Dup ->
       let top = peek_value vm in
       push_value vm top
-    | Insn.GetNth n ->
-      let args = peek_value vm in
+    | Insn.Split ->
+      let args = pop_value vm in
       let args = args_of_value args in
-      push_value vm (nth args n)
+      let arg = List.hd args.normal_args in
+      let args = Args {args with normal_args = List.tl args.normal_args} in
+      push_value vm args;
+      push_value vm arg
     | Insn.GetLabeled (label, default) ->
       let args = peek_value vm in
       let args = args_of_value args in
