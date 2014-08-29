@@ -833,6 +833,21 @@ and parse_params parser =
       | Token.Reserved ")" ->
         lookahead parser;
         (List.rev rev_normal, None, [])
+      | Token.MulOp "*" ->
+        lookahead parser;
+        let rest = parse_pattern parser in
+        let labeled = begin match parser.token with
+          | Token.Reserved ")" ->
+            lookahead parser;
+            []
+          | Token.Reserved "," ->
+            lookahead parser;
+            parse_labeled_params parser
+          | _ ->
+            raise (expected parser "',' or ')'")
+        end
+        in
+        (List.rev rev_normal, Some rest, labeled)
       | Token.Reserved ":" ->
         let labeled = parse_labeled_params parser in
         (List.rev rev_normal, None, labeled)
