@@ -479,7 +479,7 @@ and parse_args parser =
     else
       ([], None, [])
   in
-  let (rev_normal, rev_labeled) = parse_extra_args parser rev_normal rev_labeled in
+  let (rev_normal, rev_labeled) = parse_extra_rev_args parser rev_normal rev_labeled in
   Expr.Args.make (List.rev rev_normal) rest (List.rev rev_labeled)
 
 and parse_rev_paren_args parser =
@@ -553,13 +553,13 @@ and parse_rev_labeled_args parser =
   in
   loop []
 
-and parse_extra_args parser rev_normal rev_labeled =
+and parse_extra_rev_args parser rev_normal rev_labeled =
   begin match parser.token with
     | Token.Reserved "^" ->
       let pos_lambda = parser.pos in
       lookahead parser;
       let lambda = parse_lambda parser pos_lambda in
-      (lambda::rev_normal, parse_extra_labeled_args parser rev_labeled)
+      (lambda::rev_normal, parse_extra_rev_labeled_args parser rev_labeled)
     | Token.Reserved ":" ->
       let pos_lambda = parser.pos in
       Lexer.indent parser.lexer;
@@ -567,22 +567,22 @@ and parse_extra_args parser rev_normal rev_labeled =
       if parser.token = Token.Newline then
         begin
           lookahead parser;
-          (rev_normal, parse_extra_labeled_args parser rev_labeled)
+          (rev_normal, parse_extra_rev_labeled_args parser rev_labeled)
         end
       else
         let exprs = parse_elems parser semi_or_newline_or_undent parse_expr in
         let lambda = Expr.at pos_lambda (Expr.Lambda (Expr.Params.make [] None [], exprs)) in
-        (lambda::rev_normal, parse_extra_labeled_args parser rev_labeled)
+        (lambda::rev_normal, parse_extra_rev_labeled_args parser rev_labeled)
     | Token.Reserved "{" ->
       let lambda = parse_block parser in
-      (lambda::rev_normal, parse_extra_labeled_args parser rev_labeled)
+      (lambda::rev_normal, parse_extra_rev_labeled_args parser rev_labeled)
     | Token.Ident _ ->
-      (rev_normal, parse_extra_labeled_args parser rev_labeled)
+      (rev_normal, parse_extra_rev_labeled_args parser rev_labeled)
     | _ ->
       (rev_normal, rev_labeled)
   end
 
-and parse_extra_labeled_args parser rev_labeled_args =
+and parse_extra_rev_labeled_args parser rev_labeled_args =
   skip parser Token.Newline;
   if parser.token = Token.Reserved "end" then
     begin
@@ -595,7 +595,7 @@ and parse_extra_labeled_args parser rev_labeled_args =
     begin if List.mem_assoc label rev_labeled_args then
         raise (expected_at pos_label (sprintf "'%s'" label) "other label")
     end;
-    parse_extra_labeled_args parser ((label, value)::rev_labeled_args)
+    parse_extra_rev_labeled_args parser ((label, value)::rev_labeled_args)
 
 and parse_extra_labeled_arg parser =
   let label = parse_ident parser in
