@@ -526,15 +526,13 @@ let execute vm insn =
       let top = peek_value vm in
       push_value vm top
     | Insn.Split ->
-      let args = pop_value vm in
-      let args = args_of_value args in
+      let args = args_of_value (pop_value vm) in
       let arg = List.hd args.normal_args in
       let args = Args {args with normal_args = List.tl args.normal_args} in
       push_value vm args;
       push_value vm arg
     | Insn.GetLabeled (label, default) ->
-      let args = peek_value vm in
-      let args = args_of_value args in
+      let args = args_of_value (peek_value vm) in
       begin match (opt_labeled args label, default)  with
         | (Some value, _) ->
           push_value vm value
@@ -574,8 +572,7 @@ let execute vm insn =
           raise exn
       end
     | Insn.Branch (then_insns, else_insns) ->
-      let cond = pop_value vm in
-      let cond = bool_of_value cond in
+      let cond = bool_of_value (pop_value vm) in
       if cond then
         vm.insns <- then_insns @ vm.insns
       else
@@ -585,9 +582,8 @@ let execute vm insn =
       let func = pop_value vm in
       call vm func args
     | Insn.Send sel ->
-      let args = pop_value vm in
+      let args = args_of_value (pop_value vm) in
       let recv = pop_value vm in
-      let args = args_of_value args in
       let args = Args {args with normal_args = recv::args.normal_args} in
       let klass = get_class recv in
       begin try
@@ -626,8 +622,7 @@ let execute vm insn =
           raise (variable_not_found x)
       end
     | Insn.FindMethod sel ->
-      let klass = pop_value vm in
-      let klass = class_of_value klass in
+      let klass = class_of_value (pop_value vm) in
       begin try
           push_value vm (find_method vm.env klass (Selector.string_of sel))
         with
@@ -635,8 +630,7 @@ let execute vm insn =
           raise (method_not_found klass sel)
       end
     | Insn.AccessVar x ->
-      let modl = pop_value vm in
-      let modl = module_of_value modl in
+      let modl = module_of_value (pop_value vm) in
       begin try
           push_value vm (access_var modl x)
         with
@@ -646,10 +640,8 @@ let execute vm insn =
           raise (variable_not_exported x)
       end
     | Insn.AccessMethod sel ->
-      let klass = pop_value vm in
-      let klass = class_of_value klass in
-      let modl = pop_value vm in
-      let modl = module_of_value modl in
+      let klass = class_of_value (pop_value vm) in
+      let modl = module_of_value (pop_value vm) in
       begin try
           push_value vm (access_method modl klass (Selector.string_of sel))
         with
@@ -662,8 +654,7 @@ let execute vm insn =
       let value = pop_value vm in
       add_var vm.env x value;
     | Insn.AddMethod sel ->
-      let klass = pop_value vm in
-      let klass = class_of_value klass in
+      let klass = class_of_value (pop_value vm) in
       let value = pop_value vm in
       add_method vm.env klass (Selector.string_of sel) value
     | Insn.ExportVar x ->
@@ -674,8 +665,7 @@ let execute vm insn =
           raise (variable_not_found x)
       end
     | Insn.ExportMethod sel ->
-      let klass = pop_value vm in
-      let klass = class_of_value klass in
+      let klass = class_of_value (pop_value vm) in
       begin try
           export_method vm.env klass (Selector.string_of sel)
         with
@@ -683,8 +673,7 @@ let execute vm insn =
           raise (method_not_found klass sel)
       end
     | Insn.UnexportVar x ->
-      let modl = pop_value vm in
-      let modl = module_of_value modl in
+      let modl = module_of_value (pop_value vm) in
       begin try
           unexport_var modl x;
           push_value vm (Module modl)
@@ -693,10 +682,8 @@ let execute vm insn =
           raise (variable_not_exported x)
       end
     | Insn.UnexportMethod sel ->
-      let klass = pop_value vm in
-      let klass = class_of_value klass in
-      let modl = pop_value vm in
-      let modl = module_of_value modl in
+      let klass = class_of_value (pop_value vm) in
+      let modl = module_of_value (pop_value vm) in
       begin try
           unexport_method modl klass (Selector.string_of sel);
           push_value vm (Module modl)
@@ -705,12 +692,10 @@ let execute vm insn =
           raise (method_not_exported klass sel)
       end
     | Insn.Open ->
-      let modl = pop_value vm in
-      let modl = module_of_value modl in
+      let modl = module_of_value (pop_value vm) in
       open_module vm modl
     | Insn.Include ->
-      let modl = pop_value vm in
-      let modl = module_of_value modl in
+      let modl = module_of_value (pop_value vm) in
       include_module vm modl
     | Insn.MakeArgs (count, has_rest, labels) ->
       let labeled_args = List.fold_right begin fun label labeled_args ->
