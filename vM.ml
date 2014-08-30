@@ -461,7 +461,7 @@ let call vm func args =
 let return vm value =
   begin match vm.controls with
     | [] ->
-      ()
+      vm.stack <- [value]
     | Dump (insns, stack, env, pos)::controls ->
       vm.insns <- insns;
       vm.stack <- value::stack;
@@ -469,7 +469,7 @@ let return vm value =
       vm.pos <- pos;
       vm.controls <- controls
     | Finally func::controls ->
-      vm.insns <- [Insn.Return];
+      vm.insns <- [Insn.Pop; Insn.Return];
       vm.stack <- [value];
       vm.controls <- controls;
       call vm func (Args (make_args [] []))
