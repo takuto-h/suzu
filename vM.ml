@@ -43,8 +43,7 @@ and frame = {
 
 and control =
   | Dump of Insn.t list * value list * env * Pos.t
-
-exception Error of Pos.t * string * Pos.t list
+  | Finally of value
 
 exception InternalError of string
 exception Match_failure of exn
@@ -460,12 +459,21 @@ let call vm func args =
   end
 
 let return vm value =
-  let Dump (insns, stack, env, pos) = List.hd vm.controls in
-  vm.insns <- insns;
-  vm.stack <- value::stack;
-  vm.env <- env;
-  vm.pos <- pos;
-  vm.controls <- List.tl vm.controls
+  begin match vm.controls with
+    | [] ->
+      ()
+    | Dump (insns, stack, env, pos)::controls ->
+      vm.insns <- insns;
+      vm.stack <- value::stack;
+      vm.env <- env;
+      vm.pos <- pos;
+      vm.controls <- controls
+    | Finally func::controls ->
+      vm.insns <- [Insn.Return];
+      vm.stack <- [value];
+      vm.controls <- controls;
+      call vm func (Args (make_args [] []))
+  end
 
 let make_record_ctor klass fields =
   create_subr (List.length fields) begin fun vm args ->
@@ -742,22 +750,44 @@ let execute vm insn =
       push_value vm (make_variant_ctor klass ctor params)
   end
 
-let rec run vm =
-  begin try
-      begin match vm.insns with
-        | [] ->
-          pop_value vm
-        | insn::insns ->
-          vm.insns <- insns;
-          (*printf "%s\n" (Insn.show insn);*)
-          execute vm insn;
-          run vm
+let on_error vm message =
+  let pos = vm.pos in
+  let trace = ref [] in
+  let subr_report_error =
+    create_subr 0 begin fun vm args ->
+      printf "%s" (Pos.show_message pos (sprintf "error: %s" message));
+      List.iter begin fun pos ->
+        printf "%s" (Pos.show_message pos "note: error from here\n")
+      end !trace;
+      Unit
+    end
+  in
+  let controls = List.fold_right begin fun control controls ->
+      begin match control with
+        | Dump (_, _, _, pos) ->
+          trace := pos::!trace;
+          controls
+        | Finally func ->
+          control::controls
       end
-    with
-    | InternalError message ->
-      let stack_trace = List.fold_right begin fun (Dump (_, _, _, pos)) stack_trace ->
-          pos::stack_trace
-        end vm.controls []
-      in
-      raise (Error (vm.pos, message, stack_trace))
+    end vm.controls [Finally subr_report_error]
+  in
+  vm.insns <- [Insn.Return];
+  vm.stack <- [Unit];
+  vm.controls <- controls
+
+let rec run vm =
+  begin match vm.insns with
+    | [] ->
+      pop_value vm
+    | insn::insns ->
+      vm.insns <- insns;
+      (*printf "%s\n" (Insn.show insn);*)
+      begin try
+          execute vm insn;
+        with
+        | InternalError message ->
+          on_error vm message
+      end;
+      run vm
   end

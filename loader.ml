@@ -57,11 +57,6 @@ let load_source proc loader source =
     with
     | Parser.Error (pos, message) ->
       printf "%s" (Pos.show_message pos (sprintf "syntax error: %s" message))
-    | VM.Error (pos, message, stack_trace) ->
-      printf "%s" (Pos.show_message pos (sprintf "error: %s" message));
-      List.iter begin fun pos ->
-        printf "%s" (Pos.show_message pos "note: error from here\n")
-      end stack_trace
   end
 
 let load_string loader name str =
