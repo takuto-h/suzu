@@ -122,10 +122,14 @@ module String:
 
   module Open:
     include DefaultCompare(C)
+
+    let C#([]) = Builtin::string_get
     
-    def C#to_string(self){ self }end
+    def C#to_string(self):
+      self
+    end
     
-    export C#to_string
+    export C#([]), C#to_string
   end
   
   //export C, format, Open
