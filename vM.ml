@@ -26,6 +26,7 @@ and value =
   | Record of string * (string, value) Hashtbl.t
   | Closure of env * Insn.t list
   | Subr of int * bool * string list * (t -> args -> value)
+  | Buffer of Buffer.t
 
 and args = {
   normal_args : value list;
@@ -99,12 +100,14 @@ let get_class value =
       "Args::C"
     | Variant (klass, _, _) ->
       klass
+    | Record (klass, _) ->
+      klass
     | Closure (_, _) ->
       "Proc::C"
     | Subr (_, _, _, _) ->
       "Proc::C"
-    | Record (klass, _) ->
-      klass
+    | Buffer _ ->
+      "Buffer::C"
   end
 
 let rec show_value value =
@@ -127,12 +130,14 @@ let rec show_value value =
       show_args args
     | Variant (_, tag, args) ->
       sprintf "%s%s" tag (show_args args)
+    | Record (_, fields) ->
+      sprintf "{%s}" (show_fields fields)
     | Closure (_, _) ->
       "<closure>"
     | Subr (_, _, _, _) ->
       "<subr>"
-    | Record (_, fields) ->
-      sprintf "{%s}" (show_fields fields)
+    | Buffer _ ->
+      "<buffer>"
   end
 
 and show_args {normal_args;labeled_args} =
@@ -358,11 +363,13 @@ let args_of_value value =
       raise (required "arguments" value)
   end
 
-let value_of_unit u = Unit
-let value_of_int i = Int i
-let value_of_bool b = Bool b
-let value_of_char c = Char c
-let value_of_string str = String str
+let buffer_of_value value =
+  begin match value with
+    | Buffer buff ->
+      buff
+    | _ ->
+      raise (required "buffer" value)
+  end
 
 let nth {normal_args} n =
   List.nth normal_args n

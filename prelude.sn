@@ -345,3 +345,13 @@ module Stream:
 
   export C, from_string, peek, junk
 end
+
+module Buffer:
+  class C
+
+  let create = Builtin::buffer_create
+  let add_string = Builtin::buffer_add_string
+  let contents = Builtin::buffer_contents
+
+  export C, create, add_string, contents
+end

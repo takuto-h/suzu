@@ -18,14 +18,14 @@ let make_binary_cmp_subr proc =
   VM.create_subr 2 begin fun vm args ->
     let arg0 = VM.nth args 0 in
     let arg1 = VM.nth args 1 in
-    VM.value_of_bool (proc arg0 arg1)
+    VM.Bool (proc arg0 arg1)
   end
 
 let make_binary_arith_subr proc =
-  make_binary_subr VM.value_of_int proc VM.int_of_value
+  make_binary_subr (fun i -> VM.Int i) proc VM.int_of_value
 
 let make_unary_arith_subr proc =
-  make_unary_subr VM.value_of_int proc VM.int_of_value
+  make_unary_subr (fun i -> VM.Int i) proc VM.int_of_value
 
 let subr_eq = make_binary_cmp_subr ( = )
 let subr_ne = make_binary_cmp_subr ( <> )
@@ -48,10 +48,10 @@ let subr_show =
   end
 
 let subr_not =
-  make_unary_subr VM.value_of_bool not VM.bool_of_value
+  make_unary_subr (fun b -> VM.Bool b) not VM.bool_of_value
 
 let subr_char_to_string =
-  make_unary_subr VM.value_of_string (sprintf "%c") VM.char_of_value
+  make_unary_subr (fun str -> VM.String str) (sprintf "%c") VM.char_of_value
 
 let subr_string_get =
   VM.create_subr 2 begin fun vm args ->
@@ -71,6 +71,26 @@ let subr_string_length =
     VM.Int (String.length str)
   end
 
+let subr_buffer_create =
+  VM.create_subr 1 begin fun vm args ->
+    let initial_buffer_size = VM.int_of_value (VM.nth args 0) in
+    VM.Buffer (Buffer.create initial_buffer_size)
+  end
+
+let subr_buffer_add_string =
+  VM.create_subr 2 begin fun vm args ->
+    let buffer = VM.buffer_of_value (VM.nth args 0) in
+    let str = VM.string_of_value (VM.nth args 1) in
+    Buffer.add_string buffer str;
+    VM.Unit
+  end
+
+let subr_buffer_contents =
+  VM.create_subr 1 begin fun vm args ->
+    let buffer = VM.buffer_of_value (VM.nth args 0) in
+    VM.String (Buffer.contents buffer)
+  end
+    
 (*module Format = struct
 
   type format_insn =
@@ -208,6 +228,8 @@ let subr_read_line =
 
 let initialize loader =
   let env = [VM.create_frame ()] in
+  VM.add_var env "write_line" subr_write_line ~export:true;
+  VM.add_var env "read_line" subr_read_line ~export:true;
   VM.add_var env "gt" subr_gt ~export:true;
   VM.add_var env "lt" subr_lt ~export:true;
   VM.add_var env "ge" subr_ge ~export:true;
@@ -216,6 +238,7 @@ let initialize loader =
   VM.add_var env "ne" subr_ne ~export:true;
   VM.add_var env "compare" subr_compare ~export:true;
   VM.add_var env "show" subr_show ~export:true;
+  VM.add_var env "class_of" subr_class_of ~export:true;
   VM.add_var env "add" (make_binary_arith_subr ( + )) ~export:true;
   VM.add_var env "sub" (make_binary_arith_subr ( - )) ~export:true;
   VM.add_var env "mul" (make_binary_arith_subr ( * )) ~export:true;
@@ -227,9 +250,9 @@ let initialize loader =
   VM.add_var env "char_to_string" subr_char_to_string ~export:true;
   VM.add_var env "string_get" subr_string_get ~export:true;
   VM.add_var env "string_length" subr_string_length ~export:true;
-  VM.add_var env "class_of" subr_class_of ~export:true;
-  VM.add_var env "write_line" subr_write_line ~export:true;
-  VM.add_var env "read_line" subr_read_line ~export:true;
+  VM.add_var env "buffer_create" subr_buffer_create ~export:true;
+  VM.add_var env "buffer_add_string" subr_buffer_add_string ~export:true;
+  VM.add_var env "buffer_contents" subr_buffer_contents ~export:true;
   VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd env));
   VM.add_var loader.Loader.env "debug" begin
     VM.create_subr 0 begin fun vm args ->
