@@ -448,33 +448,8 @@ and parse_unary_expr parser =
       let expr = parse_unary_expr parser in
       Expr.at pos (Expr.MethodCall (expr, Selector.Op "!", Expr.Args.make [] None []))
     | _ ->
-      parse_dot_expr parser
+      parse_prim_expr parser
   end
-
-and parse_dot_expr parser =
-  let expr = parse_prim_expr parser in
-  let rec loop recv =
-    begin match parser.token with
-      | Token.Reserved "." ->
-        let pos = parser.pos in
-        lookahead parser;
-        let sel = parse_selector parser in
-        begin match parser.token with
-          | Token.Reserved "(" | Token.Reserved "^" | Token.Reserved ":" | Token.Reserved "{" ->
-            let args = parse_args parser in
-            loop (Expr.at pos (Expr.MethodCall (recv, sel, args)))
-          | Token.Reserved "=" ->
-            lookahead parser;
-            let expr = parse_expr parser in
-            Expr.at pos (Expr.MethodCall (recv, Selector.Op (sprintf "%s=" (Selector.string_of sel)), Expr.Args.make [expr] None []))
-          | _ ->
-            Expr.at pos (Expr.MethodCall (recv, sel, Expr.Args.make [] None []))
-        end
-      | _ ->
-        recv
-    end
-  in
-  loop expr
 
 and parse_prim_expr parser =
   let expr = parse_atomic_expr parser in
@@ -484,6 +459,22 @@ and parse_prim_expr parser =
       | Token.Reserved "(" | Token.Reserved "^" | Token.Reserved ":" | Token.Reserved "{" ->
         let args = parse_args parser in
         loop (Expr.at pos (Expr.FunCall (expr, args)))
+      | Token.Reserved "." ->
+        let pos = parser.pos in
+        lookahead parser;
+        let sel = parse_selector parser in
+        begin match parser.token with
+          | Token.Reserved "(" | Token.Reserved "^" | Token.Reserved ":" | Token.Reserved "{" ->
+            let args = parse_args parser in
+            loop (Expr.at pos (Expr.MethodCall (expr, sel, args)))
+          | Token.Reserved "=" ->
+            lookahead parser;
+            let value = parse_expr parser in
+            let sel = Selector.Op (sprintf "%s=" (Selector.string_of sel)) in
+            Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [value] None []))
+          | _ ->
+            loop (Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [] None [])))
+        end
       | Token.Reserved "[" ->
         lookahead parser;
         let key = parse_expr parser in

@@ -28,6 +28,8 @@ module Pervasives:
   export Exit, if, while, write_line, read_line, p
 end
 
+open Pervasives
+
 trait DefaultToString(C):
   let C#to_string = Builtin::show
   export C#to_string
@@ -65,6 +67,8 @@ module Unit:
   export C, Open
 end
 
+open Unit::Open
+
 module Bool:
   class C
 
@@ -79,6 +83,8 @@ module Bool:
 
   export C, Open
 end
+
+open Bool::Open
 
 module Int:
   class C
@@ -101,6 +107,8 @@ module Int:
   export C, Open
 end
 
+open Int::Open
+
 module Char:
   class C
 
@@ -114,6 +122,8 @@ module Char:
   
   export C, Open
 end
+
+open Char::Open
 
 module String:
   class C
@@ -135,8 +145,10 @@ module String:
   end
   
   //export C, format, Open
-  export C, Open
+  export C, length, Open
 end
+
+open String::Open
 
 module Args:
   class C
@@ -148,6 +160,8 @@ module Args:
   
   export C, Open
 end
+
+open Args::Open
 
 module Class:
   class C
@@ -162,6 +176,8 @@ module Class:
   export C, of, Open
 end
 
+open Class::Open
+
 module Module:
   class C
 
@@ -172,6 +188,8 @@ module Module:
   export C, Open
 end
 
+open Module::Open
+
 module Proc:
   class C
 
@@ -181,6 +199,8 @@ module Proc:
 
   export C, Open
 end
+
+open Proc::Open
 
 module List:
   class C:
@@ -244,6 +264,8 @@ module List:
   export C, Nil, Cons, fold_left, fold_right, append, Open
 end
 
+open List::Open
+
 module Ref:
   class C = make:
     mutable value
@@ -263,6 +285,8 @@ module Ref:
   export make, C, Open
 end
 
+open Ref::Open
+
 module Exn:
   class C
 
@@ -273,6 +297,29 @@ module Exn:
   export C, Open
 end
 
+open Exn::Open
+
+module Option:
+  class C:
+    def None()
+    def Some(x)
+  end
+
+  module Open:
+    include DefaultCompare(C)
+    include DefaultToString(C)
+
+    let None = None
+    let Some = Some
+
+    export None, Some
+  end
+
+  export C, Open
+end
+
+open Option::Open
+
 module Stream:
   class C = make:
     str
@@ -281,20 +328,20 @@ module Stream:
   end
 
   def from_string(str):
-    make(str, String.length(str), 0)
+    make(str, String::length(str), 0)
   end
-end
 
-open Pervasives
-open Unit::Open
-open Bool::Open
-open Int::Open
-open Char::Open
-open String::Open
-open Args::Open
-open Class::Open
-open Module::Open
-open Proc::Open
-open List::Open
-open Ref::Open
-open Exn::Open
+  def peek(stream):
+    if(stream.idx >= stream.len):
+      None()
+    else:
+      Some(stream.str[stream.idx])
+    end
+  end
+
+  def junk(stream):
+    stream.idx = stream.idx + 1
+  end
+
+  export C, from_string, peek, junk
+end

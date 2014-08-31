@@ -518,7 +518,7 @@ let make_setter klass field =
     begin match self with
       | Record (klass2, table) when klass2 = klass ->
         Hashtbl.replace table field value;
-        value
+        Unit
       | _ ->
         raise (required klass self)
     end
