@@ -22,6 +22,7 @@ let reserved = [
   "except";
   "export";
   "false";
+  "finally";
   "include";
   "let";
   "match";
@@ -31,6 +32,7 @@ let reserved = [
   "or";
   "trait";
   "true";
+  "try";
   "when";
 ]
 
