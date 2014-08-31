@@ -30,6 +30,7 @@ let reserved = [
   "mutable";
   "open";
   "or";
+  "throw";
   "trait";
   "true";
   "try";

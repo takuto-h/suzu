@@ -287,6 +287,10 @@ and parse_binding_expr parser =
     | Token.Reserved "trait" ->
       lookahead parser;
       parse_trait parser pos
+    | Token.Reserved "throw" ->
+      lookahead parser;
+      let expr = parse_expr parser in
+      Expr.at pos (Expr.Throw expr)
     | _ ->
       parse_except_expr parser
   end

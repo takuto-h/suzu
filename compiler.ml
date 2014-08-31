@@ -241,6 +241,9 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.At pos) insns;
       Stack.push (Insn.MakeClosure finally) insns;
       Stack.push (Insn.TryFinally body) insns;
+    | Expr.Throw expr ->
+      compile_expr expr insns;
+      Stack.push Insn.Throw insns;
   end
 
 and compile_cases cases insns =

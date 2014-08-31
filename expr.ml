@@ -29,6 +29,7 @@ and raw =
   | Match of args * (params * t option * t list) list
   | Args of args
   | TryFinally of t list * t list
+  | Throw of t
 
 and pat = {
   pat_pos : Pos.t;
@@ -144,6 +145,8 @@ let rec show {raw} =
       sprintf "(Args %s)" (show_args args)
     | TryFinally (body, finally) ->
       sprintf "(TryFinally (%s) (%s))" (SnString.concat_map " " show body) (SnString.concat_map " " show finally)
+    | Throw expr ->
+      sprintf "(Throw %s)" (show expr)
   end
 
 and show_case (params, guard, body) =
