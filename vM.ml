@@ -786,6 +786,9 @@ let execute vm insn =
     | Insn.MakeVariantCtor (klass, ctor, params) ->
       let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
       push_value vm (make_variant_ctor klass ctor params)
+    | Insn.MakeExceptionCtor (ctor, params) ->
+      let klass = "Exn::C" in
+      push_value vm (make_variant_ctor klass ctor params)
     | Insn.TryFinally ->
       let finally = Finally (pop_value vm) in
       let body = pop_value vm in

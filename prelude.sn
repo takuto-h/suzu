@@ -257,6 +257,16 @@ module Ref:
   export make, C, Open
 end
 
+module Exn:
+  class C
+
+  module Open:
+    include DefaultToString(C)
+  end
+
+  export C, Open
+end
+
 open Pervasives
 open Unit::Open
 open Bool::Open
@@ -269,3 +279,4 @@ open Module::Open
 open Proc::Open
 open List::Open
 open Ref::Open
+open Exn::Open

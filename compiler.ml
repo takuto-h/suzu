@@ -247,7 +247,7 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push Insn.Throw insns;
     | Expr.Exception (ctor, params) ->
       let params = compile_params params in
-      Stack.push (Insn.MakeVariantCtor ("Exn::C", ctor, params)) insns;
+      Stack.push (Insn.MakeExceptionCtor (ctor, params)) insns;
       Stack.push (Insn.AddVar ctor) insns;
       Stack.push (Insn.Push Literal.Unit) insns;
   end
