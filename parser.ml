@@ -642,7 +642,7 @@ and parse_atomic_expr parser =
       parse_match_expr parser pos
     | Token.Reserved "try" ->
       lookahead parser;
-      parse_try_expr parser
+      parse_try_expr parser pos
     | _ ->
       raise (expected parser "expression")
   end
@@ -769,12 +769,11 @@ and parse_case_clause parser =
   let body = parse_block_like_elems parser parse_expr in
   (params, guard, body)
 
-and parse_try_expr parser =
+and parse_try_expr parser pos =
   let body = parse_block_like_elems parser parse_expr in
   skip parser Token.Newline;
-  let pos = parser.pos in
   parse_token parser (Token.Reserved "finally");
-  let finally = parse_block parser in
+  let finally = parse_block_like_elems parser parse_expr in
   skip parser Token.Newline;
   parse_token parser (Token.Reserved "end");
   Expr.at pos (Expr.TryFinally (body, finally))

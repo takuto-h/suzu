@@ -28,7 +28,7 @@ and raw =
   | Except of t * VarOrMethod.t list
   | Match of args * (params * t option * t list) list
   | Args of args
-  | TryFinally of t list * t
+  | TryFinally of t list * t list
 
 and pat = {
   pat_pos : Pos.t;
@@ -143,7 +143,7 @@ let rec show {raw} =
     | Args args ->
       sprintf "(Args %s)" (show_args args)
     | TryFinally (body, finally) ->
-      sprintf "(TryFinally (%s) %s)" (SnString.concat_map " " show body) (show finally)
+      sprintf "(TryFinally (%s) (%s))" (SnString.concat_map " " show body) (SnString.concat_map " " show finally)
   end
 
 and show_case (params, guard, body) =
