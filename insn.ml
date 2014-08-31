@@ -57,7 +57,7 @@ let rec show insn =
     | Pop ->
       "Pop"
     | Dup ->
-      "Pop"
+      "Dup"
     | Split ->
       "Split"
     | GetLabeled (label, None) ->

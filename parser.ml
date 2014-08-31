@@ -935,6 +935,7 @@ and parse_parens_pattern parser =
   end
 
 and parse_params parser =
+  lookahead parser;
   let rec loop rev_normal =
     begin match parser.token with
       | Token.Reserved ")" ->
@@ -972,14 +973,8 @@ and parse_params parser =
         end
     end
   in
-  if parser.token = Token.Reserved "(" then
-      begin
-        lookahead parser;
-        let (normal, rest, labeled) = loop [] in
-        Expr.Params.make normal rest labeled
-      end
-    else
-      Expr.Params.make [] None []
+  let (normal, rest, labeled) = loop [] in
+  Expr.Params.make normal rest labeled
 
 and parse_labeled_params parser =
   let rec loop rev_labeled =

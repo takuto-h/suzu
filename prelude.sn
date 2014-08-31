@@ -18,7 +18,10 @@ module Pervasives:
     end
   end
 
-  let write_line = Builtin::write_line
+  def write_line(*args):
+    Builtin::write_line(String::format(*args))
+  end
+  
   let read_line = Builtin::read_line
 
   def p(value):
@@ -112,6 +115,16 @@ open Int::Open
 module Char:
   class C
 
+  let code = Builtin::char_code
+
+  def digit?(c):
+    String::contain?("0123456789", c)
+  end
+
+  def digit_to_int(c):
+    code(c) - code('0')
+  end
+
   module Open:
     include DefaultCompare(C)
 
@@ -120,7 +133,7 @@ module Char:
     export C#to_string
   end
   
-  export C, Open
+  export C, code, digit?, digit_to_int, Open
 end
 
 open Char::Open
@@ -129,8 +142,123 @@ module String:
   class C
 
   let length = Builtin::string_length
+  let contain? = Builtin::string_contain?
   
-  //let format = Builtin::format
+  module Format:
+    exception Illegal_format()
+    
+    class insn:
+      def String(str)
+      def Placeholder(n)
+    end
+    
+    let initial_unformatted_buffer_size = 16
+    let initial_formatted_buffer_size = 256
+
+    def parse_format_insns(strm, rev_insns):
+      match(Stream::peek(strm)):
+      case(Some('{')):
+        Stream::junk(strm)
+        if(Stream::peek(strm) == Some('{')):
+          parse_string(strm, '{', rev_insns)
+        else:
+          parse_placeholder(strm, rev_insns)
+        end
+      case(Some('}')):
+        Stream::junk(strm)
+        if(Stream::peek(strm) == Some('}')):
+          parse_string(strm, '}', rev_insns)
+        else:
+          throw Illegal_format()
+        end
+      case(Some(c)):
+        parse_string(strm, c, rev_insns)
+      case(None()):
+        List::rev(rev_insns)
+      end
+    end
+
+    def parse_placeholder(strm, rev_insns):
+      def loop(n):
+        match(Stream::peek(strm)):
+        case(Some(c))when(Char::digit?(c)):
+          let i = Char::digit_to_int(c)
+          Stream::junk(strm)
+          loop(n * 10 + i)
+        case(Some('}')):
+          Stream::junk(strm)
+          parse_format_insns(strm, [Placeholder(n) | rev_insns])
+        case(Some(_) or None()):
+          throw Illegal_format()
+        end
+      end
+      loop(0)
+    end
+
+    def parse_string(strm, c, rev_insns):
+      let buf = Buffer::create(initial_unformatted_buffer_size)
+      Buffer::add_char(buf, c)
+      Stream::junk(strm)
+      def loop():
+        match(Stream::peek(strm)):
+        case(Some('{')):
+          Stream::junk(strm)
+          if(Stream::peek(strm) == Some('{')):
+            Buffer::add_char(buf, '{')
+            Stream::junk(strm)
+            loop()
+          else:
+            parse_placeholder(strm, [String(Buffer::contents(buf)) | rev_insns])
+          end
+        case(Some('}')):
+          Stream::junk(strm)
+          if(Stream::peek(strm) == Some('}')):
+            Buffer::add_char(buf, '}')
+            Stream::junk(strm)
+            loop()
+          else:
+            throw Illegal_format()
+          end
+        case(Some(c)):
+          Buffer::add_char(buf, c)
+          Stream::junk(strm)
+          loop()
+        case(None):
+          List::rev([String(Buffer::contents(buf)) | rev_insns])
+        end
+      end
+      loop()
+    end
+
+    def execute_format_insns(insns, args, buf):
+      match(insns):
+      case([]):
+        Buffer::contents(buf)
+      case([String(str) | insns]):
+        Buffer::add_string(buf, str)
+        execute_format_insns(insns, args, buf)
+      case([Placeholder(n) | insns]):
+        let str = match(Args::get(args, n)):
+        case(Some(arg)):
+          arg.to_string
+        case(None()):
+          throw Illegal_format
+        end
+        Buffer::add_string(buf, str)
+        execute_format_insns(insns, args, buf)
+      end
+    end
+
+    def f(str, *args):
+      let insns = parse_format_insns(Stream::from_string(str), [])
+      let buf = Buffer::create(initial_formatted_buffer_size)
+      execute_format_insns(insns, args, buf)
+    end
+
+    export f
+  end
+
+  let format = Format::f
 
   module Open:
     include DefaultCompare(C)
@@ -144,8 +272,7 @@ module String:
     export C#([]), C#to_string
   end
   
-  //export C, format, Open
-  export C, length, Open
+  export C, length, contain?, format, Open
 end
 
 open String::Open
@@ -153,12 +280,14 @@ open String::Open
 module Args:
   class C
 
+  let get = Builtin::args_get
+
   module Open:
     include DefaultCompare(C)
     include DefaultToString(C)
   end
   
-  export C, Open
+  export C, get, Open
 end
 
 open Args::Open
@@ -234,6 +363,12 @@ module List:
     end
   end
 
+  def rev(lst):
+    fold_left([], lst)^(acc, elem):
+      [elem | acc]
+    end
+  end
+
   module Open:
     include Compare(C)^(self, other):
       match(self, other):
@@ -261,7 +396,7 @@ module List:
     export C#(++), C#fold_left, C#fold_right
   end
 
-  export C, Nil, Cons, fold_left, fold_right, append, Open
+  export C, Nil, Cons, fold_left, fold_right, append, rev, Open
 end
 
 open List::Open
@@ -353,5 +488,9 @@ module Buffer:
   let add_string = Builtin::buffer_add_string
   let contents = Builtin::buffer_contents
 
-  export C, create, add_string, contents
+  def add_char(buf, c):
+    add_string(buf, Builtin::char_to_string(c))
+  end
+
+  export C, create, add_string, add_char, contents
 end

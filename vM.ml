@@ -838,8 +838,8 @@ let rec run vm =
       pop_value vm
     | insn::insns ->
       vm.insns <- insns;
-      (*printf "%s\n" (Insn.show insn);
-      printf "%s\n" (SnString.concat_map " " show_value vm.stack);*)
+      (*printf "%s\n" (SnString.concat_map " " show_value vm.stack);*)
+      (*printf "%s\n" (Insn.show insn);*)
       begin try
           execute vm insn;
         with
@@ -848,3 +848,6 @@ let rec run vm =
       end;
       run vm
   end
+
+let some x = Variant ("Option::C", "Some", make_args [x] [])
+let none = Variant ("Option::C", "None", make_args [] [])

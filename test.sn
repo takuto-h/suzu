@@ -235,6 +235,7 @@ end
 
 def Ref::C#decr!(self):
   self.value = self.value - 1
+  self.value
 end
 
 let counter = Ref::make(5)

@@ -50,6 +50,12 @@ let subr_show =
 let subr_not =
   make_unary_subr (fun b -> VM.Bool b) not VM.bool_of_value
 
+let subr_char_code =
+  VM.create_subr 1 begin fun vm args ->
+    let c = VM.char_of_value (VM.nth args 0) in
+    VM.Int (Char.code c)
+  end
+
 let subr_char_to_string =
   make_unary_subr (fun str -> VM.String str) (sprintf "%c") VM.char_of_value
 
@@ -69,6 +75,25 @@ let subr_string_length =
   VM.create_subr 1 begin fun vm args ->
     let str = VM.string_of_value (VM.nth args 0) in
     VM.Int (String.length str)
+  end
+
+let subr_string_contain_p =
+  VM.create_subr 2 begin fun vm args ->
+    let str = VM.string_of_value (VM.nth args 0) in
+    let c = VM.char_of_value (VM.nth args 1) in
+    VM.Bool (String.contains str c)
+  end
+
+let subr_args_get =
+  VM.create_subr 2 begin fun vm args ->
+    let arg = VM.args_of_value (VM.nth args 0) in
+    let index = VM.int_of_value (VM.nth args 1) in
+    begin try
+        VM.some (VM.nth arg index)
+      with
+      | Failure "nth" ->
+        VM.none
+    end
   end
 
 let subr_buffer_create =
@@ -247,9 +272,12 @@ let initialize loader =
   VM.add_var env "plus" (make_unary_arith_subr ( ~+ )) ~export:true;
   VM.add_var env "minus" (make_unary_arith_subr ( ~- )) ~export:true;
   VM.add_var env "not" subr_not ~export:true;
+  VM.add_var env "char_code" subr_char_code ~export:true;
   VM.add_var env "char_to_string" subr_char_to_string ~export:true;
   VM.add_var env "string_get" subr_string_get ~export:true;
   VM.add_var env "string_length" subr_string_length ~export:true;
+  VM.add_var env "string_contain?" subr_string_contain_p ~export:true;
+  VM.add_var env "args_get" subr_args_get ~export:true;
   VM.add_var env "buffer_create" subr_buffer_create ~export:true;
   VM.add_var env "buffer_add_string" subr_buffer_add_string ~export:true;
   VM.add_var env "buffer_contents" subr_buffer_contents ~export:true;
