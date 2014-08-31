@@ -45,6 +45,8 @@ and control =
   | Dump of Insn.t list * value list * env * Pos.t
   | Finally of value
 
+exception Error of Pos.t * string * Pos.t list
+
 exception InternalError of string
 exception Match_failure of exn
 exception Not_exported
@@ -461,6 +463,7 @@ let call vm func args =
 let return vm value =
   begin match vm.controls with
     | [] ->
+      vm.insns <- [];
       vm.stack <- [value]
     | Dump (insns, stack, env, pos)::controls ->
       vm.insns <- insns;
@@ -753,15 +756,7 @@ let execute vm insn =
 let on_error vm message =
   let pos = vm.pos in
   let trace = ref [] in
-  let subr_report_error =
-    create_subr 0 begin fun vm args ->
-      printf "%s" (Pos.show_message pos (sprintf "error: %s" message));
-      List.iter begin fun pos ->
-        printf "%s" (Pos.show_message pos "note: error from here\n")
-      end !trace;
-      Unit
-    end
-  in
+  let subr_report_error = create_subr 0 (fun vm args -> raise (Error (pos, message, !trace))) in
   let controls = List.fold_right begin fun control controls ->
       begin match control with
         | Dump (_, _, _, pos) ->
