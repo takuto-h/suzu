@@ -28,7 +28,7 @@ and raw =
   | Except of t * VarOrMethod.t list
   | Match of args * (params * t option * t list) list
   | Args of args
-  | TryFinally of t list * t list
+  | TryFinally of t * t list
   | Throw of t
 
 and pat = {
@@ -144,7 +144,7 @@ let rec show {raw} =
     | Args args ->
       sprintf "(Args %s)" (show_args args)
     | TryFinally (body, finally) ->
-      sprintf "(TryFinally (%s) (%s))" (SnString.concat_map " " show body) (SnString.concat_map " " show finally)
+      sprintf "(TryFinally %s (%s))" (show body) (SnString.concat_map " " show finally)
     | Throw expr ->
       sprintf "(Throw %s)" (show expr)
   end

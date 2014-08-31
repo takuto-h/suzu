@@ -774,7 +774,7 @@ and parse_case_clause parser =
   (params, guard, body)
 
 and parse_try_expr parser pos =
-  let body = parse_block_like_elems parser parse_expr in
+  let body = parse_block parser in
   skip parser Token.Newline;
   parse_token parser (Token.Reserved "finally");
   let finally = parse_block_like_elems parser parse_expr in

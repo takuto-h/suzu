@@ -223,11 +223,7 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.AddVar klass) insns;
       Stack.push (Insn.Push Literal.Unit) insns
     | Expr.TryFinally (body, finally) ->
-      let body = compile_with begin fun insns ->
-          compile_body body insns;
-          Stack.push Insn.Return insns;
-        end
-      in
+      compile_expr body insns;
       let finally = compile_with begin fun insns ->
           Stack.push Insn.Pop insns;
           List.iter begin fun expr ->
@@ -238,9 +234,9 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
           Stack.push Insn.Return insns;
         end
       in
-      Stack.push (Insn.At pos) insns;
       Stack.push (Insn.MakeClosure finally) insns;
-      Stack.push (Insn.TryFinally body) insns;
+      Stack.push (Insn.At pos) insns;
+      Stack.push Insn.TryFinally insns;
     | Expr.Throw expr ->
       compile_expr expr insns;
       Stack.push Insn.Throw insns;

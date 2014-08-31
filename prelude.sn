@@ -19,7 +19,11 @@ module Pervasives:
   let write_line = Builtin::write_line
   let read_line = Builtin::read_line
 
-  export if, while, write_line, read_line
+  def p(value):
+    write_line(value.to_string)
+  end
+
+  export if, while, write_line, read_line, p
 end
 
 trait DefaultToString(C):

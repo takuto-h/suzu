@@ -43,7 +43,7 @@ type t =
   | MakeGetter of string * string
   | MakeSetter of string * string
   | MakeVariantCtor of string * string * Pattern.params
-  | TryFinally of t list
+  | TryFinally
   | Throw
 
 let rec show insn =
@@ -128,8 +128,8 @@ let rec show insn =
       sprintf "(MakeSetter %s %s)" klass field
     | MakeVariantCtor (klass, ctor, params) ->
       sprintf "(MakeVariantCtor %s %s %s)" klass ctor (Pattern.show_params params)
-    | TryFinally insns ->
-      sprintf "(TryFinally (%s)))" (SnString.concat_map " " show insns)
+    | TryFinally ->
+      "TryFinally"
     | Throw ->
       "Throw"
   end  
