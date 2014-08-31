@@ -267,13 +267,13 @@ let add_method ?(export=false) env klass sel value =
 
 let unexport_var frame x =
   if VarSet.mem x frame.exported_vars then
-    frame.exported_vars <- VarSet.remove x frame.exported_vars
+    {frame with exported_vars = VarSet.remove x frame.exported_vars}
   else
     raise Not_exported
 
 let unexport_method frame klass sel =
   if MethodSet.mem (klass, sel) frame.exported_methods then
-    frame.exported_methods <- MethodSet.remove (klass, sel) frame.exported_methods
+    {frame with exported_methods = MethodSet.remove (klass, sel) frame.exported_methods}
   else
     raise Not_exported
 
@@ -721,7 +721,7 @@ let execute vm insn =
     | Insn.UnexportVar x ->
       let modl = module_of_value (pop_value vm) in
       begin try
-          unexport_var modl x;
+          let modl = unexport_var modl x in
           push_value vm (Module modl)
         with
         | Not_exported ->
@@ -731,7 +731,7 @@ let execute vm insn =
       let klass = class_of_value (pop_value vm) in
       let modl = module_of_value (pop_value vm) in
       begin try
-          unexport_method modl klass (Selector.string_of sel);
+          let modl = unexport_method modl klass (Selector.string_of sel) in
           push_value vm (Module modl)
         with
         | Not_exported ->
