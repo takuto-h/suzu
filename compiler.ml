@@ -237,6 +237,11 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.MakeClosure finally) insns;
       Stack.push (Insn.At pos) insns;
       Stack.push Insn.TryFinally insns;
+    | Expr.TryCatch (body, catches) ->
+      compile_expr body insns;
+      let (pat, catches) = compile_catches catches in
+      Stack.push (Insn.At pos) insns;
+      Stack.push (Insn.TryCatch (pat, catches)) insns;
     | Expr.Throw expr ->
       compile_expr expr insns;
       Stack.push Insn.Throw insns;
@@ -352,6 +357,37 @@ and compile_body exprs insns =
     Stack.push (Insn.Push Literal.Unit) insns
   else
     ignore (Stack.pop insns)
+
+and compile_catches catches =
+  let rec loop catches =
+    begin match catches with
+      | [] ->
+        assert false
+      | [(pat, body)] ->
+        let insns = Stack.create () in
+        Stack.push Insn.Begin insns;
+        compile_bind pat insns;
+        compile_body body insns;
+        Stack.push Insn.End insns;
+        (compile_pattern pat, list_of_stack insns)
+      | (pat, body)::catches ->
+        let insns = Stack.create () in
+        let lhs = compile_pattern pat in
+        Stack.push (Insn.Test lhs) insns;
+        let (rhs, else_insns) = loop catches in
+        let then_insns = compile_with begin fun insns ->
+            Stack.push Insn.Begin insns;
+            compile_bind pat insns;
+            compile_body body insns;
+            Stack.push Insn.End insns
+          end
+        in
+        Stack.push (Insn.Branch (then_insns, else_insns)) insns;
+        (Pattern.Or (lhs, rhs), list_of_stack insns)
+    end
+  in
+  let (pat, insns) = loop catches in
+  (pat, insns @ [Insn.Return])
 
 let compile expr =
   compile_with (compile_expr expr)

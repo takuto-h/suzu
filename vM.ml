@@ -43,6 +43,7 @@ and frame = {
 
 and control =
   | Dump of Insn.t list * value list * env * Pos.t
+  | Catch of Pattern.t * Insn.t list * env * Pos.t
   | Finally of value
 
 exception Error of Pos.t * string * Pos.t list
@@ -444,6 +445,15 @@ let check_args_for_subr req_count allows_rest req_labels args =
   in
   ignore labeled_args
 
+let test_value pat value =
+  begin try
+      check_value pat value;
+      true
+    with
+    | Match_failure _ ->
+      false
+  end
+
 let call vm func args =
   begin match func with
     | Closure (env, insns) ->
@@ -470,6 +480,8 @@ let return vm value =
       vm.stack <- value::stack;
       vm.env <- env;
       vm.pos <- pos;
+      vm.controls <- controls
+    | Catch (_, _, _, _)::controls ->
       vm.controls <- controls
     | Finally func::controls ->
       vm.insns <- [Insn.Pop; Insn.Return];
@@ -537,6 +549,11 @@ let throw vm value =
       | Dump (_, _, _, pos)::controls ->
         let (controls, trace) = loop controls in
         (controls, pos::trace)
+      | Catch (pat, insns, env, pos)::controls when test_value pat value ->
+        let dump = Dump (insns, [], env, pos) in
+        (Catch (pat, insns, env, pos)::dump::controls, [])
+      | Catch (_, _, _, _)::controls ->
+        loop controls
       | Finally func::controls ->
         let (controls, trace) = loop controls in
         (Finally func::controls, trace)
@@ -546,24 +563,7 @@ let throw vm value =
   trace := snd controls_and_trace;
   vm.insns <- [Insn.Return];
   vm.stack <- [value];
-  vm.controls <- fst controls_and_trace;
-
-  begin match vm.controls with
-    | [] ->
-      vm.insns <- [];
-      vm.stack <- [value]
-    | Dump (insns, stack, env, pos)::controls ->
-      vm.insns <- insns;
-      vm.stack <- value::stack;
-      vm.env <- env;
-      vm.pos <- pos;
-      vm.controls <- controls
-    | Finally func::controls ->
-      vm.insns <- [Insn.Pop; Insn.Return];
-      vm.stack <- [value];
-      vm.controls <- controls;
-      call vm func (Args (make_args [] []))
-  end
+  vm.controls <- fst controls_and_trace
 
 let execute vm insn =
   begin match insn with
@@ -607,13 +607,7 @@ let execute vm insn =
         raise (required (Literal.show lit) top)
     | Insn.Test pat ->
       let value = peek_value vm in
-      begin try
-          check_value pat value;
-          push_value vm (Bool true)
-        with
-        | Match_failure _ ->
-          push_value vm (Bool false)
-      end
+      push_value vm (Bool (test_value pat value))
     | Insn.Check pat ->
       let value = peek_value vm in
       begin try
@@ -796,6 +790,12 @@ let execute vm insn =
       let body = pop_value vm in
       call vm body (Args (make_args [] []));
       vm.controls <- finally::vm.controls;
+    | Insn.TryCatch (pat, insns) ->
+      let env = vm.env in
+      let pos = vm.pos in
+      let body = pop_value vm in
+      call vm body (Args (make_args [] []));
+      vm.controls <- Catch (pat, insns, env, pos)::vm.controls;
     | Insn.Throw ->
       let value = pop_value vm in
       throw vm value
@@ -809,6 +809,8 @@ let on_error vm message =
       begin match control with
         | Dump (_, _, _, pos) ->
           trace := pos::!trace;
+          controls
+        | Catch (_, _, _, _) ->
           controls
         | Finally func ->
           control::controls

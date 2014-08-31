@@ -29,6 +29,7 @@ and raw =
   | Match of args * (params * t option * t list) list
   | Args of args
   | TryFinally of t * t list
+  | TryCatch of t * (pat * t list) list
   | Throw of t
 
 and pat = {
@@ -145,6 +146,8 @@ let rec show {raw} =
       sprintf "(Args %s)" (show_args args)
     | TryFinally (body, finally) ->
       sprintf "(TryFinally %s (%s))" (show body) (SnString.concat_map " " show finally)
+    | TryCatch (body, catches) ->
+      sprintf "(TryCatch %s (%s))" (show body) (SnString.concat_map " " show_catch catches)
     | Throw expr ->
       sprintf "(Throw %s)" (show expr)
   end
@@ -170,6 +173,9 @@ and show_args {normal_args;rest_arg;labeled_args} =
 
 and show_labeled_arg (label, value) =
   sprintf ":%s %s" label (show value)
+
+and show_catch (pat, body) =
+  sprintf "(Catch %s %s)" (show_pattern pat) (SnString.concat_map " " show body)
 
 module Pattern = struct
   type t = pat
