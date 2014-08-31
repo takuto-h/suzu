@@ -222,6 +222,15 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.MakeClass klass) insns;
       Stack.push (Insn.AddVar klass) insns;
       Stack.push (Insn.Push Literal.Unit) insns
+    | Expr.TryFinally (body, finally) ->
+      compile_expr finally insns;
+      Stack.push (Insn.At pos) insns;
+      let body = compile_with begin fun insns ->
+          compile_body body insns;
+          Stack.push Insn.Return insns;
+        end
+      in
+      Stack.push (Insn.TryFinally body) insns;
   end
 
 and compile_cases cases insns =
