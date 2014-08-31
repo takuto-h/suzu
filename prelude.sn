@@ -118,6 +118,8 @@ end
 module String:
   class C
 
+  let length = Builtin::string_length
+  
   //let format = Builtin::format
 
   module Open:
@@ -269,6 +271,18 @@ module Exn:
   end
 
   export C, Open
+end
+
+module Stream:
+  class C = make:
+    str
+    len
+    mutable idx
+  end
+
+  def from_string(str):
+    make(str, String.length(str), 0)
+  end
 end
 
 open Pervasives

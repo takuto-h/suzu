@@ -65,6 +65,12 @@ let subr_string_get =
     end
   end
 
+let subr_string_length =
+  VM.create_subr 1 begin fun vm args ->
+    let str = VM.string_of_value (VM.nth args 0) in
+    VM.Int (String.length str)
+  end
+
 (*module Format = struct
 
   type format_insn =
@@ -220,6 +226,7 @@ let initialize loader =
   VM.add_var env "not" subr_not ~export:true;
   VM.add_var env "char_to_string" subr_char_to_string ~export:true;
   VM.add_var env "string_get" subr_string_get ~export:true;
+  VM.add_var env "string_length" subr_string_length ~export:true;
   VM.add_var env "class_of" subr_class_of ~export:true;
   VM.add_var env "write_line" subr_write_line ~export:true;
   VM.add_var env "read_line" subr_read_line ~export:true;
