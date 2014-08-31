@@ -206,6 +206,16 @@ let parse_selector parser =
             end
           else
             Selector.Ident str
+        | (Token.Reserved "[", _) ->
+          lookahead parser;
+          parse_token parser (Token.Reserved "]");
+          if parser.token = Token.Reserved "=" then
+            begin
+              lookahead parser;
+              Selector.Op "[]="
+            end
+          else
+            Selector.Op "[]"
         | (_, Some str) ->
           lookahead parser;
           Selector.Op str
@@ -468,14 +478,28 @@ and parse_dot_expr parser =
 
 and parse_prim_expr parser =
   let expr = parse_atomic_expr parser in
-  let rec loop func =
+  let rec loop expr =
     let pos = parser.pos in
     begin match parser.token with
       | Token.Reserved "(" | Token.Reserved "^" | Token.Reserved ":" | Token.Reserved "{" ->
         let args = parse_args parser in
-        loop (Expr.at pos (Expr.FunCall (func, args)))
+        loop (Expr.at pos (Expr.FunCall (expr, args)))
+      | Token.Reserved "[" ->
+        lookahead parser;
+        let key = parse_expr parser in
+        parse_token parser (Token.Reserved "]");
+        if parser.token = Token.Reserved "=" then
+          begin
+            lookahead parser;
+            let value = parse_expr parser in
+            let sel = Selector.Op "[]=" in
+            Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [key;value] None []))
+          end
+        else
+          let sel = Selector.Op "[]" in
+          loop (Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [key] None [])))
       | _ ->
-        func
+        expr
     end
   in
   loop expr
