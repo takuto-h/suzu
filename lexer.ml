@@ -16,6 +16,7 @@ let initial_buffer_size = 16
 let reserved = [
   "as";
   "case";
+  "catch";
   "class";
   "def";
   "end";

@@ -470,7 +470,7 @@ let call vm func args =
       raise (required "procedure" func)
   end
 
-let return vm value =
+let rec return vm value =
   begin match vm.controls with
     | [] ->
       vm.insns <- [];
@@ -482,7 +482,8 @@ let return vm value =
       vm.pos <- pos;
       vm.controls <- controls
     | Catch (_, _, _, _)::controls ->
-      vm.controls <- controls
+      vm.controls <- controls;
+      return vm value
     | Finally func::controls ->
       vm.insns <- [Insn.Pop; Insn.Return];
       vm.stack <- [value];
@@ -827,7 +828,8 @@ let rec run vm =
       pop_value vm
     | insn::insns ->
       vm.insns <- insns;
-      (*printf "%s\n" (Insn.show insn);*)
+      (*printf "%s\n" (Insn.show insn);
+      printf "%s\n" (SnString.concat_map " " show_value vm.stack);*)
       begin try
           execute vm insn;
         with

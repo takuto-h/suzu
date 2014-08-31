@@ -78,7 +78,7 @@ let rec show insn =
     | Send sel ->
       sprintf "(Send %s)" (Selector.show sel)
     | Return ->
-      "Retuen"
+      "Return"
     | ReturnModule ->
       "ReturnModule"
     | Fail ->

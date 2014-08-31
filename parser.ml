@@ -776,7 +776,37 @@ and parse_case_clause parser =
 and parse_try_expr parser pos =
   let body = parse_block parser in
   skip parser Token.Newline;
-  parse_token parser (Token.Reserved "finally");
+  begin match parser.token with
+    | Token.Reserved "catch" ->
+      let rec loop rev_catches =
+        skip parser Token.Newline;
+        begin match parser.token with
+          | Token.Reserved "end" ->
+            Expr.at pos (Expr.TryCatch (body, List.rev rev_catches))
+          | Token.Reserved "catch" ->
+            lookahead parser;
+            parse_token parser (Token.Reserved "(");
+            let pat = parse_pattern parser in
+            parse_token parser (Token.Reserved ")");
+            let exprs = parse_block_like_elems parser parse_expr in
+            loop ((pat, exprs)::rev_catches)
+          | Token.Reserved "finally" ->
+            let body = Expr.at pos (Expr.TryCatch (body, List.rev rev_catches)) in
+            let body = Expr.at pos (Expr.Lambda (Expr.Params.make [] None [], [body])) in
+            parse_try_finally_expr parser pos body
+          | _ ->
+            raise (expected parser "'catch' or 'finally' or 'end'")
+        end
+      in
+      loop []
+    | Token.Reserved "finally" ->
+      parse_try_finally_expr parser pos body
+    | _ ->
+      raise (expected parser "'catch' or 'finally'")
+  end
+
+and parse_try_finally_expr parser pos body =
+  lookahead parser;
   let finally = parse_block_like_elems parser parse_expr in
   skip parser Token.Newline;
   parse_token parser (Token.Reserved "end");

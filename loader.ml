@@ -60,7 +60,7 @@ let load_source proc loader source =
     | VM.Error (pos, message, trace) ->
       printf "%s" (Pos.show_message pos (sprintf "error: %s" message));
       List.iter begin fun pos ->
-        printf "%s" (Pos.show_message pos "note: error from here\n")
+        printf "%s" (Pos.show_message pos "note: called from here\n")
       end trace
   end
 
