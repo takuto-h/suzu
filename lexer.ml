@@ -21,6 +21,7 @@ let reserved = [
   "def";
   "end";
   "except";
+  "exception";
   "export";
   "false";
   "finally";

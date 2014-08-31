@@ -1,5 +1,7 @@
 
 module Pervasives:
+  exception Exit()
+
   def if(cond, then_thunk, :else else_thunk=^{}):
     match(cond):
     case(true):
@@ -23,7 +25,7 @@ module Pervasives:
     write_line(Builtin::show(value))
   end
 
-  export if, while, write_line, read_line, p
+  export Exit, if, while, write_line, read_line, p
 end
 
 trait DefaultToString(C):

@@ -291,6 +291,11 @@ and parse_binding_expr parser =
       lookahead parser;
       let expr = parse_expr parser in
       Expr.at pos (Expr.Throw expr)
+    | Token.Reserved "exception" ->
+      lookahead parser;
+      let ctor = parse_ident parser in
+      let params = parse_params parser in
+      Expr.at pos (Expr.Exception (ctor, params))
     | _ ->
       parse_except_expr parser
   end
@@ -782,6 +787,7 @@ and parse_try_expr parser pos =
         skip parser Token.Newline;
         begin match parser.token with
           | Token.Reserved "end" ->
+            lookahead parser;
             Expr.at pos (Expr.TryCatch (body, List.rev rev_catches))
           | Token.Reserved "catch" ->
             lookahead parser;

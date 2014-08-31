@@ -31,6 +31,7 @@ and raw =
   | TryFinally of t * t list
   | TryCatch of t * (pat * t list) list
   | Throw of t
+  | Exception of string * params
 
 and pat = {
   pat_pos : Pos.t;
@@ -150,6 +151,8 @@ let rec show {raw} =
       sprintf "(TryCatch %s (%s))" (show body) (SnString.concat_map " " show_catch catches)
     | Throw expr ->
       sprintf "(Throw %s)" (show expr)
+    | Exception (ctor, params) ->
+      sprintf "(Exception %s)" (show_ctor (ctor, params))
   end
 
 and show_case (params, guard, body) =
