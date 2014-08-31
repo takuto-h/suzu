@@ -525,6 +525,46 @@ let make_variant_ctor klass ctor {Pattern.normal_params;Pattern.rest_param;Patte
     Variant (klass, ctor, args)
   end
 
+let throw vm value =
+  let pos = vm.pos in
+  let message = sprintf "uncaught exception: %s\n" (show_value value) in
+  let trace = ref [] in
+  let subr_report_error = create_subr 0 (fun vm args -> raise (Error (pos, message, !trace))) in
+  let rec loop controls =
+    begin match controls with
+      | [] ->
+        ([Finally subr_report_error], [])
+      | Dump (_, _, _, pos)::controls ->
+        let (controls, trace) = loop controls in
+        (controls, pos::trace)
+      | Finally func::controls ->
+        let (controls, trace) = loop controls in
+        (Finally func::controls, trace)
+    end
+  in
+  let controls_and_trace = loop vm.controls in
+  trace := snd controls_and_trace;
+  vm.insns <- [Insn.Return];
+  vm.stack <- [value];
+  vm.controls <- fst controls_and_trace;
+
+  begin match vm.controls with
+    | [] ->
+      vm.insns <- [];
+      vm.stack <- [value]
+    | Dump (insns, stack, env, pos)::controls ->
+      vm.insns <- insns;
+      vm.stack <- value::stack;
+      vm.env <- env;
+      vm.pos <- pos;
+      vm.controls <- controls
+    | Finally func::controls ->
+      vm.insns <- [Insn.Pop; Insn.Return];
+      vm.stack <- [value];
+      vm.controls <- controls;
+      call vm func (Args (make_args [] []))
+  end
+
 let execute vm insn =
   begin match insn with
     | Insn.At pos ->
@@ -757,6 +797,9 @@ let execute vm insn =
       vm.insns <- insns;
       vm.stack <- [];
       vm.controls <- Finally func::dump::vm.controls;
+    | Insn.Throw ->
+      let value = pop_value vm in
+      throw vm value
   end
 
 let on_error vm message =
