@@ -20,7 +20,7 @@ module Pervasives:
   let read_line = Builtin::read_line
 
   def p(value):
-    write_line(value.to_string)
+    write_line(Builtin::show(value))
   end
 
   export if, while, write_line, read_line, p
