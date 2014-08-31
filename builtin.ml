@@ -53,6 +53,18 @@ let subr_not =
 let subr_char_to_string =
   make_unary_subr VM.value_of_string (sprintf "%c") VM.char_of_value
 
+let subr_string_get =
+  VM.create_subr 2 begin fun vm args ->
+    let str = VM.string_of_value (VM.nth args 0) in
+    let index = VM.int_of_value (VM.nth args 1) in
+    begin try
+        VM.Char (String.get str index)
+      with
+      | Invalid_argument _ ->
+        raise (VM.InternalError (sprintf "index %d out of bounds of %S\n" index str))
+    end
+  end
+
 (*module Format = struct
 
   type format_insn =
@@ -207,6 +219,7 @@ let initialize loader =
   VM.add_var env "minus" (make_unary_arith_subr ( ~- )) ~export:true;
   VM.add_var env "not" subr_not ~export:true;
   VM.add_var env "char_to_string" subr_char_to_string ~export:true;
+  VM.add_var env "string_get" subr_string_get ~export:true;
   VM.add_var env "class_of" subr_class_of ~export:true;
   VM.add_var env "write_line" subr_write_line ~export:true;
   VM.add_var env "read_line" subr_read_line ~export:true;
