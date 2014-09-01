@@ -27,6 +27,44 @@ let make_binary_arith_subr proc =
 let make_unary_arith_subr proc =
   make_unary_subr (fun i -> VM.Int i) proc VM.int_of_value
 
+let subr_reset =
+  VM.create_subr 1 begin fun vm args ->
+    let func = VM.nth args 0 in
+    VM.call vm func (VM.Args (VM.make_args [] []));
+    vm.VM.controls <- VM.Reset::vm.VM.controls;
+  end
+
+let subr_shift =
+  VM.create_subr 1 begin fun vm args ->
+    let func = VM.nth args 0 in
+    let rec loop rev_left right =
+      begin match right with
+        | [] ->
+          (List.rev rev_left, right)
+        | VM.Reset::right ->
+          (List.rev (VM.Reset::rev_left), VM.Reset::right)
+        | control::right ->
+          loop (control::rev_left) right
+      end
+    in
+    let (left, right) = loop [] vm.VM.controls in
+    let left = VM.Dump (vm.VM.insns, vm.VM.stack, vm.VM.env, vm.VM.pos)::left in
+    VM.call vm func (VM.Args (VM.make_args [VM.Cont left] []));
+    vm.VM.controls <- right;
+  end
+
+let subr_write_line =
+  VM.create_subr 1 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    print_endline (VM.string_of_value arg0);
+    VM.push_value vm VM.Unit
+  end
+
+let subr_read_line =
+  VM.create_subr 0 begin fun vm args ->
+    VM.push_value vm (VM.String (read_line ()))
+  end
+
 let subr_eq = make_binary_cmp_subr ( = )
 let subr_ne = make_binary_cmp_subr ( <> )
 let subr_gt = make_binary_cmp_subr ( > )
@@ -45,6 +83,12 @@ let subr_show =
   VM.create_subr 1 begin fun vm args ->
     let arg0 = VM.nth args 0 in
     VM.push_value vm (VM.String (VM.show_value arg0))
+  end
+
+let subr_class_of =
+  VM.create_subr 1 begin fun vm args ->
+    let arg0 = VM.nth args 0 in
+    VM.push_value vm (VM.Class (VM.get_class arg0))
   end
 
 let subr_not =
@@ -116,26 +160,10 @@ let subr_buffer_contents =
     VM.push_value vm (VM.String (Buffer.contents buffer))
   end
 
-let subr_class_of =
-  VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
-    VM.push_value vm (VM.Class (VM.get_class arg0))
-  end
-
-let subr_write_line =
-  VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
-    print_endline (VM.string_of_value arg0);
-    VM.push_value vm VM.Unit
-  end
-
-let subr_read_line =
-  VM.create_subr 0 begin fun vm args ->
-    VM.push_value vm (VM.String (read_line ()))
-  end
-
 let initialize loader =
   let env = [VM.create_frame ()] in
+  VM.add_var env "reset" subr_reset ~export:true;
+  VM.add_var env "shift" subr_shift ~export:true;
   VM.add_var env "write_line" subr_write_line ~export:true;
   VM.add_var env "read_line" subr_read_line ~export:true;
   VM.add_var env "gt" subr_gt ~export:true;

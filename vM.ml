@@ -26,6 +26,7 @@ and value =
   | Record of string * (string, value) Hashtbl.t
   | Closure of env * Insn.t list
   | Subr of int * bool * string list * (t -> args -> unit)
+  | Cont of control list
   | Buffer of Buffer.t
 
 and args = {
@@ -46,6 +47,7 @@ and control =
   | Dump of Insn.t list * value list * env * Pos.t
   | Catch of Pattern.t * Insn.t list * env * Pos.t
   | Finally of value
+  | Reset
 
 exception Error of Pos.t * string * Pos.t list
 
@@ -106,6 +108,8 @@ let get_class value =
       "Proc::C"
     | Subr (_, _, _, _) ->
       "Proc::C"
+    | Cont _ ->
+      "Proc::C"
     | Buffer _ ->
       "Buffer::C"
   end
@@ -136,6 +140,8 @@ let rec show_value value =
       "<closure>"
     | Subr (_, _, _, _) ->
       "<subr>"
+    | Cont _ ->
+      "<cont>"
     | Buffer _ ->
       "<buffer>"
   end
@@ -472,7 +478,14 @@ let call vm func args =
     | Subr (req_count, allows_rest, req_labels, proc) ->
       let args = args_of_value args in
       check_args_for_subr req_count allows_rest req_labels args;
-      proc vm args
+      proc vm args;
+    | Cont controls ->
+      let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
+      let args = args_of_value args in
+      check_args_for_subr 1 false [] args;
+      vm.insns <- [Insn.Return];
+      vm.stack <- [nth args 0];
+      vm.controls <- controls @ (dump::vm.controls);
     | _ ->
       raise (required "procedure" func)
   end
@@ -481,21 +494,24 @@ let rec return vm value =
   begin match vm.controls with
     | [] ->
       vm.insns <- [];
-      vm.stack <- [value]
+      vm.stack <- [value];
     | Dump (insns, stack, env, pos)::controls ->
       vm.insns <- insns;
       vm.stack <- value::stack;
       vm.env <- env;
       vm.pos <- pos;
-      vm.controls <- controls
+      vm.controls <- controls;
     | Catch (_, _, _, _)::controls ->
       vm.controls <- controls;
-      return vm value
+      return vm value;
     | Finally func::controls ->
       vm.insns <- [Insn.Pop; Insn.Return];
       vm.stack <- [value];
       vm.controls <- controls;
-      call vm func (Args (make_args [] []))
+      call vm func (Args (make_args [] []));
+    | Reset::controls ->
+      vm.controls <- controls;
+      return vm value;
   end
 
 let make_record_ctor klass fields =
@@ -565,6 +581,8 @@ let throw vm value =
       | Finally func::controls ->
         let (controls, trace) = loop controls in
         (Finally func::controls, trace)
+      | Reset::controls ->
+        loop controls
     end
   in
   let controls_and_trace = loop vm.controls in
@@ -825,6 +843,8 @@ let on_error vm message =
           controls
         | Finally func ->
           control::controls
+        | Reset ->
+          controls
       end
     end vm.controls [Finally subr_report_error]
   in

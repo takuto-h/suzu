@@ -2,6 +2,13 @@
 module Pervasives:
   exception Exit()
 
+  let reset = Builtin::reset
+  let shift = Builtin::shift
+
+  def begin(thunk):
+    thunk()
+  end
+
   def if(cond, then_thunk, :else else_thunk=^{}):
     match(cond):
     case(true):
@@ -28,7 +35,7 @@ module Pervasives:
     write_line(Builtin::show(value))
   end
 
-  export Exit, if, while, write_line, read_line, p
+  export Exit, reset, shift, begin, if, while, write_line, read_line, p
 end
 
 open Pervasives
@@ -369,6 +376,29 @@ module List:
     end
   end
 
+  def find(lst, pred):
+    match(lst):
+    case([]):
+      None()
+    case([x | _])when(pred(x)):
+      Some(x)
+    case([_ | xs]):
+      find(xs, pred)
+    end
+  end
+
+  def flatten(lst):
+    fold_right(lst, [])^(elem, acc):
+      append(elem, acc)
+    end
+  end
+
+  def map(lst, proc):
+    fold_right(lst, [])^(elem, acc):
+      [proc(elem) | acc]
+    end
+  end
+
   module Open:
     include Compare(C)^(self, other):
       match(self, other):
@@ -396,7 +426,7 @@ module List:
     export C#(++), C#fold_left, C#fold_right
   end
 
-  export C, Nil, Cons, fold_left, fold_right, append, rev, Open
+  export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map, Open
 end
 
 open List::Open
@@ -440,17 +470,34 @@ module Option:
     def Some(x)
   end
 
+  def bind(m, proc):
+    match(m):
+    case(None()):
+      None()
+    case(Some(x)):
+      proc(x)
+    end
+  end
+
   module Open:
     include DefaultCompare(C)
-    include DefaultToString(C)
 
     let None = None
     let Some = Some
 
-    export None, Some
+    def C#to_string(self):
+      match(self):
+      case(None()):
+        "None()"
+      case(Some(x)):
+        String::format("Some({0})", x)
+      end
+    end
+
+    export None, Some, C#to_string
   end
 
-  export C, Open
+  export C, None, Some, bind, Open
 end
 
 open Option::Open

@@ -263,7 +263,6 @@ and compile_cases cases insns =
           Stack.push Insn.Begin insns;
           Stack.push Insn.Dup insns;
           compile_multiple_bind params insns;
-          Stack.push Insn.Pop insns;
           begin match guard with
             | None ->
               Stack.push Insn.Pop insns;
@@ -312,11 +311,9 @@ and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
       Stack.push (Insn.AssertEqual lit) insns;
     | Expr.PatParams params ->
       compile_multiple_bind params insns;
-      Stack.push Insn.Pop insns
     | Expr.PatVariant (tag, params) ->
       Stack.push (Insn.RemoveTag tag) insns;
       compile_multiple_bind params insns;
-      Stack.push Insn.Pop insns
     | Expr.PatBind (VarOrMethod.Var x) ->
       Stack.push (Insn.AddVar x) insns
     | Expr.PatBind (VarOrMethod.Method (mods, klass, sel)) ->
@@ -355,7 +352,8 @@ and compile_multiple_bind {Expr.normal_params;Expr.rest_param;Expr.labeled_param
         Stack.push (Insn.GetLabeled (label, Some default)) insns
     end;
     compile_bind pat insns
-  end labeled_params
+  end labeled_params;
+  Stack.push Insn.Pop insns;
 
 and compile_body exprs insns =
   List.iter begin fun expr ->
@@ -399,4 +397,7 @@ and compile_catches catches =
   (pat, insns @ [Insn.Return])
 
 let compile expr =
-  compile_with (compile_expr expr)
+  compile_with begin fun insns ->
+    compile_expr expr insns;
+    Stack.push Insn.Return insns;
+  end
