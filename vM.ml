@@ -25,7 +25,7 @@ and value =
   | Variant of string * string * args
   | Record of string * (string, value) Hashtbl.t
   | Closure of env * Insn.t list
-  | Subr of int * bool * string list * (t -> args -> value)
+  | Subr of int * bool * string list * (t -> args -> unit)
   | Buffer of Buffer.t
 
 and args = {
@@ -472,7 +472,7 @@ let call vm func args =
     | Subr (req_count, allows_rest, req_labels, proc) ->
       let args = args_of_value args in
       check_args_for_subr req_count allows_rest req_labels args;
-      push_value vm (proc vm args)
+      proc vm args
     | _ ->
       raise (required "procedure" func)
   end
@@ -504,7 +504,7 @@ let make_record_ctor klass fields =
     List.iter2 begin fun field arg ->
       Hashtbl.add table field arg
     end fields args.normal_args;
-    Record (klass, table)
+    push_value vm (Record (klass, table))
   end
 
 let make_getter klass field =
@@ -512,7 +512,7 @@ let make_getter klass field =
     let self = nth args 0 in
     begin match self with
       | Record (klass2, table) when klass2 = klass ->
-        Hashtbl.find table field
+        push_value vm (Hashtbl.find table field)
       | _ ->
         raise (required klass self)
     end
@@ -525,7 +525,7 @@ let make_setter klass field =
     begin match self with
       | Record (klass2, table) when klass2 = klass ->
         Hashtbl.replace table field value;
-        Unit
+        push_value vm Unit
       | _ ->
         raise (required klass self)
     end
@@ -542,7 +542,7 @@ let make_variant_ctor klass ctor {Pattern.normal_params;Pattern.rest_param;Patte
     end labeled_params []
   in
   create_subr count ~allows_rest:allows_rest ~req_labels:req_labels begin fun vm args ->
-    Variant (klass, ctor, args)
+    push_value vm (Variant (klass, ctor, args))
   end
 
 let throw vm value =
