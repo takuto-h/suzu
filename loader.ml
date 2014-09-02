@@ -69,10 +69,10 @@ let load_string loader name str =
   load_source (fun _ -> ()) loader source
 
 let load_file loader name =
-  with_open_in name begin fun chan_in ->
+  with_open_in begin fun chan_in ->
     let source = Source.of_channel name chan_in in
     load_source (fun _ -> ()) loader source
-  end
+  end name
 
 let rec repl loader =
   let rec loop () =

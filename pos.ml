@@ -34,7 +34,7 @@ let show_source {fname;lnum;cnum;bol;source;} =
   String.set str_anchor offset '^';
   begin match source with
     | File ->
-      with_open_in fname begin fun chan_in ->
+      with_open_in begin fun chan_in ->
         begin try
             seek_in chan_in bol;
             let str_line = input_line chan_in in
@@ -42,7 +42,7 @@ let show_source {fname;lnum;cnum;bol;source;} =
           with
           | End_of_file -> ""
         end
-      end
+      end fname
     | String str ->
       let str = String.sub str bol (String.length str - bol) in
       let str_line = begin try

@@ -1,8 +1,8 @@
 
-let with_open_in fname_in func = 
+let with_open_in proc fname_in = 
   let chan_in = open_in fname_in in
   try
-    let x = func chan_in in
+    let x = proc chan_in in
     close_in chan_in;
     x
   with
@@ -11,10 +11,10 @@ let with_open_in fname_in func =
     raise exn
 
 
-let with_open_out fname_out func =
+let with_open_out proc fname_out =
   let chan_out = open_out fname_out in
   try
-    let x = func chan_out in
+    let x = proc chan_out in
     close_out chan_out;
     x
   with
