@@ -34,8 +34,11 @@ let junk src =
       src.lnum <- src.lnum + 1;
       src.cnum <- src.cnum + 1;
       src.bol <- src.cnum;
-      Stream.junk src.strm
+      Stream.junk src.strm;
+    | Some '\t' ->
+      src.cnum <- src.cnum + 8;
+      Stream.junk src.strm;
     | Some _ ->
       src.cnum <- src.cnum + 1;
-      Stream.junk src.strm
+      Stream.junk src.strm;
   end
