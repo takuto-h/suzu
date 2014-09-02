@@ -2,31 +2,35 @@
 open SnPervasives
 open Printf
 
-let initial_buffer_size = 1024
+let initial_output_buffer_size = 1024
 
 let usage_msg = sprintf "usage: %s [source_files]" Sys.argv.(0)
 
 let main () =
-  Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun file_name_in ->
-    let file_name_out = sprintf "%s.ml" (Filename.chop_suffix file_name_in ".sn") in
-    with_open_in begin fun chan_in ->
-      with_open_out begin fun chan_out ->
-        let buf = Buffer.create initial_buffer_size in
-        let str = begin try
+  Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun fname_sn ->
+    let fname = Filename.chop_suffix fname_sn ".sn" in
+    let fname_ml = sprintf "%s.ml" fname in
+    let fname_mli = sprintf "%s.mli" fname in
+    with_open_in begin fun chan_sn ->
+      with_open_out begin fun chan_ml ->
+        let buf = Buffer.create initial_output_buffer_size in
+        begin try
             while true do
-              let line = input_line chan_in in
+              let line = input_line chan_sn in
               Buffer.add_string buf (sprintf "%s\n" line)
-            done;
-            ""
+            done
           with
           | End_of_file ->
-            Buffer.contents buf
-        end
-        in
-        output_string chan_out (sprintf "\nlet str = %S\n" str);
-        output_string chan_out (sprintf "\nlet initialize loader =\n  Loader.load_string loader %S str\n" file_name_in);
-      end file_name_out
-    end file_name_in
+            ()
+        end;
+        output_string chan_ml (sprintf "\nlet str = %S\n" (Buffer.contents buf));
+        output_string chan_ml (sprintf "\nlet initialize loader =");
+        output_string chan_ml (sprintf "\n  Loader.load_string loader %S str\n" fname_sn);
+      end fname_ml
+    end fname_sn;
+    with_open_out begin fun chan_mli ->
+      output_string chan_mli "\nval initialize : Loader.t -> unit\n"
+    end fname_mli
   end usage_msg
 
 let () = main ()
