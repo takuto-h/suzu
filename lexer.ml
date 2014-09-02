@@ -11,7 +11,7 @@ type t = {
   mutable is_bob : bool;  (* beginning of block *)
 }
 
-let initial_buffer_size = 16
+let initial_token_buffer_size = 16
 
 let reserved = [
   "as";
@@ -73,7 +73,7 @@ let lex_close_paren lexer pos open_paren close_paren =
   else
     begin
       ignore (Stack.pop lexer.parens);
-      Token.Reserved close_paren
+      Token.Reserved close_paren;
     end
 
 let rec lex_op lexer buf =
@@ -81,7 +81,7 @@ let rec lex_op lexer buf =
     | Some c when is_op_part c ->
       Buffer.add_char buf c;
       Source.junk lexer.source;
-      lex_op lexer buf
+      lex_op lexer buf;
     | Some _ | None ->
       Buffer.contents buf
   end
@@ -90,7 +90,7 @@ let rec lex_int lexer n =
   begin match Source.peek lexer.source with
     | Some c when SnChar.is_digit c ->
       Source.junk lexer.source;
-      lex_int lexer (n * 10 + SnChar.int_of_digit c)
+      lex_int lexer (n * 10 + SnChar.int_of_digit c);
     | Some _ | None ->
       Token.Int n
   end
@@ -111,11 +111,41 @@ let lex_escape_sequence pos c =
       raise (Error (pos, "invalid escape sequence\n"))
   end
 
+let lex_char lexer =
+  let result = begin match Source.peek lexer.source with
+    | Some '\\' ->
+      Source.junk lexer.source;
+      begin match Source.peek lexer.source with
+        | Some c ->
+          let pos = Source.pos lexer.source in
+          Source.junk lexer.source;
+          lex_escape_sequence pos c;
+        | None ->
+          let pos_eof = (Source.pos lexer.source) in
+          raise (Error (pos_eof, "EOF inside a character literal\n"))
+      end
+    | Some c ->
+      Source.junk lexer.source;
+      c;
+    | None ->
+      let pos_eof = (Source.pos lexer.source) in
+      raise (Error (pos_eof, "EOF inside a character literal\n"))
+  end
+  in
+  if Source.peek lexer.source = Some '\'' then
+    begin
+      Source.junk lexer.source;
+      Token.Char result;
+    end
+  else
+    let pos = Source.pos lexer.source in
+    raise (Error (pos, sprintf "invalid character literal\n"))
+
 let rec lex_string lexer buf =
   begin match Source.peek lexer.source with
     | Some '"' ->
       Source.junk lexer.source;
-      Token.String (Buffer.contents buf)
+      Token.String (Buffer.contents buf);
     | Some '\\' ->
       Source.junk lexer.source;
       begin match Source.peek lexer.source with
@@ -123,7 +153,7 @@ let rec lex_string lexer buf =
           let pos = Source.pos lexer.source in
           Source.junk lexer.source;
           Buffer.add_char buf (lex_escape_sequence pos c);
-          lex_string lexer buf
+          lex_string lexer buf;
         | None ->
           let pos_eof = Source.pos lexer.source in
           raise (Error (pos_eof, "EOF inside a string literal\n"))
@@ -131,40 +161,11 @@ let rec lex_string lexer buf =
     | Some c ->
       Source.junk lexer.source;
       Buffer.add_char buf c;
-      lex_string lexer buf
+      lex_string lexer buf;
     | None ->
       let pos_eof = Source.pos lexer.source in
       raise (Error (pos_eof, "EOF inside a string literal\n"))
   end
-
-let lex_char lexer =
-  let res = begin match Source.peek lexer.source with
-    | Some '\\' ->
-      Source.junk lexer.source;
-      begin match Source.peek lexer.source with
-        | Some c ->
-          let pos = Source.pos lexer.source in
-          Source.junk lexer.source;
-          lex_escape_sequence pos c
-        | None ->
-          let pos_eof = (Source.pos lexer.source) in
-          raise (Error (pos_eof, "EOF inside a character literal\n"))
-      end
-    | Some c ->
-      Source.junk lexer.source;
-      c
-    | None ->
-      let pos_eof = (Source.pos lexer.source) in
-      raise (Error (pos_eof, "EOF inside a character literal\n"))
-  end in
-  if Source.peek lexer.source = Some '\'' then
-    begin
-      Source.junk lexer.source;
-      Token.Char res
-    end
-  else
-    let pos = Source.pos lexer.source in
-    raise (Error (pos, "invalid character literal\n"))
 
 let ident_or_reserved str =
   if List.mem str reserved then
@@ -211,7 +212,7 @@ let lex_visible_token lexer pos c =
     | '=' ->
       begin match Source.peek lexer.source with
         | Some c2 when is_op_part c2 ->
-          let buf = Buffer.create initial_buffer_size in
+          let buf = Buffer.create initial_token_buffer_size in
           Source.junk lexer.source;
           Buffer.add_char buf c;
           Buffer.add_char buf c2;
@@ -222,7 +223,7 @@ let lex_visible_token lexer pos c =
     | '~' ->
       begin match Source.peek lexer.source with
         | Some c when is_op_part c ->
-          let buf = Buffer.create initial_buffer_size in
+          let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf '~';
           Token.UnaryOp (lex_op lexer buf)
         | Some _ | None ->
@@ -234,7 +235,7 @@ let lex_visible_token lexer pos c =
           Source.junk lexer.source;
           Token.Reserved "||"
         | Some c when is_op_part c ->
-          let buf = Buffer.create initial_buffer_size in
+          let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf '|';
           Token.CmpOp (lex_op lexer buf)
         | Some _ | None ->
@@ -246,22 +247,22 @@ let lex_visible_token lexer pos c =
           Source.junk lexer.source;
           Token.Reserved "&&"
         | Some c when is_op_part c ->
-          let buf = Buffer.create initial_buffer_size in
+          let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf c;
           Token.CmpOp (lex_op lexer buf)
         | Some _ | None ->
           Token.Reserved "&"
       end
     | '<' | '>' | '!' ->
-      let buf = Buffer.create initial_buffer_size in
+      let buf = Buffer.create initial_token_buffer_size in
       Buffer.add_char buf c;
       Token.CmpOp (lex_op lexer buf)
     | '+' | '-' ->
-      let buf = Buffer.create initial_buffer_size in
+      let buf = Buffer.create initial_token_buffer_size in
       Buffer.add_char buf c;
       Token.AddOp (lex_op lexer buf)
     | '%' ->
-      let buf = Buffer.create initial_buffer_size in
+      let buf = Buffer.create initial_token_buffer_size in
       Buffer.add_char buf c;
       Token.MulOp (lex_op lexer buf)
     | '*' ->
@@ -270,19 +271,19 @@ let lex_visible_token lexer pos c =
           Source.junk lexer.source;
           Token.PowOp "**"
         | Some _ | None ->
-          let buf = Buffer.create initial_buffer_size in
+          let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf c;
           Token.MulOp (lex_op lexer buf)
       end
     | '"' ->
-      let buf = Buffer.create initial_buffer_size in
+      let buf = Buffer.create initial_token_buffer_size in
       lex_string lexer buf
     | '\'' ->
       lex_char lexer
     | _ when SnChar.is_digit c ->
       lex_int lexer (SnChar.int_of_digit c)
     | _ when is_ident_start c ->
-      let buf = Buffer.create initial_buffer_size in
+      let buf = Buffer.create initial_token_buffer_size in
       Buffer.add_char buf c;
       lex_ident lexer buf
     | _ ->
@@ -298,30 +299,30 @@ let lex_token lexer pos c =
           lexer.is_bob <- false;
           lexer.is_bol <- false;
           Stack.push offset lexer.offside_lines;
-          lex_visible_token lexer pos c
+          lex_visible_token lexer pos c;
         end
       else
         begin
           lexer.is_bob <- false;
           lexer.is_bol <- false;
-          Token.Newline
+          Token.Newline;
         end
     end
   else if lexer.is_bol then
     begin if offset < offside_line then
         begin
           ignore (Stack.pop lexer.offside_lines);
-          Token.Undent
+          Token.Undent;
         end
       else if offset = offside_line then
         begin
           lexer.is_bol <- false;
-          Token.Newline
+          Token.Newline;
         end
       else
         begin
           lexer.is_bol <- false;
-          lex_visible_token lexer pos c
+          lex_visible_token lexer pos c;
         end
     end
   else
@@ -333,7 +334,7 @@ let rec skip_single_line_comment lexer =
       ()
     | Some _ ->
       Source.junk lexer.source;
-      skip_single_line_comment lexer
+      skip_single_line_comment lexer;
   end
 
 let rec next lexer =
@@ -343,25 +344,25 @@ let rec next lexer =
       None, pos
     | None ->
       ignore (Stack.pop lexer.offside_lines);
-      (Some Token.Undent, pos)
+      (Some Token.Undent, pos);
     | Some '\n' when Stack.is_empty lexer.parens ->
       lexer.is_bol <- true;
       Source.junk lexer.source;
-      next lexer
+      next lexer;
     | Some c when is_whitespace c ->
       Source.junk lexer.source;
-      next lexer
+      next lexer;
     | Some '/' ->
       Source.junk lexer.source;
       begin match Source.peek lexer.source with
         | Some '/' ->
           Source.junk lexer.source;
           skip_single_line_comment lexer;
-          next lexer
+          next lexer;
         | Some _ | None ->
-          let buf = Buffer.create initial_buffer_size in
+          let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf '/';
-          (Some (Token.MulOp (lex_op lexer buf)), pos)
+          (Some (Token.MulOp (lex_op lexer buf)), pos);
       end
     | Some c ->
       (Some (lex_token lexer pos c), pos)
