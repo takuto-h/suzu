@@ -50,8 +50,8 @@ and control =
   | Reset
 
 exception Error of Pos.t * string * Pos.t list
-
 exception InternalError of string
+
 exception Match_failure of exn
 exception Not_exported
 
@@ -304,14 +304,6 @@ let include_module vm modl =
   MethodSet.iter begin fun (klass, sel) ->
     export_method vm.env klass sel
   end modl.exported_methods
-
-let unit_of_value value =
-  begin match value with
-    | Unit ->
-      ()
-    | _ ->
-      raise (required "unit" value)
-  end
 
 let int_of_value value =
   begin match value with
@@ -871,3 +863,16 @@ let rec run vm =
 
 let some x = Variant ("Option::C", "Some", make_args [x] [])
 let none = Variant ("Option::C", "None", make_args [] [])
+
+let subr_debug =
+  create_subr 0 begin fun vm args ->
+    List.iter begin fun {vars;methods} ->
+      Hashtbl.iter begin fun x value ->
+        printf "%s = %s\n" x (show_value value)
+      end vars;
+      Hashtbl.iter begin fun (klass, sel) value ->
+        printf "%s#%s = %s\n" klass sel (show_value value)
+      end methods
+    end vm.env;
+    push_value vm Unit
+  end

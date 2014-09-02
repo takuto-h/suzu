@@ -193,16 +193,4 @@ let initialize loader =
   VM.add_var env "buffer_add_string" subr_buffer_add_string ~export:true;
   VM.add_var env "buffer_contents" subr_buffer_contents ~export:true;
   VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd env));
-  VM.add_var loader.Loader.env "debug" begin
-    VM.create_subr 0 begin fun vm args ->
-      List.iter begin fun {VM.vars;VM.methods} ->
-        Hashtbl.iter begin fun x value ->
-          printf "%s = %s\n" x (VM.show_value value)
-        end vars;
-        Hashtbl.iter begin fun (klass, sel) value ->
-          printf "%s#%s = %s\n" klass sel (VM.show_value value)
-        end methods
-      end vm.VM.env;
-      VM.push_value vm VM.Unit
-    end
-  end
+  VM.add_var loader.Loader.env "debug" VM.subr_debug;
