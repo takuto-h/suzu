@@ -6,8 +6,8 @@ type t =
   | Newline
   | Undent
   | Int of int
-  | String of string
   | Char of char
+  | String of string
   | Ident of string
   | Reserved of string
   | CmpOp of string
@@ -16,7 +16,7 @@ type t =
   | PowOp of string
   | UnaryOp of string
 
-let string_of_operator token =
+let get_op token =
   begin match token with
     | CmpOp str | AddOp str | MulOp str | PowOp str | UnaryOp str ->
       Some str
@@ -34,10 +34,10 @@ let show token =
       "undent"
     | Int _ ->
       "integer"
-    | String _ ->
-      "string"
     | Char _ ->
       "character"
+    | String _ ->
+      "string"
     | Ident _ ->
       "identifier"
     | Reserved s | CmpOp s | AddOp s | MulOp s | PowOp s | UnaryOp s ->

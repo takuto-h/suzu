@@ -196,7 +196,7 @@ let parse_selector parser =
   begin match parser.token with
     | Token.Reserved "(" ->
       lookahead parser;
-      let sel = begin match (parser.token, Token.string_of_operator parser.token) with
+      let sel = begin match (parser.token, Token.get_op parser.token) with
         | (Token.Ident str, _) ->
           lookahead parser;
           if parser.token = Token.Reserved "=" then
