@@ -578,28 +578,6 @@ let throw vm value =
   vm.stack <- [value];
   vm.controls <- fst controls_and_trace
 
-let on_error vm message =
-  let pos = vm.pos in
-  let trace = ref [] in
-  let subr_report_error = create_subr 0 (fun vm args -> raise (Error (pos, message, !trace))) in
-  let controls = List.fold_right begin fun control controls ->
-      begin match control with
-        | Dump (_, _, _, pos) ->
-          trace := pos::!trace;
-          controls
-        | Catch (_, _, _, _) ->
-          controls
-        | Finally func ->
-          control::controls
-        | Reset ->
-          controls
-      end
-    end vm.controls [Finally subr_report_error]
-  in
-  vm.insns <- [Insn.Return];
-  vm.stack <- [Unit];
-  vm.controls <- controls
-
 let execute vm insn =
   begin match insn with
     | Insn.At pos ->
@@ -849,6 +827,59 @@ let execute vm insn =
       throw vm value
   end
 
+let subr_reset =
+  create_subr 1 begin fun vm args ->
+    let func = get_arg args 0 in
+    let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
+    vm.insns <- [Insn.Return];
+    vm.stack <- [];
+    vm.controls <- Reset::dump::vm.controls;
+    call vm func (Args (make_args [] []));
+  end
+
+let subr_shift =
+  create_subr 1 begin fun vm args ->
+    let func = get_arg args 0 in
+    let rec loop rev_left right =
+      begin match right with
+        | [] ->
+          (List.rev rev_left, right)
+        | Reset::right ->
+          (List.rev (Reset::rev_left), Reset::right)
+        | control::right ->
+          loop (control::rev_left) right
+      end
+    in
+    let (left, right) = loop [] vm.controls in
+    let left = Dump (vm.insns, vm.stack, vm.env, vm.pos)::left in
+    vm.insns <- [Insn.Return];
+    vm.stack <- [];
+    vm.controls <- right;
+    call vm func (Args (make_args [Cont left] []));
+  end
+
+let on_error vm message =
+  let pos = vm.pos in
+  let trace = ref [] in
+  let subr_report_error = create_subr 0 (fun vm args -> raise (Error (pos, message, !trace))) in
+  let controls = List.fold_right begin fun control controls ->
+      begin match control with
+        | Dump (_, _, _, pos) ->
+          trace := pos::!trace;
+          controls
+        | Catch (_, _, _, _) ->
+          controls
+        | Finally func ->
+          control::controls
+        | Reset ->
+          controls
+      end
+    end vm.controls [Finally subr_report_error]
+  in
+  vm.insns <- [Insn.Return];
+  vm.stack <- [Unit];
+  vm.controls <- controls
+
 let rec run vm =
   begin match vm.insns with
     | [] ->
@@ -865,3 +896,6 @@ let rec run vm =
       end;
       run vm
   end
+
+let get_env {env} =
+  env

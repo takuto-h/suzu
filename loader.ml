@@ -37,7 +37,7 @@ let compile_and_run loader expr =
   let insns = Compiler.compile expr in
   let vm = VM.create insns loader.env in
   let value = VM.run vm in
-  loader.env <- vm.VM.env;
+  loader.env <- VM.get_env vm;
   value
 
 let load_source proc loader source =

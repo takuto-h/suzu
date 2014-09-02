@@ -1,17 +1,12 @@
 
-type frame
+type t
 type args
+type frame
+type control
 
-type t = {
-  mutable insns : Insn.t list;
-  mutable stack : value list;
-  mutable env : env;
-  mutable pos : Pos.t;
-  mutable controls  : control list;
-  mutable curr_mod_path : string list;
-}
+type env = frame list
 
-and value =
+type value =
   | Unit
   | Int of int
   | Bool of bool
@@ -26,14 +21,6 @@ and value =
   | Subr of int * bool * string list * (t -> args -> unit)
   | Cont of control list
   | Buffer of Buffer.t
-
-and env = frame list
-
-and control =
-  | Dump of Insn.t list * value list * env * Pos.t
-  | Catch of Pattern.t * Insn.t list * env * Pos.t
-  | Finally of value
-  | Reset
 
 exception Error of Pos.t * string * Pos.t list
 exception InternalError of string
@@ -56,8 +43,11 @@ val module_of_value : value -> frame
 val args_of_value : value -> args
 val buffer_of_value : value -> Buffer.t
 
-val add_var : ?export:bool -> env -> string -> value -> unit
-
 val push_value : t -> value -> unit
-val call : t -> value -> value -> unit
+
+val add_var : ?export:bool -> env -> string -> value -> unit
+val subr_reset : value
+val subr_shift : value
+
 val run : t -> value
+val get_env : t -> env

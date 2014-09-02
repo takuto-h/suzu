@@ -35,37 +35,6 @@ let create_binary_arith_subr proc =
 let create_unary_arith_subr proc =
   create_unary_subr (fun arg -> VM.Int (proc (VM.int_of_value arg)))
 
-let subr_reset =
-  VM.create_subr 1 begin fun vm args ->
-    let func = VM.get_arg args 0 in
-    let dump = VM.Dump (vm.VM.insns, vm.VM.stack, vm.VM.env, vm.VM.pos) in
-    vm.VM.insns <- [Insn.Return];
-    vm.VM.stack <- [];
-    vm.VM.controls <- VM.Reset::dump::vm.VM.controls;
-    VM.call vm func (VM.Args (VM.make_args [] []));
-  end
-
-let subr_shift =
-  VM.create_subr 1 begin fun vm args ->
-    let func = VM.get_arg args 0 in
-    let rec loop rev_left right =
-      begin match right with
-        | [] ->
-          (List.rev rev_left, right)
-        | VM.Reset::right ->
-          (List.rev (VM.Reset::rev_left), VM.Reset::right)
-        | control::right ->
-          loop (control::rev_left) right
-      end
-    in
-    let (left, right) = loop [] vm.VM.controls in
-    let left = VM.Dump (vm.VM.insns, vm.VM.stack, vm.VM.env, vm.VM.pos)::left in
-    vm.VM.insns <- [Insn.Return];
-    vm.VM.stack <- [];
-    vm.VM.controls <- right;
-    VM.call vm func (VM.Args (VM.make_args [VM.Cont left] []));
-  end
-
 let subr_write_line =
   create_unary_subr begin fun arg ->
     let str = VM.string_of_value arg in
@@ -152,8 +121,8 @@ let subr_buffer_contents =
 
 let initialize loader =
   let env = [VM.create_frame ()] in
-  VM.add_var env "reset" subr_reset ~export:true;
-  VM.add_var env "shift" subr_shift ~export:true;
+  VM.add_var env "reset" VM.subr_reset ~export:true;
+  VM.add_var env "shift" VM.subr_shift ~export:true;
   VM.add_var env "write_line" subr_write_line ~export:true;
   VM.add_var env "read_line" subr_read_line ~export:true;
   VM.add_var env "gt" (create_binary_cmp_subr ( > )) ~export:true;
