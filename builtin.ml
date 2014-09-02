@@ -151,4 +151,4 @@ let initialize loader =
   VM.add_var env "buffer_create" subr_buffer_create ~export:true;
   VM.add_var env "buffer_add_string" subr_buffer_add_string ~export:true;
   VM.add_var env "buffer_contents" subr_buffer_contents ~export:true;
-  VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd env));
+  VM.add_var (Loader.get_env loader) "Builtin" (VM.Module (List.hd env));

@@ -34,12 +34,11 @@ val get_arg : args -> int -> value
 
 val get_class : value -> string
 val show_value : value -> string
+
 val int_of_value : value -> int
 val bool_of_value : value -> bool
 val char_of_value : value -> char
 val string_of_value : value -> string
-val class_of_value : value -> string
-val module_of_value : value -> frame
 val args_of_value : value -> args
 val buffer_of_value : value -> Buffer.t
 

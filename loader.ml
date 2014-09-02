@@ -88,3 +88,6 @@ let rec repl loader =
     end
   in
   loop ()
+
+let get_env {env} =
+  env
