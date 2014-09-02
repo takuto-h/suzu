@@ -1,6 +1,9 @@
 
 open Printf
 
+let some x = VM.Variant ("Option::C", "Some", VM.make_args [x] [])
+let none = VM.Variant ("Option::C", "None", VM.make_args [] [])
+
 let make_binary_subr proc_out proc_body proc_in =
   VM.create_subr 2 begin fun vm args ->
     let arg0 = VM.get_arg args 0 in
@@ -133,10 +136,10 @@ let subr_args_get =
     let arg = VM.args_of_value (VM.get_arg args 0) in
     let index = VM.int_of_value (VM.get_arg args 1) in
     begin try
-        VM.push_value vm (VM.some (VM.get_arg arg index))
+        VM.push_value vm (some (VM.get_arg arg index))
       with
       | Failure "nth" ->
-        VM.push_value vm (VM.none)
+        VM.push_value vm none
     end
   end
 
@@ -193,4 +196,3 @@ let initialize loader =
   VM.add_var env "buffer_add_string" subr_buffer_add_string ~export:true;
   VM.add_var env "buffer_contents" subr_buffer_contents ~export:true;
   VM.add_var loader.Loader.env "Builtin" (VM.Module (List.hd env));
-  VM.add_var loader.Loader.env "debug" VM.subr_debug;

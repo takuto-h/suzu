@@ -453,6 +453,54 @@ let test_value pat value =
       false
   end
 
+let make_record_ctor klass fields =
+  create_subr (List.length fields) begin fun vm args ->
+    let table = Hashtbl.create initial_field_table_size in
+    List.iter2 begin fun field arg ->
+      Hashtbl.add table field arg
+    end fields args.normal_args;
+    push_value vm (Record (klass, table))
+  end
+
+let make_getter klass field =
+  create_subr 1 begin fun vm args ->
+    let self = get_arg args 0 in
+    begin match self with
+      | Record (klass2, table) when klass2 = klass ->
+        push_value vm (Hashtbl.find table field)
+      | _ ->
+        raise (required klass self)
+    end
+  end
+
+let make_setter klass field =
+  create_subr 2 begin fun vm args ->
+    let self = get_arg args 0 in
+    let value = get_arg args 1 in
+    begin match self with
+      | Record (klass2, table) when klass2 = klass ->
+        Hashtbl.replace table field value;
+        push_value vm Unit
+      | _ ->
+        raise (required klass self)
+    end
+  end
+
+let make_variant_ctor klass ctor params = 
+  let {Pattern.normal_params;Pattern.rest_param;Pattern.labeled_params} = params in
+  let req_count = List.length normal_params in
+  let allows_rest = rest_param <> None in
+  let req_labels = List.fold_right begin fun (label, (_, has_default)) req_labels ->
+      if has_default then
+        req_labels
+      else
+        label::req_labels
+    end labeled_params []
+  in
+  create_subr req_count ~allows_rest:allows_rest ~req_labels:req_labels begin fun vm args ->
+    push_value vm (Variant (klass, ctor, args))
+  end
+
 let call vm func args =
   begin match func with
     | Closure (env, insns) ->
@@ -500,53 +548,6 @@ let rec return vm value =
       return vm value;
   end
 
-let make_record_ctor klass fields =
-  create_subr (List.length fields) begin fun vm args ->
-    let table = Hashtbl.create initial_field_table_size in
-    List.iter2 begin fun field arg ->
-      Hashtbl.add table field arg
-    end fields args.normal_args;
-    push_value vm (Record (klass, table))
-  end
-
-let make_getter klass field =
-  create_subr 1 begin fun vm args ->
-    let self = get_arg args 0 in
-    begin match self with
-      | Record (klass2, table) when klass2 = klass ->
-        push_value vm (Hashtbl.find table field)
-      | _ ->
-        raise (required klass self)
-    end
-  end      
-
-let make_setter klass field =
-  create_subr 2 begin fun vm args ->
-    let self = get_arg args 0 in
-    let value = get_arg args 1 in
-    begin match self with
-      | Record (klass2, table) when klass2 = klass ->
-        Hashtbl.replace table field value;
-        push_value vm Unit
-      | _ ->
-        raise (required klass self)
-    end
-  end     
-
-let make_variant_ctor klass ctor {Pattern.normal_params;Pattern.rest_param;Pattern.labeled_params} =
-  let count = List.length normal_params in
-  let allows_rest = rest_param <> None in
-  let req_labels = List.fold_right begin fun (label, (_, has_default)) req_labels ->
-      if has_default then
-        req_labels
-      else
-        label::req_labels
-    end labeled_params []
-  in
-  create_subr count ~allows_rest:allows_rest ~req_labels:req_labels begin fun vm args ->
-    push_value vm (Variant (klass, ctor, args))
-  end
-
 let throw vm value =
   let pos = vm.pos in
   let message = sprintf "uncaught exception: %s\n" (show_value value) in
@@ -576,6 +577,28 @@ let throw vm value =
   vm.insns <- [Insn.Return];
   vm.stack <- [value];
   vm.controls <- fst controls_and_trace
+
+let on_error vm message =
+  let pos = vm.pos in
+  let trace = ref [] in
+  let subr_report_error = create_subr 0 (fun vm args -> raise (Error (pos, message, !trace))) in
+  let controls = List.fold_right begin fun control controls ->
+      begin match control with
+        | Dump (_, _, _, pos) ->
+          trace := pos::!trace;
+          controls
+        | Catch (_, _, _, _) ->
+          controls
+        | Finally func ->
+          control::controls
+        | Reset ->
+          controls
+      end
+    end vm.controls [Finally subr_report_error]
+  in
+  vm.insns <- [Insn.Return];
+  vm.stack <- [Unit];
+  vm.controls <- controls
 
 let execute vm insn =
   begin match insn with
@@ -672,8 +695,8 @@ let execute vm insn =
     | Insn.EndModule name ->
       let modl = List.hd vm.env in
       vm.env <- List.tl vm.env;
+      vm.curr_mod_path <- List.tl vm.curr_mod_path;
       add_var vm.env name (Module modl);
-      vm.curr_mod_path <- List.tl vm.curr_mod_path
     | Insn.FindVar x ->
       begin try
           push_value vm (find_var vm.env x)
@@ -763,7 +786,8 @@ let execute vm insn =
           (label, value)::labeled_args
         end labels []
       in
-      let (normal_args, labeled_args) = if has_rest then
+      let (normal_args, labeled_args) =
+        if has_rest then
           let args = args_of_value (pop_value vm) in
           let labeled_args = List.fold_right begin fun (label, value) labeled ->
               if List.mem_assoc label labeled_args then
@@ -803,43 +827,21 @@ let execute vm insn =
     | Insn.MakeExceptionCtor (ctor, params) ->
       let klass = "Exn::C" in
       push_value vm (make_variant_ctor klass ctor params)
-    | Insn.TryFinally ->
-      let finally = Finally (pop_value vm) in
-      let body = pop_value vm in
-      call vm body (Args (make_args [] []));
-      vm.controls <- finally::vm.controls;
     | Insn.TryCatch (pat, insns) ->
       let env = vm.env in
       let pos = vm.pos in
       let body = pop_value vm in
       call vm body (Args (make_args [] []));
       vm.controls <- Catch (pat, insns, env, pos)::vm.controls;
+    | Insn.TryFinally ->
+      let finally = Finally (pop_value vm) in
+      let body = pop_value vm in
+      call vm body (Args (make_args [] []));
+      vm.controls <- finally::vm.controls;
     | Insn.Throw ->
       let value = pop_value vm in
       throw vm value
   end
-
-let on_error vm message =
-  let pos = vm.pos in
-  let trace = ref [] in
-  let subr_report_error = create_subr 0 (fun vm args -> raise (Error (pos, message, !trace))) in
-  let controls = List.fold_right begin fun control controls ->
-      begin match control with
-        | Dump (_, _, _, pos) ->
-          trace := pos::!trace;
-          controls
-        | Catch (_, _, _, _) ->
-          controls
-        | Finally func ->
-          control::controls
-        | Reset ->
-          controls
-      end
-    end vm.controls [Finally subr_report_error]
-  in
-  vm.insns <- [Insn.Return];
-  vm.stack <- [Unit];
-  vm.controls <- controls
 
 let rec run vm =
   begin match vm.insns with
@@ -856,20 +858,4 @@ let rec run vm =
           on_error vm message
       end;
       run vm
-  end
-
-let some x = Variant ("Option::C", "Some", make_args [x] [])
-let none = Variant ("Option::C", "None", make_args [] [])
-
-let subr_debug =
-  create_subr 0 begin fun vm args ->
-    List.iter begin fun {vars;methods} ->
-      Hashtbl.iter begin fun x value ->
-        printf "%s = %s\n" x (show_value value)
-      end vars;
-      Hashtbl.iter begin fun (klass, sel) value ->
-        printf "%s#%s = %s\n" klass sel (show_value value)
-      end methods
-    end vm.env;
-    push_value vm Unit
   end
