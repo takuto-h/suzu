@@ -63,7 +63,7 @@ let parse_non_assoc parser get_op parse_lower =
       let op = Selector.of_op str in
       lookahead parser;
       let rhs = parse_lower parser in
-      Expr.at pos (Expr.Send (lhs, op, Expr.Args.make [rhs] None []))
+      Expr.at pos (Expr.Send (lhs, op, Expr.Args.n_ary [rhs]))
   end
 
 let rec parse_right_assoc parser get_op parse_lower =
@@ -76,7 +76,7 @@ let rec parse_right_assoc parser get_op parse_lower =
       let op = Selector.of_op str in
       lookahead parser;
       let rhs = parse_right_assoc parser get_op parse_lower in
-      Expr.at pos (Expr.Send (lhs, op, Expr.Args.make [rhs] None []))
+      Expr.at pos (Expr.Send (lhs, op, Expr.Args.n_ary [rhs]))
   end
 
 let rec parse_left_assoc parser get_op parse_lower =
@@ -90,7 +90,7 @@ let rec parse_left_assoc parser get_op parse_lower =
         let op = Selector.of_op str in
         lookahead parser;
         let rhs = parse_lower parser in
-        loop (Expr.at pos (Expr.Send (lhs, op, Expr.Args.make [rhs] None [])))
+        loop (Expr.at pos (Expr.Send (lhs, op, Expr.Args.n_ary [rhs])))
     end
   in
   loop lhs
@@ -461,7 +461,7 @@ and parse_prim_expr parser =
             lookahead parser;
             let value = parse_expr parser in
             let sel = Selector.of_op (sprintf "%s=" (Selector.string_of sel)) in
-            Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [value] None []))
+            Expr.at pos (Expr.Send (expr, sel, Expr.Args.n_ary [value]))
           | _ ->
             loop (Expr.at pos (Expr.Send (expr, sel, Expr.Args.nullary)))
         end
@@ -474,11 +474,11 @@ and parse_prim_expr parser =
             lookahead parser;
             let value = parse_expr parser in
             let sel = Selector.of_op "[]=" in
-            Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [key;value] None []))
+            Expr.at pos (Expr.Send (expr, sel, Expr.Args.n_ary [key;value]))
           end
         else
           let sel = Selector.of_op "[]" in
-          loop (Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [key] None [])))
+          loop (Expr.at pos (Expr.Send (expr, sel, Expr.Args.n_ary [key])))
       | _ ->
         expr
     end
@@ -688,10 +688,8 @@ and parse_get_expr parser pos rev_idents =
 and parse_list parser pos =
   let nil = Expr.at pos (Expr.Get (["List"], Expr.Var "Nil")) in
   let cons head tail =
-    Expr.at pos
-      (Expr.Call
-         (Expr.at pos (Expr.Get (["List"], Expr.Var "Cons")),
-          Expr.Args.make [head; tail] None []))
+    let func = Expr.at pos (Expr.Get (["List"], Expr.Var "Cons")) in
+    Expr.at pos (Expr.Call (func, Expr.Args.n_ary [head;tail]))
   in    
   let rec loop () =
     begin match parser.token with

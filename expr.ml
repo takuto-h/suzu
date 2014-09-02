@@ -194,8 +194,6 @@ and show_catch (pat, body) =
   sprintf "(Catch %s (%s))" (show_pattern pat) (SnString.concat_map " " show body)
 
 module Pattern = struct
-  type t = pat
-
   let at pos raw = {
     pat_pos = pos;
     pat_raw = raw;
@@ -205,8 +203,6 @@ module Pattern = struct
 end
 
 module Params = struct
-  type t = params
-
   let make normal rest labeled = {
     normal_params = normal;
     rest_param = rest;
@@ -217,16 +213,17 @@ module Params = struct
 end
 
 module Args = struct
-  type t = args
-
   let make normal rest labeled = {
     normal_args = normal;
     rest_arg = rest;
     labeled_args = labeled;
   }
 
+  let n_ary normal =
+    make normal None []
+
   let nullary =
-    make [] None []
-  
+    n_ary []
+
   let show = show_args
 end
