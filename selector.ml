@@ -5,6 +5,12 @@ type t =
   | Ident of string
   | Op of string
 
+let of_ident str =
+  Ident str
+
+let of_op str =
+  Op str
+
 let string_of sel =
   begin match sel with
     | Ident str ->

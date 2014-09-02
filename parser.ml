@@ -60,7 +60,7 @@ let parse_non_assoc parser get_op parse_lower =
       lhs
     | Some str ->
       let pos = parser.pos in
-      let op = Selector.Op str in
+      let op = Selector.of_op str in
       lookahead parser;
       let rhs = parse_lower parser in
       Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None []))
@@ -73,7 +73,7 @@ let rec parse_right_assoc parser get_op parse_lower =
       lhs
     | Some str ->
       let pos = parser.pos in
-      let op = Selector.Op str in
+      let op = Selector.of_op str in
       lookahead parser;
       let rhs = parse_right_assoc parser get_op parse_lower in
       Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None []))
@@ -87,7 +87,7 @@ let rec parse_left_assoc parser get_op parse_lower =
         lhs
       | Some str ->
         let pos = parser.pos in
-        let op = Selector.Op str in
+        let op = Selector.of_op str in
         lookahead parser;
         let rhs = parse_lower parser in
         loop (Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None [])))
@@ -202,23 +202,23 @@ let parse_selector parser =
           if parser.token = Token.Reserved "=" then
             begin
               lookahead parser;
-              Selector.Op (sprintf "%s=" str)
+              Selector.of_op (sprintf "%s=" str)
             end
           else
-            Selector.Ident str
+            Selector.of_ident str
         | (Token.Reserved "[", _) ->
           lookahead parser;
           parse_token parser (Token.Reserved "]");
           if parser.token = Token.Reserved "=" then
             begin
               lookahead parser;
-              Selector.Op "[]="
+              Selector.of_op "[]="
             end
           else
-            Selector.Op "[]"
+            Selector.of_op "[]"
         | (_, Some str) ->
           lookahead parser;
-          Selector.Op str
+          Selector.of_op str
         | (_, None) ->
           raise (expected parser "operator")
       end
@@ -226,7 +226,7 @@ let parse_selector parser =
       parse_token parser (Token.Reserved ")");
       sel
     | Token.Ident _ ->
-      Selector.Ident (parse_ident parser)
+      Selector.of_ident (parse_ident parser)
     | _ ->
       raise (expected parser "identifier")
   end
@@ -438,15 +438,15 @@ and parse_unary_expr parser =
     | Token.AddOp "-" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~-", Expr.Args.make [] None []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.of_op "~-", Expr.Args.make [] None []))
     | Token.AddOp "+" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "~+", Expr.Args.make [] None []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.of_op "~+", Expr.Args.make [] None []))
     | Token.CmpOp "!" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.Op "!", Expr.Args.make [] None []))
+      Expr.at pos (Expr.MethodCall (expr, Selector.of_op "!", Expr.Args.make [] None []))
     | _ ->
       parse_prim_expr parser
   end
@@ -470,7 +470,7 @@ and parse_prim_expr parser =
           | Token.Reserved "=" ->
             lookahead parser;
             let value = parse_expr parser in
-            let sel = Selector.Op (sprintf "%s=" (Selector.string_of sel)) in
+            let sel = Selector.of_op (sprintf "%s=" (Selector.string_of sel)) in
             Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [value] None []))
           | _ ->
             loop (Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [] None [])))
@@ -483,11 +483,11 @@ and parse_prim_expr parser =
           begin
             lookahead parser;
             let value = parse_expr parser in
-            let sel = Selector.Op "[]=" in
+            let sel = Selector.of_op "[]=" in
             Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [key;value] None []))
           end
         else
-          let sel = Selector.Op "[]" in
+          let sel = Selector.of_op "[]" in
           loop (Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [key] None [])))
       | _ ->
         expr

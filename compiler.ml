@@ -199,11 +199,11 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       List.iter begin fun (field, is_mutable) ->
         Stack.push (Insn.MakeGetter (klass, field)) insns;
         Stack.push (Insn.MakeClass klass) insns;
-        Stack.push (Insn.AddMethod (Selector.Ident field)) insns;
+        Stack.push (Insn.AddMethod (Selector.of_ident field)) insns;
         if is_mutable then begin
           Stack.push (Insn.MakeSetter (klass, field)) insns;
           Stack.push (Insn.MakeClass klass) insns;
-          Stack.push (Insn.AddMethod (Selector.Op (sprintf "%s=" field))) insns;
+          Stack.push (Insn.AddMethod (Selector.of_op (sprintf "%s=" field))) insns;
         end
       end fields;
       Stack.push (Insn.Push Literal.Unit) insns
