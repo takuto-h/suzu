@@ -38,8 +38,11 @@ let create_unary_arith_subr proc =
 let subr_reset =
   VM.create_subr 1 begin fun vm args ->
     let func = VM.get_arg args 0 in
+    let dump = VM.Dump (vm.VM.insns, vm.VM.stack, vm.VM.env, vm.VM.pos) in
+    vm.VM.insns <- [Insn.Return];
+    vm.VM.stack <- [];
+    vm.VM.controls <- VM.Reset::dump::vm.VM.controls;
     VM.call vm func (VM.Args (VM.make_args [] []));
-    vm.VM.controls <- VM.Reset::vm.VM.controls;
   end
 
 let subr_shift =
@@ -57,8 +60,10 @@ let subr_shift =
     in
     let (left, right) = loop [] vm.VM.controls in
     let left = VM.Dump (vm.VM.insns, vm.VM.stack, vm.VM.env, vm.VM.pos)::left in
-    VM.call vm func (VM.Args (VM.make_args [VM.Cont left] []));
+    vm.VM.insns <- [Insn.Return];
+    vm.VM.stack <- [];
     vm.VM.controls <- right;
+    VM.call vm func (VM.Args (VM.make_args [VM.Cont left] []));
   end
 
 let subr_write_line =

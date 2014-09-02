@@ -831,13 +831,19 @@ let execute vm insn =
       let env = vm.env in
       let pos = vm.pos in
       let body = pop_value vm in
+      let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
+      vm.insns <- [Insn.Return];
+      vm.stack <- [];
+      vm.controls <- Catch (pat, insns, env, pos)::dump::vm.controls;
       call vm body (Args (make_args [] []));
-      vm.controls <- Catch (pat, insns, env, pos)::vm.controls;
     | Insn.TryFinally ->
       let finally = Finally (pop_value vm) in
       let body = pop_value vm in
+      let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
+      vm.insns <- [Insn.Return];
+      vm.stack <- [];
+      vm.controls <- finally::dump::vm.controls;
       call vm body (Args (make_args [] []));
-      vm.controls <- finally::vm.controls;
     | Insn.Throw ->
       let value = pop_value vm in
       throw vm value
