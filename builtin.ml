@@ -4,36 +4,36 @@ open Printf
 let some x = VM.Variant ("Option::C", "Some", VM.make_args [x] [])
 let none = VM.Variant ("Option::C", "None", VM.make_args [] [])
 
-let make_binary_subr proc =
+let create_binary_subr proc =
   VM.create_subr 2 begin fun vm args ->
     let arg0 = VM.get_arg args 0 in
     let arg1 = VM.get_arg args 1 in
     VM.push_value vm (proc arg0 arg1)
   end
 
-let make_unary_subr proc =
+let create_unary_subr proc =
   VM.create_subr 1 begin fun vm args ->
     let arg = VM.get_arg args 0 in
     VM.push_value vm (proc arg)
   end
 
-let make_nullary_subr proc =
+let create_nullary_subr proc =
   VM.create_subr 0 begin fun vm args ->
     VM.push_value vm (proc ())
   end
 
-let make_binary_cmp_subr proc =
-  make_binary_subr (fun arg0 arg1 -> VM.Bool (proc arg0 arg1))
+let create_binary_cmp_subr proc =
+  create_binary_subr (fun arg0 arg1 -> VM.Bool (proc arg0 arg1))
 
-let make_binary_arith_subr proc =
-  make_binary_subr begin fun arg0 arg1 ->
+let create_binary_arith_subr proc =
+  create_binary_subr begin fun arg0 arg1 ->
     let i0 = VM.int_of_value arg0 in
     let i1 = VM.int_of_value arg1 in
     VM.Int (proc i0 i1)
   end
 
-let make_unary_arith_subr proc =
-  make_unary_subr (fun arg -> VM.Int (proc (VM.int_of_value arg)))
+let create_unary_arith_subr proc =
+  create_unary_subr (fun arg -> VM.Int (proc (VM.int_of_value arg)))
 
 let subr_reset =
   VM.create_subr 1 begin fun vm args ->
@@ -62,44 +62,37 @@ let subr_shift =
   end
 
 let subr_write_line =
-  make_unary_subr begin fun arg ->
+  create_unary_subr begin fun arg ->
     let str = VM.string_of_value arg in
     print_endline str;
     VM.Unit
   end
 
 let subr_read_line =
-  make_nullary_subr begin fun () ->
+  create_nullary_subr begin fun () ->
     VM.String (read_line ())
   end
 
-let subr_eq = make_binary_cmp_subr ( = )
-let subr_ne = make_binary_cmp_subr ( <> )
-let subr_gt = make_binary_cmp_subr ( > )
-let subr_ge = make_binary_cmp_subr ( >= )
-let subr_lt = make_binary_cmp_subr ( < )
-let subr_le = make_binary_cmp_subr ( <= )
-
 let subr_compare =
-  make_binary_subr (fun arg0 arg1 -> VM.Int (compare arg0 arg1))
+  create_binary_subr (fun arg0 arg1 -> VM.Int (compare arg0 arg1))
 
 let subr_show =
-  make_unary_subr (fun arg -> VM.String (VM.show_value arg))
+  create_unary_subr (fun arg -> VM.String (VM.show_value arg))
 
 let subr_class_of =
-  make_unary_subr (fun arg -> VM.Class (VM.get_class arg))
+  create_unary_subr (fun arg -> VM.Class (VM.get_class arg))
 
 let subr_not =
-  make_unary_subr (fun arg -> VM.Bool (not (VM.bool_of_value arg)))
+  create_unary_subr (fun arg -> VM.Bool (not (VM.bool_of_value arg)))
 
 let subr_char_code =
-  make_unary_subr (fun arg -> VM.Int (Char.code (VM.char_of_value arg)))
+  create_unary_subr (fun arg -> VM.Int (Char.code (VM.char_of_value arg)))
 
 let subr_char_to_string =
-  make_unary_subr (fun arg -> VM.String (sprintf "%c" (VM.char_of_value arg)))
+  create_unary_subr (fun arg -> VM.String (sprintf "%c" (VM.char_of_value arg)))
 
 let subr_string_get =
-  make_binary_subr begin fun arg0 arg1 ->
+  create_binary_subr begin fun arg0 arg1 ->
     let str = VM.string_of_value arg0 in
     let index = VM.int_of_value arg1 in
     begin try
@@ -111,17 +104,17 @@ let subr_string_get =
   end
 
 let subr_string_length =
-  make_unary_subr (fun arg -> VM.Int (String.length (VM.string_of_value arg)))
+  create_unary_subr (fun arg -> VM.Int (String.length (VM.string_of_value arg)))
 
 let subr_string_contain_p =
-  make_binary_subr begin fun arg0 arg1 ->
+  create_binary_subr begin fun arg0 arg1 ->
     let str = VM.string_of_value arg0 in
     let c = VM.char_of_value arg1 in
     VM.Bool (String.contains str c)
   end
 
 let subr_args_get =
-  make_binary_subr begin fun arg0 arg1 ->
+  create_binary_subr begin fun arg0 arg1 ->
     let args = VM.args_of_value arg0 in
     let index = VM.int_of_value arg1 in
     begin try
@@ -133,13 +126,13 @@ let subr_args_get =
   end
 
 let subr_buffer_create =
-  make_unary_subr begin fun arg ->
+  create_unary_subr begin fun arg ->
     let initial_buffer_size = VM.int_of_value arg in
     VM.Buffer (Buffer.create initial_buffer_size)
   end
 
 let subr_buffer_add_string =
-  make_binary_subr begin fun arg0 arg1 ->
+  create_binary_subr begin fun arg0 arg1 ->
     let buffer = VM.buffer_of_value arg0 in
     let str = VM.string_of_value arg1 in
     Buffer.add_string buffer str;
@@ -147,7 +140,7 @@ let subr_buffer_add_string =
   end
 
 let subr_buffer_contents =
-  make_unary_subr begin fun arg ->
+  create_unary_subr begin fun arg ->
     let buffer = VM.buffer_of_value arg in
     VM.String (Buffer.contents buffer)
   end
@@ -158,22 +151,22 @@ let initialize loader =
   VM.add_var env "shift" subr_shift ~export:true;
   VM.add_var env "write_line" subr_write_line ~export:true;
   VM.add_var env "read_line" subr_read_line ~export:true;
-  VM.add_var env "gt" subr_gt ~export:true;
-  VM.add_var env "lt" subr_lt ~export:true;
-  VM.add_var env "ge" subr_ge ~export:true;
-  VM.add_var env "le" subr_le ~export:true;
-  VM.add_var env "eq" subr_eq ~export:true;
-  VM.add_var env "ne" subr_ne ~export:true;
+  VM.add_var env "gt" (create_binary_cmp_subr ( > )) ~export:true;
+  VM.add_var env "lt" (create_binary_cmp_subr ( < )) ~export:true;
+  VM.add_var env "ge" (create_binary_cmp_subr ( >= )) ~export:true;
+  VM.add_var env "le" (create_binary_cmp_subr ( <= )) ~export:true;
+  VM.add_var env "eq" (create_binary_cmp_subr ( = )) ~export:true;
+  VM.add_var env "ne" (create_binary_cmp_subr ( <> )) ~export:true;
   VM.add_var env "compare" subr_compare ~export:true;
   VM.add_var env "show" subr_show ~export:true;
   VM.add_var env "class_of" subr_class_of ~export:true;
-  VM.add_var env "add" (make_binary_arith_subr ( + )) ~export:true;
-  VM.add_var env "sub" (make_binary_arith_subr ( - )) ~export:true;
-  VM.add_var env "mul" (make_binary_arith_subr ( * )) ~export:true;
-  VM.add_var env "div" (make_binary_arith_subr ( / )) ~export:true;
-  VM.add_var env "mod" (make_binary_arith_subr ( mod )) ~export:true;
-  VM.add_var env "plus" (make_unary_arith_subr ( ~+ )) ~export:true;
-  VM.add_var env "minus" (make_unary_arith_subr ( ~- )) ~export:true;
+  VM.add_var env "add" (create_binary_arith_subr ( + )) ~export:true;
+  VM.add_var env "sub" (create_binary_arith_subr ( - )) ~export:true;
+  VM.add_var env "mul" (create_binary_arith_subr ( * )) ~export:true;
+  VM.add_var env "div" (create_binary_arith_subr ( / )) ~export:true;
+  VM.add_var env "mod" (create_binary_arith_subr ( mod )) ~export:true;
+  VM.add_var env "plus" (create_unary_arith_subr ( ~+ )) ~export:true;
+  VM.add_var env "minus" (create_unary_arith_subr ( ~- )) ~export:true;
   VM.add_var env "not" subr_not ~export:true;
   VM.add_var env "char_code" subr_char_code ~export:true;
   VM.add_var env "char_to_string" subr_char_to_string ~export:true;
