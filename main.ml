@@ -7,8 +7,8 @@ let main () =
   let loader = Loader.create () in
   Builtin.initialize loader;
   Prelude.initialize loader;
-  Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun file_name ->
-    Loader.load_file loader file_name
+  Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun fname ->
+    Loader.load_file loader fname
   end usage_msg;
   Loader.repl loader
 
