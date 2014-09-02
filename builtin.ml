@@ -4,31 +4,36 @@ open Printf
 let some x = VM.Variant ("Option::C", "Some", VM.make_args [x] [])
 let none = VM.Variant ("Option::C", "None", VM.make_args [] [])
 
-let make_binary_subr proc_out proc_body proc_in =
+let make_binary_subr proc =
   VM.create_subr 2 begin fun vm args ->
     let arg0 = VM.get_arg args 0 in
     let arg1 = VM.get_arg args 1 in
-    VM.push_value vm (proc_out (proc_body (proc_in arg0) (proc_in arg1)))
+    VM.push_value vm (proc arg0 arg1)
   end
 
-let make_unary_subr proc_out proc_body proc_in =
+let make_unary_subr proc =
   VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.get_arg args 0 in
-    VM.push_value vm (proc_out (proc_body (proc_in arg0)))
+    let arg = VM.get_arg args 0 in
+    VM.push_value vm (proc arg)
+  end
+
+let make_nullary_subr proc =
+  VM.create_subr 0 begin fun vm args ->
+    VM.push_value vm (proc ())
   end
 
 let make_binary_cmp_subr proc =
-  VM.create_subr 2 begin fun vm args ->
-    let arg0 = VM.get_arg args 0 in
-    let arg1 = VM.get_arg args 1 in
-    VM.push_value vm (VM.Bool (proc arg0 arg1))
-  end
+  make_binary_subr (fun arg0 arg1 -> VM.Bool (proc arg0 arg1))
 
 let make_binary_arith_subr proc =
-  make_binary_subr (fun i -> VM.Int i) proc VM.int_of_value
+  make_binary_subr begin fun arg0 arg1 ->
+    let i0 = VM.int_of_value arg0 in
+    let i1 = VM.int_of_value arg1 in
+    VM.Int (proc i0 i1)
+  end
 
 let make_unary_arith_subr proc =
-  make_unary_subr (fun i -> VM.Int i) proc VM.int_of_value
+  make_unary_subr (fun arg -> VM.Int (proc (VM.int_of_value arg)))
 
 let subr_reset =
   VM.create_subr 1 begin fun vm args ->
@@ -57,15 +62,15 @@ let subr_shift =
   end
 
 let subr_write_line =
-  VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.get_arg args 0 in
-    print_endline (VM.string_of_value arg0);
-    VM.push_value vm VM.Unit
+  make_unary_subr begin fun arg ->
+    let str = VM.string_of_value arg in
+    print_endline str;
+    VM.Unit
   end
 
 let subr_read_line =
-  VM.create_subr 0 begin fun vm args ->
-    VM.push_value vm (VM.String (read_line ()))
+  make_nullary_subr begin fun () ->
+    VM.String (read_line ())
   end
 
 let subr_eq = make_binary_cmp_subr ( = )
@@ -76,42 +81,29 @@ let subr_lt = make_binary_cmp_subr ( < )
 let subr_le = make_binary_cmp_subr ( <= )
 
 let subr_compare =
-  VM.create_subr 2 begin fun vm args ->
-    let arg0 = VM.get_arg args 0 in
-    let arg1 = VM.get_arg args 1 in
-    VM.push_value vm (VM.Int (compare arg0 arg1))
-  end
+  make_binary_subr (fun arg0 arg1 -> VM.Int (compare arg0 arg1))
 
 let subr_show =
-  VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.get_arg args 0 in
-    VM.push_value vm (VM.String (VM.show_value arg0))
-  end
+  make_unary_subr (fun arg -> VM.String (VM.show_value arg))
 
 let subr_class_of =
-  VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.get_arg args 0 in
-    VM.push_value vm (VM.Class (VM.get_class arg0))
-  end
+  make_unary_subr (fun arg -> VM.Class (VM.get_class arg))
 
 let subr_not =
-  make_unary_subr (fun b -> VM.Bool b) not VM.bool_of_value
+  make_unary_subr (fun arg -> VM.Bool (not (VM.bool_of_value arg)))
 
 let subr_char_code =
-  VM.create_subr 1 begin fun vm args ->
-    let c = VM.char_of_value (VM.get_arg args 0) in
-    VM.push_value vm (VM.Int (Char.code c))
-  end
+  make_unary_subr (fun arg -> VM.Int (Char.code (VM.char_of_value arg)))
 
 let subr_char_to_string =
-  make_unary_subr (fun str -> VM.String str) (sprintf "%c") VM.char_of_value
+  make_unary_subr (fun arg -> VM.String (sprintf "%c" (VM.char_of_value arg)))
 
 let subr_string_get =
-  VM.create_subr 2 begin fun vm args ->
-    let str = VM.string_of_value (VM.get_arg args 0) in
-    let index = VM.int_of_value (VM.get_arg args 1) in
+  make_binary_subr begin fun arg0 arg1 ->
+    let str = VM.string_of_value arg0 in
+    let index = VM.int_of_value arg1 in
     begin try
-        VM.push_value vm (VM.Char (String.get str index))
+        VM.Char (String.get str index)
       with
       | Invalid_argument _ ->
         raise (VM.InternalError (sprintf "index %d out of bounds of %S\n" index str))
@@ -119,48 +111,45 @@ let subr_string_get =
   end
 
 let subr_string_length =
-  VM.create_subr 1 begin fun vm args ->
-    let str = VM.string_of_value (VM.get_arg args 0) in
-    VM.push_value vm (VM.Int (String.length str))
-  end
+  make_unary_subr (fun arg -> VM.Int (String.length (VM.string_of_value arg)))
 
 let subr_string_contain_p =
-  VM.create_subr 2 begin fun vm args ->
-    let str = VM.string_of_value (VM.get_arg args 0) in
-    let c = VM.char_of_value (VM.get_arg args 1) in
-    VM.push_value vm (VM.Bool (String.contains str c))
+  make_binary_subr begin fun arg0 arg1 ->
+    let str = VM.string_of_value arg0 in
+    let c = VM.char_of_value arg1 in
+    VM.Bool (String.contains str c)
   end
 
 let subr_args_get =
-  VM.create_subr 2 begin fun vm args ->
-    let arg = VM.args_of_value (VM.get_arg args 0) in
-    let index = VM.int_of_value (VM.get_arg args 1) in
+  make_binary_subr begin fun arg0 arg1 ->
+    let args = VM.args_of_value arg0 in
+    let index = VM.int_of_value arg1 in
     begin try
-        VM.push_value vm (some (VM.get_arg arg index))
+        some (VM.get_arg args index)
       with
       | Failure "nth" ->
-        VM.push_value vm none
+        none
     end
   end
 
 let subr_buffer_create =
-  VM.create_subr 1 begin fun vm args ->
-    let initial_buffer_size = VM.int_of_value (VM.get_arg args 0) in
-    VM.push_value vm (VM.Buffer (Buffer.create initial_buffer_size))
+  make_unary_subr begin fun arg ->
+    let initial_buffer_size = VM.int_of_value arg in
+    VM.Buffer (Buffer.create initial_buffer_size)
   end
 
 let subr_buffer_add_string =
-  VM.create_subr 2 begin fun vm args ->
-    let buffer = VM.buffer_of_value (VM.get_arg args 0) in
-    let str = VM.string_of_value (VM.get_arg args 1) in
+  make_binary_subr begin fun arg0 arg1 ->
+    let buffer = VM.buffer_of_value arg0 in
+    let str = VM.string_of_value arg1 in
     Buffer.add_string buffer str;
-    VM.push_value vm VM.Unit
+    VM.Unit;
   end
 
 let subr_buffer_contents =
-  VM.create_subr 1 begin fun vm args ->
-    let buffer = VM.buffer_of_value (VM.get_arg args 0) in
-    VM.push_value vm (VM.String (Buffer.contents buffer))
+  make_unary_subr begin fun arg ->
+    let buffer = VM.buffer_of_value arg in
+    VM.String (Buffer.contents buffer)
   end
 
 let initialize loader =
