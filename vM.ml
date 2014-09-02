@@ -72,15 +72,15 @@ let make_args normal_args labeled_args = {
   labeled_args = labeled_args;  
 }
 
+let create_subr req_count ?(allows_rest=false) ?(req_labels=[]) proc =
+  Subr (req_count, allows_rest, req_labels, proc)
+
 let create_frame () = {
   vars = Hashtbl.create initial_binding_table_size;
   methods = Hashtbl.create initial_binding_table_size;
   exported_vars = VarSet.empty;
   exported_methods = MethodSet.empty;
 }
-
-let create_subr req_count ?(allows_rest=false) ?(req_labels=[]) proc =
-  Subr (req_count, allows_rest, req_labels, proc)
 
 let get_class value =
   begin match value with
@@ -176,14 +176,78 @@ let lack_of_labeled_argument label =
 let variable_not_found x =
   InternalError (sprintf "variable not found: %s\n" x)
 
-let method_not_found klass sel = 
-  InternalError (sprintf "method not found: %s#%s\n" klass (Selector.show sel))
-
 let variable_not_exported x =
   InternalError (sprintf "variable not exported: %s\n" x)
 
+let method_not_found klass sel = 
+  InternalError (sprintf "method not found: %s#%s\n" klass (Selector.show sel))
+
 let method_not_exported klass sel = 
   InternalError (sprintf "method not exported: %s#%s\n" klass (Selector.show sel))
+
+let int_of_value value =
+  begin match value with
+    | Int i ->
+      i
+    | _ ->
+      raise (required "int" value)
+  end
+
+let bool_of_value value =
+  begin match value with
+    | Bool b ->
+      b
+    | _ ->
+      raise (required "bool" value)
+  end
+
+let char_of_value value =
+  begin match value with
+    | Char c ->
+      c
+    | _ ->
+      raise (required "char" value)
+  end
+
+let string_of_value value =
+  begin match value with
+    | String str ->
+      str
+    | _ ->
+      raise (required "string" value)
+  end
+
+let class_of_value value =
+  begin match value with
+    | Class klass ->
+      klass
+    | _ ->
+      raise (required "class" value)
+  end
+
+let module_of_value value =
+  begin match value with
+    | Module modl ->
+      modl
+    | _ ->
+      raise (required "module" value)
+  end
+
+let args_of_value value =
+  begin match value with
+    | Args args ->
+      args
+    | _ ->
+      raise (required "arguments" value)
+  end
+
+let buffer_of_value value =
+  begin match value with
+    | Buffer buff ->
+      buff
+    | _ ->
+      raise (required "buffer" value)
+  end
 
 let push_value vm value =
   vm.stack <- value::vm.stack
@@ -206,11 +270,11 @@ let value_of_literal lit =
       Bool b
     | Literal.Char c ->
       Char c
-    | Literal.String s ->
-      String s
+    | Literal.String str ->
+      String str
   end
 
-let rec find proc env =
+let rec find_binding proc env =
   begin match env with
     | [] ->
       raise Not_found
@@ -219,15 +283,15 @@ let rec find proc env =
         proc frame
         with
         | Not_found ->
-          find proc env
+          find_binding proc env
       end
   end
 
 let find_var env x =
-  find (fun {vars} -> Hashtbl.find vars x) env
+  find_binding (fun {vars} -> Hashtbl.find vars x) env
 
 let find_method env klass sel =
-  find (fun {methods} -> Hashtbl.find methods (klass, sel)) env
+  find_binding (fun {methods} -> Hashtbl.find methods (klass, sel)) env
 
 let access_var {vars;exported_vars} x =
   let value = Hashtbl.find vars x in
@@ -305,83 +369,11 @@ let include_module vm modl =
     export_method vm.env klass sel
   end modl.exported_methods
 
-let int_of_value value =
-  begin match value with
-    | Int i ->
-      i
-    | _ ->
-      raise (required "int" value)
-  end
-
-let bool_of_value value =
-  begin match value with
-    | Bool b ->
-      b
-    | _ ->
-      raise (required "bool" value)
-  end
-
-let char_of_value value =
-  begin match value with
-    | Char c ->
-      c
-    | _ ->
-      raise (required "char" value)
-  end
-
-let string_of_value value =
-  begin match value with
-    | String str ->
-      str
-    | _ ->
-      raise (required "string" value)
-  end
-
-let class_of_value value =
-  begin match value with
-    | Class klass ->
-      klass
-    | _ ->
-      raise (required "class" value)
-  end
-
-let module_of_value value =
-  begin match value with
-    | Module modl ->
-      modl
-    | _ ->
-      raise (required "module" value)
-  end
-
-let args_of_value value =
-  begin match value with
-    | Args args ->
-      args
-    | _ ->
-      raise (required "arguments" value)
-  end
-
-let buffer_of_value value =
-  begin match value with
-    | Buffer buff ->
-      buff
-    | _ ->
-      raise (required "buffer" value)
-  end
-
-let nth {normal_args} n =
+let get_arg {normal_args} n =
   List.nth normal_args n
 
-let labeled {labeled_args} label =
+let get_labeled_arg {labeled_args} label =
   List.assoc label labeled_args
-
-let opt_labeled args label =
-  begin try
-      Some (labeled args label)
-    with
-    | Not_found ->
-      None
-  end
 
 let rec check_value pat value =
   begin match (pat, value) with
@@ -399,11 +391,13 @@ let rec check_value pat value =
           raise (Match_failure (required (Pattern.show pat) value))
         end
       end
-    | _ ->
+    | (_, _) ->
       raise (Match_failure (required (Pattern.show pat) value))
   end
 
-and check_args {Pattern.normal_params;Pattern.rest_param;Pattern.labeled_params} {normal_args;labeled_args} =
+and check_args params args =
+  let {Pattern.normal_params;Pattern.rest_param;Pattern.labeled_params} = params in
+  let {normal_args;labeled_args} = args in
   let req_count = List.length normal_params in
   let got_count = List.length normal_args in
   let allows_rest = rest_param <> None in
@@ -441,11 +435,11 @@ let check_args_for_subr req_count allows_rest req_labels args =
   begin if got_count < req_count || got_count > req_count && not allows_rest then
       raise (wrong_number_of_arguments req_count got_count)
   end;
-  let labeled_args = List.fold_left begin fun labeled_args req_label ->
-      if List.mem_assoc req_label labeled_args then
-        List.remove_assoc req_label labeled_args
+  let labeled_args = List.fold_left begin fun labeled_args label ->
+      if List.mem_assoc label labeled_args then
+        List.remove_assoc label labeled_args
       else
-        raise (lack_of_labeled_argument req_label)
+        raise (lack_of_labeled_argument label)
     end labeled_args req_labels
   in
   ignore labeled_args
@@ -476,7 +470,7 @@ let call vm func args =
       let args = args_of_value args in
       check_args_for_subr 1 false [] args;
       vm.insns <- [Insn.Return];
-      vm.stack <- [nth args 0];
+      vm.stack <- [get_arg args 0];
       vm.controls <- controls @ (dump::vm.controls);
     | _ ->
       raise (required "procedure" func)
@@ -517,7 +511,7 @@ let make_record_ctor klass fields =
 
 let make_getter klass field =
   create_subr 1 begin fun vm args ->
-    let self = nth args 0 in
+    let self = get_arg args 0 in
     begin match self with
       | Record (klass2, table) when klass2 = klass ->
         push_value vm (Hashtbl.find table field)
@@ -528,8 +522,8 @@ let make_getter klass field =
 
 let make_setter klass field =
   create_subr 2 begin fun vm args ->
-    let self = nth args 0 in
-    let value = nth args 1 in
+    let self = get_arg args 0 in
+    let value = get_arg args 1 in
     begin match self with
       | Record (klass2, table) when klass2 = klass ->
         Hashtbl.replace table field value;
@@ -602,13 +596,16 @@ let execute vm insn =
       push_value vm arg
     | Insn.GetLabeled (label, default) ->
       let args = args_of_value (peek_value vm) in
-      begin match (opt_labeled args label, default)  with
-        | (Some value, _) ->
-          push_value vm value
-        | (None, Some insns) ->
-          vm.insns <- insns @ vm.insns
-        | (None, None) ->
-          raise (lack_of_labeled_argument label)
+      begin try
+          push_value vm (get_labeled_arg args label)
+        with
+        | Not_found ->
+          begin match default with
+            | Some insns ->
+              vm.insns <- insns @ vm.insns
+            | None ->
+              raise (lack_of_labeled_argument label)
+          end
       end
     | Insn.RemoveTag tag ->
       let value = pop_value vm in

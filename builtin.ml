@@ -3,21 +3,21 @@ open Printf
 
 let make_binary_subr proc_out proc_body proc_in =
   VM.create_subr 2 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
-    let arg1 = VM.nth args 1 in
+    let arg0 = VM.get_arg args 0 in
+    let arg1 = VM.get_arg args 1 in
     VM.push_value vm (proc_out (proc_body (proc_in arg0) (proc_in arg1)))
   end
 
 let make_unary_subr proc_out proc_body proc_in =
   VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
+    let arg0 = VM.get_arg args 0 in
     VM.push_value vm (proc_out (proc_body (proc_in arg0)))
   end
 
 let make_binary_cmp_subr proc =
   VM.create_subr 2 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
-    let arg1 = VM.nth args 1 in
+    let arg0 = VM.get_arg args 0 in
+    let arg1 = VM.get_arg args 1 in
     VM.push_value vm (VM.Bool (proc arg0 arg1))
   end
 
@@ -29,14 +29,14 @@ let make_unary_arith_subr proc =
 
 let subr_reset =
   VM.create_subr 1 begin fun vm args ->
-    let func = VM.nth args 0 in
+    let func = VM.get_arg args 0 in
     VM.call vm func (VM.Args (VM.make_args [] []));
     vm.VM.controls <- VM.Reset::vm.VM.controls;
   end
 
 let subr_shift =
   VM.create_subr 1 begin fun vm args ->
-    let func = VM.nth args 0 in
+    let func = VM.get_arg args 0 in
     let rec loop rev_left right =
       begin match right with
         | [] ->
@@ -55,7 +55,7 @@ let subr_shift =
 
 let subr_write_line =
   VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
+    let arg0 = VM.get_arg args 0 in
     print_endline (VM.string_of_value arg0);
     VM.push_value vm VM.Unit
   end
@@ -74,20 +74,20 @@ let subr_le = make_binary_cmp_subr ( <= )
 
 let subr_compare =
   VM.create_subr 2 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
-    let arg1 = VM.nth args 1 in
+    let arg0 = VM.get_arg args 0 in
+    let arg1 = VM.get_arg args 1 in
     VM.push_value vm (VM.Int (compare arg0 arg1))
   end
 
 let subr_show =
   VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
+    let arg0 = VM.get_arg args 0 in
     VM.push_value vm (VM.String (VM.show_value arg0))
   end
 
 let subr_class_of =
   VM.create_subr 1 begin fun vm args ->
-    let arg0 = VM.nth args 0 in
+    let arg0 = VM.get_arg args 0 in
     VM.push_value vm (VM.Class (VM.get_class arg0))
   end
 
@@ -96,7 +96,7 @@ let subr_not =
 
 let subr_char_code =
   VM.create_subr 1 begin fun vm args ->
-    let c = VM.char_of_value (VM.nth args 0) in
+    let c = VM.char_of_value (VM.get_arg args 0) in
     VM.push_value vm (VM.Int (Char.code c))
   end
 
@@ -105,8 +105,8 @@ let subr_char_to_string =
 
 let subr_string_get =
   VM.create_subr 2 begin fun vm args ->
-    let str = VM.string_of_value (VM.nth args 0) in
-    let index = VM.int_of_value (VM.nth args 1) in
+    let str = VM.string_of_value (VM.get_arg args 0) in
+    let index = VM.int_of_value (VM.get_arg args 1) in
     begin try
         VM.push_value vm (VM.Char (String.get str index))
       with
@@ -117,23 +117,23 @@ let subr_string_get =
 
 let subr_string_length =
   VM.create_subr 1 begin fun vm args ->
-    let str = VM.string_of_value (VM.nth args 0) in
+    let str = VM.string_of_value (VM.get_arg args 0) in
     VM.push_value vm (VM.Int (String.length str))
   end
 
 let subr_string_contain_p =
   VM.create_subr 2 begin fun vm args ->
-    let str = VM.string_of_value (VM.nth args 0) in
-    let c = VM.char_of_value (VM.nth args 1) in
+    let str = VM.string_of_value (VM.get_arg args 0) in
+    let c = VM.char_of_value (VM.get_arg args 1) in
     VM.push_value vm (VM.Bool (String.contains str c))
   end
 
 let subr_args_get =
   VM.create_subr 2 begin fun vm args ->
-    let arg = VM.args_of_value (VM.nth args 0) in
-    let index = VM.int_of_value (VM.nth args 1) in
+    let arg = VM.args_of_value (VM.get_arg args 0) in
+    let index = VM.int_of_value (VM.get_arg args 1) in
     begin try
-        VM.push_value vm (VM.some (VM.nth arg index))
+        VM.push_value vm (VM.some (VM.get_arg arg index))
       with
       | Failure "nth" ->
         VM.push_value vm (VM.none)
@@ -142,21 +142,21 @@ let subr_args_get =
 
 let subr_buffer_create =
   VM.create_subr 1 begin fun vm args ->
-    let initial_buffer_size = VM.int_of_value (VM.nth args 0) in
+    let initial_buffer_size = VM.int_of_value (VM.get_arg args 0) in
     VM.push_value vm (VM.Buffer (Buffer.create initial_buffer_size))
   end
 
 let subr_buffer_add_string =
   VM.create_subr 2 begin fun vm args ->
-    let buffer = VM.buffer_of_value (VM.nth args 0) in
-    let str = VM.string_of_value (VM.nth args 1) in
+    let buffer = VM.buffer_of_value (VM.get_arg args 0) in
+    let str = VM.string_of_value (VM.get_arg args 1) in
     Buffer.add_string buffer str;
     VM.push_value vm VM.Unit
   end
 
 let subr_buffer_contents =
   VM.create_subr 1 begin fun vm args ->
-    let buffer = VM.buffer_of_value (VM.nth args 0) in
+    let buffer = VM.buffer_of_value (VM.get_arg args 0) in
     VM.push_value vm (VM.String (Buffer.contents buffer))
   end
 

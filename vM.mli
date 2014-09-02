@@ -39,11 +39,12 @@ exception Error of Pos.t * string * Pos.t list
 exception InternalError of string
 
 val create : Insn.t list -> env -> t
-val create_frame : unit -> frame
 val create_subr : int -> ?allows_rest:bool -> ?req_labels:string list -> (t -> args -> unit) -> value
+val make_args : value list -> (string * value) list -> args
+val create_frame : unit -> frame
 val run : t -> value
 val show_value : value -> string
-val nth : args -> int -> value
+val get_arg : args -> int -> value
 val push_value : t -> value -> unit
 val int_of_value : value -> int
 val bool_of_value : value -> bool
@@ -54,7 +55,6 @@ val module_of_value : value -> frame
 val args_of_value : value -> args
 val buffer_of_value : value -> Buffer.t
 val call : t -> value -> value -> unit
-val make_args : value list -> (string * value) list -> args
 val get_class : value -> string
 val some : value -> value
 val none : value
