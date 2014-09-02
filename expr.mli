@@ -60,23 +60,23 @@ and args = {
 }
 
 val at : Pos.t -> raw -> t
-val show : t -> string
+(*val show : t -> string*)
 
 module Pattern : sig
   val at : Pos.t -> pat_raw -> pat
-  val show : pat -> string
+  (*val show : pat -> string*)
 end
 
 module Params : sig
   val make : pat list -> pat option -> (string * (pat * t option)) list -> params
   val n_ary : pat list -> params
   val nullary : params
-  val show : params -> string
+  (*val show : params -> string*)
 end
 
 module Args : sig
   val make : t list -> t option -> (string * t) list -> args
   val n_ary : t list -> args
   val nullary : args
-  val show : args -> string
+  (*val show : args -> string*)
 end
