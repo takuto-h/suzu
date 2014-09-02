@@ -245,31 +245,25 @@ do:
 end
 
 
-trait Reify(bind):
-  def reify(proc):
-    reset:
-      proc()
-    end
-  end
-
+trait Reflect(bind):
   def reflect(m):
     shift^(k):
       bind(m, k)
     end
   end
 
-  export reify, reflect
+  export reflect
 end
 
 begin:
-  open Reify(Option::bind)
-  let result = reify:
+  open Reflect(Option::bind)
+  let result = reset:
     let a = reflect(List::find([1, 0, 3], ^(n){ n == 2 }))
     let b = reflect(List::find([2, 3, 1], ^(n){ n == 3 }))
     Some([a, b])
   end
   write_line("{0}", result)
-  let result = reify:
+  let result = reset:
     let a = reflect(List::find([1, 0, 3, 2], ^(n){ n == 2 }))
     let b = reflect(List::find([2, 3, 1], ^(n){ n == 3 }))
     Some([a, b])
@@ -278,10 +272,10 @@ begin:
 end
 
 begin:
-  open Reify^(m, proc):
+  open Reflect^(m, proc):
     List::flatten(List::map(m, proc))
   end
-  let result = reify:
+  let result = reset:
     let a = reflect([1, 2, 3])
     let b = reflect([4, 5, 6])
     let c = a * b
