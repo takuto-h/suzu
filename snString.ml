@@ -12,4 +12,4 @@ let concat_map sep proc lst =
   end
 
 let concat sep strs =
-  concat_map sep (fun x -> x) strs
+  concat_map sep (fun str -> str) strs
