@@ -40,7 +40,8 @@ let show_source {fname;lnum;cnum;bol;source;} =
             let str_line = input_line chan_in in
             sprintf "%s\n%s\n" str_line str_anchor
           with
-          | End_of_file -> ""
+          | End_of_file ->
+            ""
         end
       end fname
     | String str ->
@@ -48,7 +49,8 @@ let show_source {fname;lnum;cnum;bol;source;} =
       let str_line = begin try
           String.sub str 0 (String.index str '\n')
         with
-        | Not_found -> str
+        | Not_found ->
+          str
       end in
       sprintf "%s\n%s\n" str_line str_anchor
   end
