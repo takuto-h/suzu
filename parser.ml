@@ -237,7 +237,7 @@ let parse_var_or_method parser =
     | Token.Reserved "#" ->
       lookahead parser;
       let sel = parse_selector parser in
-      VarOrMethod.Method ([], ident, sel)
+      Expr.Method ([], ident, sel)
     | Token.Reserved "::" ->
       lookahead parser;
       let rec loop rev_idents =
@@ -246,7 +246,7 @@ let parse_var_or_method parser =
           | Token.Reserved "#" ->
             lookahead parser;
             let sel = parse_selector parser in
-            VarOrMethod.Method (List.rev rev_idents, ident, sel)
+            Expr.Method (List.rev rev_idents, ident, sel)
           | Token.Reserved "::" ->
             lookahead parser;
             loop (ident::rev_idents)
@@ -256,7 +256,7 @@ let parse_var_or_method parser =
       in
       loop [ident]
     | _ ->
-      VarOrMethod.Var ident
+      Expr.Var ident
   end
 
 let rec parse_var_or_methods parser rev_voms =
@@ -676,7 +676,7 @@ and parse_get_expr parser pos rev_idents =
     | Token.Reserved "#" ->
       lookahead parser;
       let sel = parse_selector parser in
-      Expr.at pos (Expr.Get ([], VarOrMethod.Method (List.rev (List.tl rev_idents), List.hd rev_idents, sel)))
+      Expr.at pos (Expr.Get ([], Expr.Method (List.rev (List.tl rev_idents), List.hd rev_idents, sel)))
     | Token.Reserved "::" ->
       lookahead parser;
       begin match parser.token with
@@ -692,15 +692,15 @@ and parse_get_expr parser pos rev_idents =
           raise (expected parser "identifier or '('")
       end
     | _ ->
-      Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), VarOrMethod.Var (List.hd rev_idents)))
+      Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), Expr.Var (List.hd rev_idents)))
   end
 
 and parse_list parser pos =
-  let nil = Expr.at pos (Expr.Get (["List"], VarOrMethod.Var "Nil")) in
+  let nil = Expr.at pos (Expr.Get (["List"], Expr.Var "Nil")) in
   let cons head tail =
     Expr.at pos
       (Expr.FunCall
-         (Expr.at pos (Expr.Get (["List"], VarOrMethod.Var "Cons")),
+         (Expr.at pos (Expr.Get (["List"], Expr.Var "Cons")),
           Expr.Args.make [head; tail] None []))
   in    
   let rec loop () =
@@ -883,11 +883,11 @@ and parse_atomic_pattern parser =
 
 and parse_variant_pattern parser pos_vom vom =
   begin match vom with
-    | VarOrMethod.Var ctor ->
+    | Expr.Var ctor ->
       let pos = parser.pos in
       let pats = parse_params parser in
       Expr.Pattern.at pos (Expr.PatVariant (ctor, pats))
-    | VarOrMethod.Method (_, _, _) ->
+    | Expr.Method (_, _, _) ->
       raise (expected_at pos_vom "method pattern" "variant constructor")
   end
 

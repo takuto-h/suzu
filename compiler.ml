@@ -74,18 +74,18 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
     | Expr.Const lit ->
       Stack.push (Insn.At pos) insns;
       Stack.push (Insn.Push lit) insns
-    | Expr.Get ([], VarOrMethod.Var x) ->
+    | Expr.Get ([], Expr.Var x) ->
       Stack.push (Insn.At pos) insns;
       Stack.push (Insn.FindVar x) insns
-    | Expr.Get ([], VarOrMethod.Method (mods_k, klass, sel)) ->
+    | Expr.Get ([], Expr.Method (mods_k, klass, sel)) ->
       Stack.push (Insn.At pos) insns;
       compile_class mods_k klass insns;
       Stack.push (Insn.FindMethod sel) insns
-    | Expr.Get (modl::mods, VarOrMethod.Var x) ->
+    | Expr.Get (modl::mods, Expr.Var x) ->
       Stack.push (Insn.At pos) insns;
       compile_mods modl mods insns;
       Stack.push (Insn.AccessVar x) insns
-    | Expr.Get (modl::mods, VarOrMethod.Method (mods_k, klass, sel)) ->
+    | Expr.Get (modl::mods, Expr.Method (mods_k, klass, sel)) ->
       Stack.push (Insn.At pos) insns;
       compile_mods modl mods insns;
       compile_class mods_k klass insns;
@@ -146,9 +146,9 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.At pos) insns;
       List.iter begin fun vom ->
         begin match vom with
-          | VarOrMethod.Var x ->
+          | Expr.Var x ->
             Stack.push (Insn.ExportVar x) insns
-          | VarOrMethod.Method (mods_k, klass, sel) ->
+          | Expr.Method (mods_k, klass, sel) ->
             compile_class mods_k klass insns;
             Stack.push (Insn.ExportMethod sel) insns
         end
@@ -183,9 +183,9 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.At pos) insns;
       List.iter begin fun vom ->
         begin match vom with
-          | VarOrMethod.Var x ->
+          | Expr.Var x ->
             Stack.push (Insn.UnexportVar x) insns
-          | VarOrMethod.Method (mods_k, klass, sel) ->
+          | Expr.Method (mods_k, klass, sel) ->
             compile_class mods_k klass insns;
             Stack.push (Insn.UnexportMethod sel) insns
         end
@@ -314,9 +314,9 @@ and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
     | Expr.PatVariant (tag, params) ->
       Stack.push (Insn.RemoveTag tag) insns;
       compile_multiple_bind params insns;
-    | Expr.PatBind (VarOrMethod.Var x) ->
+    | Expr.PatBind (Expr.Var x) ->
       Stack.push (Insn.AddVar x) insns
-    | Expr.PatBind (VarOrMethod.Method (mods, klass, sel)) ->
+    | Expr.PatBind (Expr.Method (mods, klass, sel)) ->
       compile_class mods klass insns;
       Stack.push (Insn.AddMethod sel) insns;
     | Expr.PatOr (lhs, rhs) ->

@@ -3,6 +3,10 @@ open Printf
 
 type export = bool
 
+type var_or_method =
+  | Var of string
+  | Method of string list * string * Selector.t
+
 type t = {
   pos : Pos.t;
   raw : raw;
@@ -10,7 +14,7 @@ type t = {
 
 and raw = 
   | Const of Literal.t
-  | Get of string list * VarOrMethod.t
+  | Get of string list * var_or_method
   | Let of pat * t
   | Lambda of params * t list
   | FunCall of t * args
@@ -18,14 +22,14 @@ and raw =
   | And of t * t
   | Or of t * t
   | Module of string * t list
-  | Export of VarOrMethod.t list
+  | Export of var_or_method list
   | Open of t
   | Include of t
   | Record of string * string * (string * bool) list
   | Variant of string * (string * params) list
   | Phantom of string
   | Trait of params * t list
-  | Except of t * VarOrMethod.t list
+  | Except of t * var_or_method list
   | Match of args * (params * t option * t list) list
   | Args of args
   | TryFinally of t * t list
@@ -41,7 +45,7 @@ and pat = {
 and pat_raw = 
   | PatWildCard
   | PatConst of Literal.t
-  | PatBind of VarOrMethod.t
+  | PatBind of var_or_method
   | PatOr of pat * pat
   | PatAs of pat * string
   | PatVariant of string * params
@@ -64,6 +68,17 @@ let at pos raw = {
   raw = raw;
 }
 
+let show_var_or_method vom =
+  begin match vom with
+    | Var x ->
+      x
+    | Method (mods, klass, sel) ->
+      if mods = [] then
+        sprintf "%s#%s" klass (Selector.show sel)
+      else
+        sprintf "%s:%s#%s" (SnString.concat ":" mods) klass (Selector.show sel)
+  end
+
 let rec show_pattern {pat_raw} =
   begin match pat_raw with
     | PatWildCard ->
@@ -71,7 +86,7 @@ let rec show_pattern {pat_raw} =
     | PatConst lit ->
       Literal.show lit
     | PatBind vom ->
-      VarOrMethod.show vom
+      show_var_or_method vom
     | PatOr (lhs, rhs) ->
       sprintf "(%s | %s)" (show_pattern lhs) (show_pattern rhs)
     | PatAs (pat, x) ->
@@ -110,7 +125,7 @@ let rec show {raw} =
     | Const lit ->
       sprintf "(Const %s)" (Literal.show lit)
     | Get (mods, vom) ->
-      sprintf "(Get %s %s)" (SnString.concat " " mods) (VarOrMethod.show vom)
+      sprintf "(Get %s %s)" (SnString.concat " " mods) (show_var_or_method vom)
     | Let (pat, expr) ->
       sprintf "(Let %s %s)" (show_pattern pat) (show expr)
     | Lambda (params, body) ->
@@ -126,7 +141,7 @@ let rec show {raw} =
     | Module (name, exprs) ->
       sprintf "(Module %s %s)" name (SnString.concat_map " " show exprs)
     | Export voms ->
-      sprintf "(Export %s)" (SnString.concat_map " " VarOrMethod.show voms)
+      sprintf "(Export %s)" (SnString.concat_map " " show_var_or_method voms)
     | Open expr ->
       sprintf "(Open %s)" (show expr)
     | Include expr ->
@@ -140,7 +155,7 @@ let rec show {raw} =
     | Trait (params, body) ->
       sprintf "(Trait %s %s)" (show_params params) (SnString.concat_map " " show body)
     | Except (modl, voms) ->
-      sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " VarOrMethod.show voms)
+      sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " show_var_or_method voms)
     | Match (args, cases) ->
       sprintf "(Match %s %s)" (show_args args) (SnString.concat_map " " show_case cases)
     | Args args ->
