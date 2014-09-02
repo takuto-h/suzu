@@ -486,7 +486,8 @@ and parse_prim_expr parser =
   loop expr
 
 and parse_args parser =
-  let (rev_normal, rest, rev_labeled) = if parser.token = Token.Reserved "(" then
+  let (rev_normal, rest, rev_labeled) =
+    if parser.token = Token.Reserved "(" then
       begin
         parse_rev_paren_args parser
       end
@@ -506,21 +507,18 @@ and parse_rev_paren_args parser =
       | Token.MulOp "*" ->
         lookahead parser;
         let rest = parse_expr parser in
-        let rev_labeled = begin match parser.token with
+        begin match parser.token with
           | Token.Reserved ")" ->
             lookahead parser;
-            []
+            (rev_normal, Some rest, []);
           | Token.Reserved "," ->
             lookahead parser;
-            parse_rev_labeled_args parser
+            (rev_normal, Some rest, parse_rev_labeled_args parser);
           | _ ->
             raise (expected parser "',' or ')'")
         end
-        in
-        (rev_normal, Some rest, rev_labeled)
       | Token.Reserved ":" ->
-        let rev_labeled = parse_rev_labeled_args parser in
-        (rev_normal, None, rev_labeled)
+        (rev_normal, None, parse_rev_labeled_args parser)
       | _ ->
         let arg = parse_expr parser in
         begin match parser.token with
@@ -548,7 +546,7 @@ and parse_rev_labeled_args parser =
         lookahead parser;
         let label = parse_ident parser in
         begin if List.mem_assoc label rev_labeled then
-            raise (expected_at pos_label (sprintf "'%s'" label) "other label")
+            raise (expected_at pos_label (sprintf "'%s'" label) "an other label")
         end;
         let value = parse_expr parser in
         begin match parser.token with
@@ -585,7 +583,7 @@ and parse_extra_rev_args parser rev_normal rev_labeled =
         end
       else
         let exprs = parse_elems parser semi_or_newline_or_undent parse_expr in
-        let lambda = Expr.at pos_lambda (Expr.Lambda (Expr.Params.make [] None [], exprs)) in
+        let lambda = Expr.at pos_lambda (Expr.Lambda (Expr.Params.nullary, exprs)) in
         (lambda::rev_normal, parse_extra_rev_labeled_args parser rev_labeled)
     | Token.Reserved "{" ->
       let lambda = parse_block parser in
@@ -631,13 +629,13 @@ and parse_extra_labeled_arg parser =
       let lambda = parse_block parser in
       (label, lambda)
     | _ ->
-      raise (expected parser "'(' or '^' or ':'")
+      raise (expected parser "'(' or '^' or ':' or '{'")
   end
 
 and parse_atomic_expr parser =
   let pos = parser.pos in
   begin match parser.token with
-    | Token.Int _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
+    | Token.Int _ | Token.Char _ | Token.String _  | Token.Reserved "true" | Token.Reserved "false" ->
       let lit = parse_literal parser in
       Expr.at pos (Expr.Const lit)
     | Token.Ident _ ->
@@ -665,8 +663,10 @@ and parse_get_expr parser pos rev_idents =
   begin match parser.token with
     | Token.Reserved "#" ->
       lookahead parser;
+      let mods = List.rev (List.tl rev_idents) in
+      let klass = List.hd rev_idents in
       let sel = parse_selector parser in
-      Expr.at pos (Expr.Get ([], Expr.Method (List.rev (List.tl rev_idents), List.hd rev_idents, sel)))
+      Expr.at pos (Expr.Get ([], Expr.Method (mods, klass, sel)))
     | Token.Reserved "::" ->
       lookahead parser;
       begin match parser.token with
@@ -679,7 +679,7 @@ and parse_get_expr parser pos rev_idents =
           let ident = parse_ident parser in
           parse_get_expr parser pos (ident::rev_idents);
         | _ ->
-          raise (expected parser "identifier or '('")
+          raise (expected parser "'(' or identifier")
       end
     | _ ->
       Expr.at pos (Expr.Get (List.rev (List.tl rev_idents), Expr.Var (List.hd rev_idents)))
@@ -740,12 +740,12 @@ and parse_function parser =
     (params, body)
   else
     let body = parse_block_like_elems parser parse_expr in
-    (Expr.Params.make [] None [], body)
+    (Expr.Params.nullary, body)
 
 and parse_block parser =
   let pos = parser.pos in
   let exprs = parse_block_like_elems parser parse_expr in
-  Expr.at pos (Expr.Lambda (Expr.Params.make [] None [], exprs))
+  Expr.at pos (Expr.Lambda (Expr.Params.nullary, exprs))
 
 and parse_match_expr parser pos =
   let (rev_normal, rest, rev_labeled) = parse_rev_paren_args parser in
@@ -767,16 +767,17 @@ and parse_match_expr parser pos =
 and parse_case_clause parser =
   parse_token parser (Token.Reserved "case");
   let params = parse_params parser in
-  let guard = if parser.token = Token.Reserved "when" then
-    begin
-      lookahead parser;
-      parse_token parser (Token.Reserved "(");
-      let cond = parse_expr parser in
-      parse_token parser (Token.Reserved ")");
-      Some cond
-    end
-  else
-    None
+  let guard =
+    if parser.token = Token.Reserved "when" then
+      begin
+        lookahead parser;
+        parse_token parser (Token.Reserved "(");
+        let cond = parse_expr parser in
+        parse_token parser (Token.Reserved ")");
+        Some cond
+      end
+    else
+      None
   in
   let body = parse_block_like_elems parser parse_expr in
   (params, guard, body)
@@ -801,7 +802,7 @@ and parse_try_expr parser pos =
             loop ((pat, exprs)::rev_catches)
           | Token.Reserved "finally" ->
             let body = Expr.at pos (Expr.TryCatch (body, List.rev rev_catches)) in
-            let body = Expr.at pos (Expr.Lambda (Expr.Params.make [] None [], [body])) in
+            let body = Expr.at pos (Expr.Lambda (Expr.Params.nullary, [body])) in
             parse_try_finally_expr parser pos body
           | _ ->
             raise (expected parser "'catch' or 'finally' or 'end'")
@@ -880,9 +881,9 @@ and parse_variant_pattern parser pos_vom vom =
   end
 
 and parse_list_pattern parser pos =
-  let nil = Expr.Pattern.at pos (Expr.PatVariant ("Nil", Expr.Params.make [] None [])) in
+  let nil = Expr.Pattern.at pos (Expr.PatVariant ("Nil", Expr.Params.nullary)) in
   let cons head tail =
-    Expr.Pattern.at pos (Expr.PatVariant ("Cons", Expr.Params.make [head; tail] None []))
+    Expr.Pattern.at pos (Expr.PatVariant ("Cons", Expr.Params.n_ary [head;tail]))
   in
   let rec loop () =
     begin match parser.token with
@@ -932,21 +933,18 @@ and parse_params parser =
       | Token.MulOp "*" ->
         lookahead parser;
         let rest = parse_pattern parser in
-        let labeled = begin match parser.token with
+        begin match parser.token with
           | Token.Reserved ")" ->
             lookahead parser;
-            []
+            (List.rev rev_normal, Some rest, [])
           | Token.Reserved "," ->
             lookahead parser;
-            parse_labeled_params parser
+            (List.rev rev_normal, Some rest, parse_labeled_params parser)
           | _ ->
             raise (expected parser "',' or ')'")
         end
-        in
-        (List.rev rev_normal, Some rest, labeled)
       | Token.Reserved ":" ->
-        let labeled = parse_labeled_params parser in
-        (List.rev rev_normal, None, labeled)
+        (List.rev rev_normal, None, parse_labeled_params parser)
       | _ ->
         let pat = parse_pattern parser in
         begin match parser.token with
@@ -972,15 +970,14 @@ and parse_labeled_params parser =
         List.rev rev_labeled
       | Token.Reserved ":" ->
         lookahead parser;
-        let label = parse_ident parser in
-        let pattern_and_default = parse_pattern_and_default parser in
+        let labeled_param = parse_labeled_param parser in
         begin match parser.token with
           | Token.Reserved ")" ->
             lookahead parser;
-            List.rev ((label, pattern_and_default)::rev_labeled)
+            List.rev (labeled_param::rev_labeled)
           | Token.Reserved "," ->
             lookahead parser;
-            loop ((label, pattern_and_default)::rev_labeled)
+            loop (labeled_param::rev_labeled)
           | _ ->
             raise (expected parser "',' or ')'")
         end
@@ -990,15 +987,16 @@ and parse_labeled_params parser =
   in
   loop []
 
-and parse_pattern_and_default parser =
+and parse_labeled_param parser =
+  let label = parse_ident parser in
   let pat = parse_pattern parser in
   if parser.token = Token.Reserved "=" then
     begin
       lookahead parser;
-      (pat, Some (parse_expr parser))
+      (label, (pat, Some (parse_expr parser)))
     end
   else
-    (pat, None)
+    (label, (pat, None))
 
 let parse_field_decl parser =
   let mutabl = (parser.token = Token.Reserved "mutable") in
@@ -1047,11 +1045,11 @@ let rec parse_toplevel parser =
   end
 
 and parse_module parser pos =
-  let mod_name = parse_ident parser in
+  let name = parse_ident parser in
   let exprs = parse_block_like_elems parser parse_toplevel in
   skip parser Token.Newline;
   parse_token parser (Token.Reserved "end");
-  Expr.at pos (Expr.Module (mod_name, exprs))
+  Expr.at pos (Expr.Module (name, exprs))
 
 let parse_stmt parser =
   let expr = parse_toplevel parser in

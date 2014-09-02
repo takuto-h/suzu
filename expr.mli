@@ -69,6 +69,8 @@ end
 
 module Params : sig
   val make : pat list -> pat option -> (string * (pat * t option)) list -> params
+  val n_ary : pat list -> params
+  val nullary : params
   val show : params -> string
 end
 

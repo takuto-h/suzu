@@ -208,6 +208,12 @@ module Params = struct
     rest_param = rest;
     labeled_params = labeled;
   }
+
+  let n_ary normal =
+    make normal None []
+
+  let nullary =
+    n_ary []
   
   let show = show_params
 end
