@@ -1,24 +1,6 @@
 
 open Printf
 
-let compile_mods modl mods insns =
-  Stack.push (Insn.FindVar modl) insns;
-  List.iter begin fun modl ->
-    Stack.push (Insn.AccessVar modl) insns;
-  end mods
-
-let compile_class mods klass insns =
-  begin match mods with
-    | [] ->
-      Stack.push (Insn.FindVar klass) insns;
-    | modl::mods ->
-      Stack.push (Insn.FindVar modl) insns;
-      List.iter begin fun modl ->
-        Stack.push (Insn.AccessVar modl) insns;
-      end mods;
-      Stack.push (Insn.AccessVar klass) insns;
-  end
-
 let list_of_stack stack =
   let rec loop acc =
     begin try
@@ -36,18 +18,33 @@ let compile_with proc =
   proc insns;
   list_of_stack insns
 
+let compile_mods modl mods insns =
+  Stack.push (Insn.FindVar modl) insns;
+  List.iter begin fun modl ->
+    Stack.push (Insn.AccessVar modl) insns;
+  end mods
+
+let compile_class mods klass insns =
+  begin match mods with
+    | [] ->
+      Stack.push (Insn.FindVar klass) insns;
+    | modl::mods ->
+      compile_mods modl mods insns;
+      Stack.push (Insn.AccessVar klass) insns;
+  end
+
 let rec compile_pattern {Expr.pat_raw} =
   begin match pat_raw with
     | Expr.PatWildCard ->
       Pattern.Any
     | Expr.PatConst lit ->
       Pattern.Const lit
+    | Expr.PatBind _ ->
+      Pattern.Any
     | Expr.PatParams params ->
       Pattern.Params (compile_params params)
     | Expr.PatVariant (tag, params) ->
       Pattern.Variant (tag, compile_params params)
-    | Expr.PatBind _ ->
-      Pattern.Any
     | Expr.PatOr (lhs, rhs) ->
       Pattern.Or (compile_pattern lhs, compile_pattern rhs)
     | Expr.PatAs (pat, _) ->
@@ -56,12 +53,13 @@ let rec compile_pattern {Expr.pat_raw} =
   
 and compile_params {Expr.normal_params;Expr.rest_param;Expr.labeled_params} =
   let normal_params = List.map compile_pattern normal_params in
-  let rest_param = begin match rest_param with
-    | None ->
-      None
-    | Some rest_param ->
-      Some (compile_pattern rest_param)
-  end
+  let rest_param =
+    begin match rest_param with
+      | None ->
+        None
+      | Some rest_param ->
+        Some (compile_pattern rest_param)
+    end
   in
   let labeled_params = List.map begin fun (label, (pat, default)) ->
       (label, (compile_pattern pat, default <> None))
@@ -164,32 +162,6 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.At pos) insns;
       Stack.push Insn.Include insns;
       Stack.push (Insn.Push Literal.Unit) insns
-    | Expr.Trait (params, body) ->
-      let body = compile_with begin fun insns ->
-          Stack.push (Insn.At pos) insns;
-          Stack.push (Insn.Check (Pattern.Params (compile_params params))) insns;
-          compile_multiple_bind params insns;
-          List.iter begin fun expr ->
-            compile_expr expr insns;
-            Stack.push (Insn.AssertEqual Literal.Unit) insns
-          end body;
-          Stack.push Insn.ReturnModule insns
-        end
-      in
-      Stack.push (Insn.At pos) insns;
-      Stack.push (Insn.MakeClosure body) insns
-    | Expr.Except (expr, voms) ->
-      compile_expr expr insns;
-      Stack.push (Insn.At pos) insns;
-      List.iter begin fun vom ->
-        begin match vom with
-          | Expr.Var x ->
-            Stack.push (Insn.UnexportVar x) insns
-          | Expr.Method (mods_k, klass, sel) ->
-            compile_class mods_k klass insns;
-            Stack.push (Insn.UnexportMethod sel) insns
-        end
-      end voms;
     | Expr.Record (klass, ctor, fields) ->
       Stack.push (Insn.At pos) insns;
       Stack.push (Insn.MakeClass klass) insns;
@@ -222,6 +194,37 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.MakeClass klass) insns;
       Stack.push (Insn.AddVar klass) insns;
       Stack.push (Insn.Push Literal.Unit) insns
+    | Expr.Trait (params, body) ->
+      let body = compile_with begin fun insns ->
+          Stack.push (Insn.At pos) insns;
+          Stack.push (Insn.Check (Pattern.Params (compile_params params))) insns;
+          compile_multiple_bind params insns;
+          List.iter begin fun expr ->
+            compile_expr expr insns;
+            Stack.push (Insn.AssertEqual Literal.Unit) insns
+          end body;
+          Stack.push Insn.ReturnModule insns
+        end
+      in
+      Stack.push (Insn.At pos) insns;
+      Stack.push (Insn.MakeClosure body) insns
+    | Expr.Except (expr, voms) ->
+      compile_expr expr insns;
+      Stack.push (Insn.At pos) insns;
+      List.iter begin fun vom ->
+        begin match vom with
+          | Expr.Var x ->
+            Stack.push (Insn.UnexportVar x) insns
+          | Expr.Method (mods_k, klass, sel) ->
+            compile_class mods_k klass insns;
+            Stack.push (Insn.UnexportMethod sel) insns
+        end
+      end voms;
+    | Expr.TryCatch (body, catches) ->
+      compile_expr body insns;
+      let (pat, catches) = compile_catches catches in
+      Stack.push (Insn.At pos) insns;
+      Stack.push (Insn.TryCatch (pat, catches)) insns;
     | Expr.TryFinally (body, finally) ->
       compile_expr body insns;
       let finally = compile_with begin fun insns ->
@@ -237,11 +240,6 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.MakeClosure finally) insns;
       Stack.push (Insn.At pos) insns;
       Stack.push Insn.TryFinally insns;
-    | Expr.TryCatch (body, catches) ->
-      compile_expr body insns;
-      let (pat, catches) = compile_catches catches in
-      Stack.push (Insn.At pos) insns;
-      Stack.push (Insn.TryCatch (pat, catches)) insns;
     | Expr.Throw expr ->
       compile_expr expr insns;
       Stack.push Insn.Throw insns;
@@ -252,56 +250,6 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       Stack.push (Insn.Push Literal.Unit) insns;
   end
 
-and compile_cases cases insns =
-  begin match cases with
-    | [] ->
-      Stack.push Insn.Fail insns
-    | (params, guard, body)::cases ->
-      Stack.push (Insn.Test (Pattern.Params (compile_params params))) insns;
-      let else_insns = compile_with (compile_cases cases) in
-      let then_insns = compile_with begin fun insns ->
-          Stack.push Insn.Begin insns;
-          Stack.push Insn.Dup insns;
-          compile_multiple_bind params insns;
-          begin match guard with
-            | None ->
-              Stack.push Insn.Pop insns;
-              compile_body body insns;
-              Stack.push Insn.End insns
-            | Some guard ->
-              compile_expr guard insns;
-              let then_insns = compile_with begin fun insns ->
-                  Stack.push Insn.Pop insns;
-                  compile_body body insns;
-                  Stack.push Insn.End insns
-                end
-              in
-              let else_insns = Insn.End::else_insns in
-              Stack.push (Insn.Branch (then_insns, else_insns)) insns
-          end;
-        end
-      in
-      Stack.push (Insn.Branch (then_insns, else_insns)) insns
-  end
-
-and compile_args {Expr.normal_args;Expr.rest_arg;Expr.labeled_args} insns =
-  let count = List.length normal_args in
-  List.iter (fun expr -> compile_expr expr insns) normal_args;
-  let has_rest = begin match rest_arg with
-    | None ->
-      false
-    | Some rest_arg ->
-      compile_expr rest_arg insns;
-      true
-  end
-  in
-  let rev_labels = List.fold_left begin fun labels (label, expr) ->
-      compile_expr expr insns;
-      label::labels
-    end [] labeled_args
-  in
-  Stack.push (Insn.MakeArgs (count, has_rest, List.rev rev_labels)) insns
-
 and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
   Stack.push (Insn.At pat_pos) insns;
   begin match pat_raw with
@@ -309,16 +257,16 @@ and compile_bind {Expr.pat_pos;Expr.pat_raw} insns =
       Stack.push Insn.Pop insns
     | Expr.PatConst lit ->
       Stack.push (Insn.AssertEqual lit) insns;
-    | Expr.PatParams params ->
-      compile_multiple_bind params insns;
-    | Expr.PatVariant (tag, params) ->
-      Stack.push (Insn.RemoveTag tag) insns;
-      compile_multiple_bind params insns;
     | Expr.PatBind (Expr.Var x) ->
       Stack.push (Insn.AddVar x) insns
     | Expr.PatBind (Expr.Method (mods, klass, sel)) ->
       compile_class mods klass insns;
       Stack.push (Insn.AddMethod sel) insns;
+    | Expr.PatParams params ->
+      compile_multiple_bind params insns;
+    | Expr.PatVariant (tag, params) ->
+      Stack.push (Insn.RemoveTag tag) insns;
+      compile_multiple_bind params insns;
     | Expr.PatOr (lhs, rhs) ->
       let pattern = compile_pattern lhs in
       Stack.push (Insn.Test pattern) insns;
@@ -355,6 +303,24 @@ and compile_multiple_bind {Expr.normal_params;Expr.rest_param;Expr.labeled_param
   end labeled_params;
   Stack.push Insn.Pop insns;
 
+and compile_args {Expr.normal_args;Expr.rest_arg;Expr.labeled_args} insns =
+  let count = List.length normal_args in
+  List.iter (fun expr -> compile_expr expr insns) normal_args;
+  let has_rest = begin match rest_arg with
+    | None ->
+      false
+    | Some rest_arg ->
+      compile_expr rest_arg insns;
+      true
+  end
+  in
+  let rev_labels = List.fold_left begin fun labels (label, expr) ->
+      compile_expr expr insns;
+      label::labels
+    end [] labeled_args
+  in
+  Stack.push (Insn.MakeArgs (count, has_rest, List.rev rev_labels)) insns
+
 and compile_body exprs insns =
   List.iter begin fun expr ->
     compile_expr expr insns;
@@ -364,6 +330,38 @@ and compile_body exprs insns =
     Stack.push (Insn.Push Literal.Unit) insns
   else
     ignore (Stack.pop insns)
+
+and compile_cases cases insns =
+  begin match cases with
+    | [] ->
+      Stack.push Insn.Fail insns
+    | (params, guard, body)::cases ->
+      Stack.push (Insn.Test (Pattern.Params (compile_params params))) insns;
+      let else_insns = compile_with (compile_cases cases) in
+      let then_insns = compile_with begin fun insns ->
+          Stack.push Insn.Begin insns;
+          Stack.push Insn.Dup insns;
+          compile_multiple_bind params insns;
+          begin match guard with
+            | None ->
+              Stack.push Insn.Pop insns;
+              compile_body body insns;
+              Stack.push Insn.End insns
+            | Some guard ->
+              compile_expr guard insns;
+              let then_insns = compile_with begin fun insns ->
+                  Stack.push Insn.Pop insns;
+                  compile_body body insns;
+                  Stack.push Insn.End insns
+                end
+              in
+              let else_insns = Insn.End::else_insns in
+              Stack.push (Insn.Branch (then_insns, else_insns)) insns
+          end;
+        end
+      in
+      Stack.push (Insn.Branch (then_insns, else_insns)) insns
+  end
 
 and compile_catches catches =
   let rec loop catches =
