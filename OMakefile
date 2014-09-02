@@ -3,7 +3,7 @@ NATIVE_ENABLED = false
 BYTE_ENABLED = true
 
 SUZU_FILES[] =\
-  snPervasives snString snChar pos source token lexer literal selector varOrMethod expr parser\
+  snPervasives snChar snString pos source token lexer literal selector varOrMethod expr parser\
   pattern insn compiler vM loader builtin prelude main
 
 PROGRAM = suzu
