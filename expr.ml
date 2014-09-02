@@ -1,8 +1,6 @@
 
 open Printf
 
-type export = bool
-
 type var_or_method =
   | Var of string
   | Method of string list * string * Selector.t
@@ -17,10 +15,12 @@ and raw =
   | Get of string list * var_or_method
   | Let of pat * t
   | Lambda of params * t list
-  | FunCall of t * args
-  | MethodCall of t * Selector.t * args
+  | Call of t * args
+  | Send of t * Selector.t * args
+  | Args of args
   | And of t * t
   | Or of t * t
+  | Match of args * (params * t option * t list) list
   | Module of string * t list
   | Export of var_or_method list
   | Open of t
@@ -30,10 +30,8 @@ and raw =
   | Phantom of string
   | Trait of params * t list
   | Except of t * var_or_method list
-  | Match of args * (params * t option * t list) list
-  | Args of args
-  | TryFinally of t * t list
   | TryCatch of t * (pat * t list) list
+  | TryFinally of t * t list
   | Throw of t
   | Exception of string * params
 
@@ -46,10 +44,10 @@ and pat_raw =
   | PatWildCard
   | PatConst of Literal.t
   | PatBind of var_or_method
-  | PatOr of pat * pat
-  | PatAs of pat * string
   | PatVariant of string * params
   | PatParams of params
+  | PatOr of pat * pat
+  | PatAs of pat * string
 
 and params = {
   normal_params : pat list;
@@ -87,14 +85,14 @@ let rec show_pattern {pat_raw} =
       Literal.show lit
     | PatBind vom ->
       show_var_or_method vom
-    | PatOr (lhs, rhs) ->
-      sprintf "(%s | %s)" (show_pattern lhs) (show_pattern rhs)
-    | PatAs (pat, x) ->
-      sprintf "(%s as %s)" (show_pattern pat) x
     | PatVariant (ctor, params) ->
       sprintf "%s%s" ctor (show_params params)
     | PatParams params ->
       sprintf "%s" (show_params params)
+    | PatOr (lhs, rhs) ->
+      sprintf "(%s | %s)" (show_pattern lhs) (show_pattern rhs)
+    | PatAs (pat, x) ->
+      sprintf "(%s as %s)" (show_pattern pat) x
   end
 
 and show_params {normal_params;rest_param;labeled_params;} =
@@ -117,65 +115,57 @@ let show_field (field, mutabl) =
   else
     field
 
-let show_ctor (ctor_name, params) =
-  sprintf "(%s %s)" ctor_name (show_params params)
+let show_ctor (ctor, params) =
+  sprintf "(%s %s)" ctor (show_params params)
 
 let rec show {raw} =
   begin match raw with
     | Const lit ->
       sprintf "(Const %s)" (Literal.show lit)
     | Get (mods, vom) ->
-      sprintf "(Get %s %s)" (SnString.concat " " mods) (show_var_or_method vom)
+      sprintf "(Get (%s) %s)" (SnString.concat " " mods) (show_var_or_method vom)
     | Let (pat, expr) ->
       sprintf "(Let %s %s)" (show_pattern pat) (show expr)
     | Lambda (params, body) ->
-      sprintf "(Lambda %s %s)" (show_params params) (SnString.concat_map " " show body)
-    | FunCall (func, args) ->
-      sprintf "(FunCall %s %s)" (show func) (show_args args)
-    | MethodCall (recv, sel, args) ->
-      sprintf "(MethodCall %s %s %s)" (show recv) (Selector.show sel) (show_args args)
+      sprintf "(Lambda %s (%s))" (show_params params) (SnString.concat_map " " show body)
+    | Call (func, args) ->
+      sprintf "(Call %s %s)" (show func) (show_args args)
+    | Send (recv, sel, args) ->
+      sprintf "(Send %s %s %s)" (show recv) (Selector.show sel) (show_args args)
+    | Args args ->
+      sprintf "(Args %s)" (show_args args)
     | And (lhs, rhs) ->
       sprintf "(And %s %s)" (show lhs) (show rhs)
     | Or (lhs, rhs) ->
       sprintf "(Or %s %s)" (show lhs) (show rhs)
+    | Match (args, cases) ->
+      sprintf "(Match %s (%s))" (show_args args) (SnString.concat_map " " show_case cases)
     | Module (name, exprs) ->
-      sprintf "(Module %s %s)" name (SnString.concat_map " " show exprs)
+      sprintf "(Module %s (%s))" name (SnString.concat_map " " show exprs)
     | Export voms ->
-      sprintf "(Export %s)" (SnString.concat_map " " show_var_or_method voms)
+      sprintf "(Export (%s))" (SnString.concat_map " " show_var_or_method voms)
     | Open expr ->
       sprintf "(Open %s)" (show expr)
     | Include expr ->
       sprintf "(Include %s)" (show expr)
     | Record (klass, ctor, fields) ->
-      sprintf "(Record %s %s %s)" klass ctor (SnString.concat_map " " show_field fields)
+      sprintf "(Record %s %s (%s))" klass ctor (SnString.concat_map " " show_field fields)
     | Variant (klass, ctors) ->
-      sprintf "(Variant %s %s)" klass (SnString.concat_map " " show_ctor ctors)
+      sprintf "(Variant %s (%s))" klass (SnString.concat_map " " show_ctor ctors)
     | Phantom klass ->
       sprintf "(Phantom %s)" klass
     | Trait (params, body) ->
-      sprintf "(Trait %s %s)" (show_params params) (SnString.concat_map " " show body)
+      sprintf "(Trait %s (%s))" (show_params params) (SnString.concat_map " " show body)
     | Except (modl, voms) ->
-      sprintf "(Export %s %s)" (show modl) (SnString.concat_map " " show_var_or_method voms)
-    | Match (args, cases) ->
-      sprintf "(Match %s %s)" (show_args args) (SnString.concat_map " " show_case cases)
-    | Args args ->
-      sprintf "(Args %s)" (show_args args)
-    | TryFinally (body, finally) ->
-      sprintf "(TryFinally %s (%s))" (show body) (SnString.concat_map " " show finally)
+      sprintf "(Export %s (%s))" (show modl) (SnString.concat_map " " show_var_or_method voms)
     | TryCatch (body, catches) ->
       sprintf "(TryCatch %s (%s))" (show body) (SnString.concat_map " " show_catch catches)
+    | TryFinally (body, finally) ->
+      sprintf "(TryFinally %s (%s))" (show body) (SnString.concat_map " " show finally)
     | Throw expr ->
       sprintf "(Throw %s)" (show expr)
     | Exception (ctor, params) ->
       sprintf "(Exception %s)" (show_ctor (ctor, params))
-  end
-
-and show_case (params, guard, body) =
-  begin match guard with
-    | Some cond ->
-      sprintf "(Case %s (Some %s) %s)" (show_params params) (show cond) (SnString.concat_map " " show body)
-    | None ->
-      sprintf "(Case %s None %s)" (show_params params) (SnString.concat_map " " show body)
   end
 
 and show_args {normal_args;rest_arg;labeled_args} =
@@ -192,8 +182,16 @@ and show_args {normal_args;rest_arg;labeled_args} =
 and show_labeled_arg (label, value) =
   sprintf ":%s %s" label (show value)
 
+and show_case (params, guard, body) =
+  begin match guard with
+    | Some cond ->
+      sprintf "(Case %s (Some %s) (%s))" (show_params params) (show cond) (SnString.concat_map " " show body)
+    | None ->
+      sprintf "(Case %s None (%s))" (show_params params) (SnString.concat_map " " show body)
+  end
+
 and show_catch (pat, body) =
-  sprintf "(Catch %s %s)" (show_pattern pat) (SnString.concat_map " " show body)
+  sprintf "(Catch %s (%s))" (show_pattern pat) (SnString.concat_map " " show body)
 
 module Pattern = struct
   type t = pat

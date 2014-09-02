@@ -107,12 +107,12 @@ let rec compile_expr {Expr.pos;Expr.raw} insns =
       in
       Stack.push (Insn.At pos) insns;
       Stack.push (Insn.MakeClosure body) insns
-    | Expr.FunCall (func, args) ->
+    | Expr.Call (func, args) ->
       compile_expr func insns;
       compile_args args insns;
       Stack.push (Insn.At pos) insns;
       Stack.push Insn.Call insns
-    | Expr.MethodCall (recv, sel, args) ->
+    | Expr.Send (recv, sel, args) ->
       compile_expr recv insns;
       compile_args args insns;
       Stack.push (Insn.At pos) insns;

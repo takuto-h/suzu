@@ -63,7 +63,7 @@ let parse_non_assoc parser get_op parse_lower =
       let op = Selector.of_op str in
       lookahead parser;
       let rhs = parse_lower parser in
-      Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None []))
+      Expr.at pos (Expr.Send (lhs, op, Expr.Args.make [rhs] None []))
   end
 
 let rec parse_right_assoc parser get_op parse_lower =
@@ -76,7 +76,7 @@ let rec parse_right_assoc parser get_op parse_lower =
       let op = Selector.of_op str in
       lookahead parser;
       let rhs = parse_right_assoc parser get_op parse_lower in
-      Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None []))
+      Expr.at pos (Expr.Send (lhs, op, Expr.Args.make [rhs] None []))
   end
 
 let rec parse_left_assoc parser get_op parse_lower =
@@ -90,7 +90,7 @@ let rec parse_left_assoc parser get_op parse_lower =
         let op = Selector.of_op str in
         lookahead parser;
         let rhs = parse_lower parser in
-        loop (Expr.at pos (Expr.MethodCall (lhs, op, Expr.Args.make [rhs] None [])))
+        loop (Expr.at pos (Expr.Send (lhs, op, Expr.Args.make [rhs] None [])))
     end
   in
   loop lhs
@@ -438,15 +438,15 @@ and parse_unary_expr parser =
     | Token.AddOp "-" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.of_op "~-", Expr.Args.make [] None []))
+      Expr.at pos (Expr.Send (expr, Selector.of_op "~-", Expr.Args.make [] None []))
     | Token.AddOp "+" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.of_op "~+", Expr.Args.make [] None []))
+      Expr.at pos (Expr.Send (expr, Selector.of_op "~+", Expr.Args.make [] None []))
     | Token.CmpOp "!" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.MethodCall (expr, Selector.of_op "!", Expr.Args.make [] None []))
+      Expr.at pos (Expr.Send (expr, Selector.of_op "!", Expr.Args.make [] None []))
     | _ ->
       parse_prim_expr parser
   end
@@ -458,7 +458,7 @@ and parse_prim_expr parser =
     begin match parser.token with
       | Token.Reserved "(" | Token.Reserved "^" | Token.Reserved ":" | Token.Reserved "{" ->
         let args = parse_args parser in
-        loop (Expr.at pos (Expr.FunCall (expr, args)))
+        loop (Expr.at pos (Expr.Call (expr, args)))
       | Token.Reserved "." ->
         let pos = parser.pos in
         lookahead parser;
@@ -466,14 +466,14 @@ and parse_prim_expr parser =
         begin match parser.token with
           | Token.Reserved "(" | Token.Reserved "^" | Token.Reserved ":" | Token.Reserved "{" ->
             let args = parse_args parser in
-            loop (Expr.at pos (Expr.MethodCall (expr, sel, args)))
+            loop (Expr.at pos (Expr.Send (expr, sel, args)))
           | Token.Reserved "=" ->
             lookahead parser;
             let value = parse_expr parser in
             let sel = Selector.of_op (sprintf "%s=" (Selector.string_of sel)) in
-            Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [value] None []))
+            Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [value] None []))
           | _ ->
-            loop (Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [] None [])))
+            loop (Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [] None [])))
         end
       | Token.Reserved "[" ->
         lookahead parser;
@@ -484,11 +484,11 @@ and parse_prim_expr parser =
             lookahead parser;
             let value = parse_expr parser in
             let sel = Selector.of_op "[]=" in
-            Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [key;value] None []))
+            Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [key;value] None []))
           end
         else
           let sel = Selector.of_op "[]" in
-          loop (Expr.at pos (Expr.MethodCall (expr, sel, Expr.Args.make [key] None [])))
+          loop (Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [key] None [])))
       | _ ->
         expr
     end
@@ -699,7 +699,7 @@ and parse_list parser pos =
   let nil = Expr.at pos (Expr.Get (["List"], Expr.Var "Nil")) in
   let cons head tail =
     Expr.at pos
-      (Expr.FunCall
+      (Expr.Call
          (Expr.at pos (Expr.Get (["List"], Expr.Var "Cons")),
           Expr.Args.make [head; tail] None []))
   in    
