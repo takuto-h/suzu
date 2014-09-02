@@ -192,7 +192,7 @@ let parse_selector parser =
           if parser.token = Token.Reserved "=" then
             begin
               lookahead parser;
-              Selector.of_op (sprintf "%s=" str)
+              Selector.of_op (sprintf "%s=" str);
             end
           else
             Selector.of_ident str
@@ -202,23 +202,23 @@ let parse_selector parser =
           if parser.token = Token.Reserved "=" then
             begin
               lookahead parser;
-              Selector.of_op "[]="
+              Selector.of_op "[]=";
             end
           else
             Selector.of_op "[]"
         | (_, Some str) ->
           lookahead parser;
-          Selector.of_op str
+          Selector.of_op str;
         | (_, None) ->
           raise (expected parser "operator")
       end
       in
       parse_token parser (Token.Reserved ")");
-      sel
+      sel;
     | Token.Ident _ ->
       Selector.of_ident (parse_ident parser)
     | _ ->
-      raise (expected parser "identifier")
+      raise (expected parser "'(' or identifier")
   end
 
 let parse_var_or_method parser =
@@ -241,7 +241,7 @@ let parse_var_or_method parser =
             lookahead parser;
             loop (ident::rev_idents)
           | _ ->
-            raise (expected parser "'#' or '::'")
+            raise (expected parser "'::' or '#'")
         end
       in
       loop [ident]
@@ -259,7 +259,7 @@ let rec parse_var_or_methods parser rev_voms =
       parse_var_or_methods parser (vom::rev_voms)
     end
 
-let parse_export_expr parser pos rev_voms =
+let parse_export_expr parser pos =
   let voms = parse_var_or_methods parser [] in
   Expr.at pos (Expr.Export voms)
 
@@ -277,7 +277,7 @@ and parse_binding_expr parser =
       parse_let_expr parser pos
     | Token.Reserved "export" ->
       lookahead parser;
-      parse_export_expr parser pos []
+      parse_export_expr parser pos
     | Token.Reserved "open" ->
       lookahead parser;
       parse_open_expr parser pos
@@ -428,15 +428,15 @@ and parse_unary_expr parser =
     | Token.AddOp "-" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.Send (expr, Selector.of_op "~-", Expr.Args.make [] None []))
+      Expr.at pos (Expr.Send (expr, Selector.of_op "~-", Expr.Args.nullary))
     | Token.AddOp "+" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.Send (expr, Selector.of_op "~+", Expr.Args.make [] None []))
+      Expr.at pos (Expr.Send (expr, Selector.of_op "~+", Expr.Args.nullary))
     | Token.CmpOp "!" ->
       lookahead parser;
       let expr = parse_unary_expr parser in
-      Expr.at pos (Expr.Send (expr, Selector.of_op "!", Expr.Args.make [] None []))
+      Expr.at pos (Expr.Send (expr, Selector.of_op "!", Expr.Args.nullary))
     | _ ->
       parse_prim_expr parser
   end
@@ -463,7 +463,7 @@ and parse_prim_expr parser =
             let sel = Selector.of_op (sprintf "%s=" (Selector.string_of sel)) in
             Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [value] None []))
           | _ ->
-            loop (Expr.at pos (Expr.Send (expr, sel, Expr.Args.make [] None [])))
+            loop (Expr.at pos (Expr.Send (expr, sel, Expr.Args.nullary)))
         end
       | Token.Reserved "[" ->
         lookahead parser;

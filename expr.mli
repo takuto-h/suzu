@@ -74,5 +74,6 @@ end
 
 module Args : sig
   val make : t list -> t option -> (string * t) list -> args
+  val nullary : args
   val show : args -> string
 end

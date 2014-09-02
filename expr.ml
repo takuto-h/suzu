@@ -224,6 +224,9 @@ module Args = struct
     rest_arg = rest;
     labeled_args = labeled;
   }
+
+  let nullary =
+    make [] None []
   
   let show = show_args
 end
