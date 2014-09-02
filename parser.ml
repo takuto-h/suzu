@@ -96,36 +96,26 @@ let rec parse_left_assoc parser get_op parse_lower =
   loop lhs
 
 let parse_elems parser sep_or_term parse_elem =
-  let rec loop elems =
+  let rec loop rev_elems =
     begin match sep_or_term parser.token with
       | Term ->
         lookahead parser;
-        List.rev elems
+        List.rev rev_elems
       | _ ->
         let elem = parse_elem parser in
         begin match sep_or_term parser.token with
           | Term ->
             lookahead parser;
-            List.rev (elem::elems)
+            List.rev (elem::rev_elems)
           | Sep ->
             lookahead parser;
-            loop (elem::elems)
+            loop (elem::rev_elems)
           | Neither ->
             raise (expected parser "separator or terminator")
         end
     end
   in
   loop []
-
-let comma_or_rparen token =
-  begin match token with
-    | Token.Reserved "," ->
-      Sep
-    | Token.Reserved ")" ->
-      Term
-    | _ ->
-      Neither
-  end
 
 let semi_or_newline_or_undent token =
   begin match token with
@@ -167,12 +157,12 @@ let parse_literal parser =
     | Token.Int n ->
       lookahead parser;
       Literal.Int n
-    | Token.String str ->
-      lookahead parser;
-      Literal.String str
     | Token.Char c ->
       lookahead parser;
       Literal.Char c
+    | Token.String str ->
+      lookahead parser;
+      Literal.String str
     | Token.Reserved "true" ->
       lookahead parser;
       Literal.Bool true
