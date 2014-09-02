@@ -20,8 +20,8 @@ let create lexer = {
   pos = Pos.dummy;
 }
 
-let expected parser str_token =
-  Error (parser.pos, sprintf "unexpected %s, expected %s\n" (Token.show parser.token) str_token)
+let expected parser str_expected =
+  Error (parser.pos, sprintf "unexpected %s, expected %s\n" (Token.show parser.token) str_expected)
 
 let expected_at pos str_unexpected str_expected =
   Error (pos, sprintf "unexpected %s, expected %s\n" str_unexpected str_expected)
@@ -31,10 +31,10 @@ let lookahead parser =
       begin match Lexer.next parser.lexer with
         | (None, pos) ->
           parser.token <- Token.EOF;
-          parser.pos <- pos
+          parser.pos <- pos;
         | (Some token, pos) ->
           parser.token <- token;
-          parser.pos <- pos
+          parser.pos <- pos;
       end
     with
     | Lexer.Error (pos, message) ->
@@ -48,10 +48,10 @@ let skip parser token =
     ()
 
 let parse_token parser token =
-  if parser.token <> token then
-    raise (expected parser (Token.show token))
-  else
+  if parser.token = token then
     lookahead parser
+  else
+    raise (expected parser (Token.show token))
 
 let parse_non_assoc parser get_op parse_lower =
   let lhs = parse_lower parser in
