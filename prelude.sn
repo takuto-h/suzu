@@ -417,13 +417,7 @@ module List:
 
     let C#(++) = append
 
-    def C#fold_left(self, init, proc):
-      fold_left(init, self, proc)
-    end
-
-    let C#fold_right = fold_right
-
-    export C#(++), C#fold_left, C#fold_right
+    export C#(++)
   end
 
   export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map, Open
