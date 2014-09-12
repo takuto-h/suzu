@@ -21,6 +21,7 @@ type value =
   | Subr of int * bool * string list * (t -> args -> unit)
   | Cont of control list
   | Buffer of Buffer.t
+  | Hash of (value, value) Hashtbl.t
 
 exception Error of Pos.t * string * Pos.t list
 exception InternalError of string

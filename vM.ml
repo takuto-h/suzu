@@ -28,6 +28,7 @@ and value =
   | Subr of int * bool * string list * (t -> args -> unit)
   | Cont of control list
   | Buffer of Buffer.t
+  | Hash of (value, value) Hashtbl.t
 
 and args = {
   normal_args : value list;
@@ -112,6 +113,8 @@ let get_class value =
       "Proc::C"
     | Buffer _ ->
       "Buffer::C"
+    | Hash _ ->
+      "Hash::C"
   end
 
 let rec show_value value =
@@ -144,6 +147,8 @@ let rec show_value value =
       "<cont>"
     | Buffer _ ->
       "<buffer>"
+    | Hash table ->
+      sprintf "%%{%s}" (show_table table)
   end
 
 and show_args {normal_args;labeled_args} =
@@ -157,6 +162,13 @@ and show_labeled_arg (label, value) =
 and show_fields table =
   let rev_strs = Hashtbl.fold begin fun key value acc ->
       (sprintf "%s=%s" key (show_value value))::acc
+  end table []
+  in
+  SnString.concat ", " (List.rev rev_strs)
+
+and show_table table =
+  let rev_strs = Hashtbl.fold begin fun key value acc ->
+      (sprintf "%s=>%s" (show_value key) (show_value value))::acc
   end table []
   in
   SnString.concat ", " (List.rev rev_strs)
