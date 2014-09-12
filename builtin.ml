@@ -4,11 +4,12 @@ open Printf
 let some x = VM.Variant ("Option::C", "Some", VM.make_args [x] [])
 let none = VM.Variant ("Option::C", "None", VM.make_args [] [])
 
-let create_binary_subr proc =
-  VM.create_subr 2 begin fun vm args ->
-    let arg0 = VM.get_arg args 0 in
-    let arg1 = VM.get_arg args 1 in
-    VM.push_value vm (proc arg0 arg1)
+let cons x xs = VM.Variant ("List::C", "Cons", VM.make_args [x;xs] [])
+let nil = VM.Variant ("List::C", "Nil", VM.make_args [] [])
+
+let create_nullary_subr proc =
+  VM.create_subr 0 begin fun vm args ->
+    VM.push_value vm (proc ())
   end
 
 let create_unary_subr proc =
@@ -17,13 +18,26 @@ let create_unary_subr proc =
     VM.push_value vm (proc arg)
   end
 
-let create_nullary_subr proc =
-  VM.create_subr 0 begin fun vm args ->
-    VM.push_value vm (proc ())
+let create_binary_subr proc =
+  VM.create_subr 2 begin fun vm args ->
+    let arg0 = VM.get_arg args 0 in
+    let arg1 = VM.get_arg args 1 in
+    VM.push_value vm (proc arg0 arg1)
+  end
+
+let create_ternary_subr proc =
+  VM.create_subr 3 begin fun vm args ->
+    let arg0 = VM.get_arg args 0 in
+    let arg1 = VM.get_arg args 1 in
+    let arg2 = VM.get_arg args 2 in
+    VM.push_value vm (proc arg0 arg1 arg2)
   end
 
 let create_binary_cmp_subr proc =
   create_binary_subr (fun arg0 arg1 -> VM.Bool (proc arg0 arg1))
+
+let create_unary_arith_subr proc =
+  create_unary_subr (fun arg -> VM.Int (proc (VM.int_of_value arg)))
 
 let create_binary_arith_subr proc =
   create_binary_subr begin fun arg0 arg1 ->
@@ -31,9 +45,6 @@ let create_binary_arith_subr proc =
     let i1 = VM.int_of_value arg1 in
     VM.Int (proc i0 i1)
   end
-
-let create_unary_arith_subr proc =
-  create_unary_subr (fun arg -> VM.Int (proc (VM.int_of_value arg)))
 
 let subr_write_line =
   create_unary_subr begin fun arg ->
@@ -119,6 +130,49 @@ let subr_buffer_contents =
     VM.String (Buffer.contents buffer)
   end
 
+let subr_hash_create =
+  create_unary_subr begin fun arg ->
+    let initial_table_size = VM.int_of_value arg in
+    VM.Hash (Hashtbl.create initial_table_size)
+  end
+
+let subr_hash_get =
+  create_binary_subr begin fun arg0 arg1 ->
+    let table = VM.hashtbl_of_value arg0 in
+    let key = arg1 in
+    begin try
+        some (Hashtbl.find table key)
+      with
+      | Not_found ->
+        none
+    end
+  end
+
+let subr_hash_add =
+  create_ternary_subr begin fun arg0 arg1 arg2 ->
+    let table = VM.hashtbl_of_value arg0 in
+    let key = arg1 in
+    let value = arg2 in
+    Hashtbl.add table key value;
+    VM.Unit
+  end
+
+let subr_hash_remove =
+  create_binary_subr begin fun arg0 arg1 ->
+    let table = VM.hashtbl_of_value arg0 in
+    let key = arg1 in
+    Hashtbl.remove table key;
+    VM.Unit
+  end
+
+let subr_hash_keys =
+  create_unary_subr begin fun arg0 ->
+    let table = VM.hashtbl_of_value arg0 in
+    Hashtbl.fold begin fun key value acc ->
+      cons key acc
+    end table nil
+  end
+
 let initialize loader =
   let env = [VM.create_frame ()] in
   VM.add_var env "reset" VM.subr_reset ~export:true;
@@ -151,4 +205,9 @@ let initialize loader =
   VM.add_var env "buffer_create" subr_buffer_create ~export:true;
   VM.add_var env "buffer_add_string" subr_buffer_add_string ~export:true;
   VM.add_var env "buffer_contents" subr_buffer_contents ~export:true;
+  VM.add_var env "hash_create" subr_hash_create ~export:true;
+  VM.add_var env "hash_get" subr_hash_get ~export:true;
+  VM.add_var env "hash_add" subr_hash_add ~export:true;
+  VM.add_var env "hash_remove" subr_hash_remove ~export:true;
+  VM.add_var env "hash_keys" subr_hash_keys ~export:true;
   VM.add_var (Loader.get_env loader) "Builtin" (VM.Module (List.hd env));

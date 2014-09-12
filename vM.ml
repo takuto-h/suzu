@@ -258,6 +258,14 @@ let buffer_of_value value =
       raise (required "buffer" value)
   end
 
+let hashtbl_of_value value =
+  begin match value with
+    | Hash table ->
+      table
+    | _ ->
+      raise (required "hash" value)
+  end
+
 let push_value vm value =
   vm.stack <- value::vm.stack
 

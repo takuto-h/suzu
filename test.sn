@@ -334,3 +334,10 @@ p(Coro::resume(coro))  //=> 2
 p(Coro::resume(coro))  //=> 3
 p(Coro::resume(coro))  //=> 5
 p(Coro::resume(coro))  //=> 8
+
+
+let h = Hash::create(13)
+h["abc"] = "def"
+h["ghi"] = "jkl"
+h["mno"] = "pqr"
+write_line("{0}", h)

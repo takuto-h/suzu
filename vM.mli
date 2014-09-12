@@ -42,6 +42,7 @@ val char_of_value : value -> char
 val string_of_value : value -> string
 val args_of_value : value -> args
 val buffer_of_value : value -> Buffer.t
+val hashtbl_of_value : value -> (value, value) Hashtbl.t
 
 val push_value : t -> value -> unit
 

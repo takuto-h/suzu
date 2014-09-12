@@ -1,6 +1,7 @@
 
 module Pervasives:
   exception Invalid_argument(str)
+  exception Not_found()
   exception Exit()
 
   let reset = Builtin::reset
@@ -36,7 +37,8 @@ module Pervasives:
     Builtin::write_line(Builtin::show(value))
   end
 
-  export Invalid_argument, Exit, reset, shift, begin, if, while, write_line, read_line, p
+  export Invalid_argument, Not_found, Exit
+  export reset, shift, begin, if, while, write_line, read_line, p
 end
 open Pervasives
 
@@ -505,3 +507,55 @@ module Buffer:
 
   export C, create, add_string, add_char, contents
 end
+
+module Hash:
+  class C
+
+  let create = Builtin::hash_create
+  let get = Builtin::hash_get
+  let add = Builtin::hash_add
+  let remove = Builtin::hash_remove
+  let keys = Builtin::hash_keys
+
+  def set(self, key, value):
+    remove(self, key)
+    add(self, key, value)
+  end
+
+  def fold(init, hash, proc):
+    List::fold_left(init, keys(hash))^(key):
+      proc(init, key, hash[key])
+    end
+  end
+
+  module Open:
+    def C#([])(self, key):
+      match(get(self, key)):
+      case(Some(c)):
+        c
+      case(None()):
+        throw Not_found()
+      end
+    end
+
+    let C#([]=) = set
+    
+    def C#to_string(self):
+      match(keys(self)):
+      case([]):
+        "%{}"
+      case([key | keys]):
+        let str = String::format("{0}=>{1}", key, self[key])
+        let str = List::fold_left(str, keys)^(acc, key):
+          String::format("{0}, {1}=>{2}", acc, key, self[key])
+        end
+        String::format("%{{{0}}}", str)
+      end
+    end
+    
+    export C#([]), C#([]=), C#to_string
+  end
+
+  export C, create, get, add, remove, keys, fold, Open
+end
+open Hash::Open
