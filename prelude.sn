@@ -86,7 +86,7 @@ module Bool:
     include DefaultCompare(C)
     include DefaultToString(C)
 
-    let C#(!) = Builtin::not
+    let C#(!) = Builtin::bool_not
 
     export C#(!)
   end
@@ -103,13 +103,13 @@ module Int:
     include DefaultCompare(C)
     include DefaultToString(C)
   
-    let C#(+) = Builtin::add
-    let C#(-) = Builtin::sub
-    let C#(*) = Builtin::mul
-    let C#(/) = Builtin::div
-    let C#(%) = Builtin::mod
-    let C#(~+) = Builtin::plus
-    let C#(~-) = Builtin::minus
+    let C#(+) = Builtin::int_add
+    let C#(-) = Builtin::int_sub
+    let C#(*) = Builtin::int_mul
+    let C#(/) = Builtin::int_div
+    let C#(%) = Builtin::int_mod
+    let C#(~+) = Builtin::int_plus
+    let C#(~-) = Builtin::int_minus
 
     export C#(+), C#(-), C#(*), C#(/), C#(%), C#(~+), C#(~-)
   end
