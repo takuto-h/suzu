@@ -70,10 +70,10 @@ let subr_string_get =
     let str = VM.string_of_value arg0 in
     let index = VM.int_of_value arg1 in
     begin try
-        VM.Char (String.get str index)
+        some (VM.Char (String.get str index))
       with
       | Invalid_argument _ ->
-        raise (VM.InternalError (sprintf "index %d out of bounds of %S\n" index str))
+        none
     end
   end
 

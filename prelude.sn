@@ -1,5 +1,6 @@
 
 module Pervasives:
+  exception Invalid_argument(str)
   exception Exit()
 
   let reset = Builtin::reset
@@ -35,7 +36,7 @@ module Pervasives:
     Builtin::write_line(Builtin::show(value))
   end
 
-  export Exit, reset, shift, begin, if, while, write_line, read_line, p
+  export Invalid_argument, Exit, reset, shift, begin, if, while, write_line, read_line, p
 end
 
 open Pervasives
@@ -148,6 +149,7 @@ open Char::Open
 module String:
   class C
 
+  let get = Builtin::string_get
   let length = Builtin::string_length
   let contain? = Builtin::string_contain?
   
@@ -245,13 +247,12 @@ module String:
         Buffer::add_string(buf, str)
         execute_format_insns(insns, args, buf)
       case([Placeholder(n) | insns]):
-        let str = match(Args::get(args, n)):
+        match(Args::get(args, n)):
         case(Some(arg)):
-          arg.to_string
+          Buffer::add_string(buf, arg.to_string)
         case(None()):
           throw Illegal_format
         end
-        Buffer::add_string(buf, str)
         execute_format_insns(insns, args, buf)
       end
     end
@@ -270,7 +271,14 @@ module String:
   module Open:
     include DefaultCompare(C)
 
-    let C#([]) = Builtin::string_get
+    def C#([])(self, index):
+      match(get(self, index)):
+      case(Some(c)):
+        c
+      case(None()):
+        throw Invalid_argument("index out of bounds")
+      end
+    end
     
     def C#to_string(self):
       self
@@ -279,7 +287,7 @@ module String:
     export C#([]), C#to_string
   end
   
-  export C, length, contain?, format, Open
+  export C, get, length, contain?, format, Open
 end
 
 open String::Open
