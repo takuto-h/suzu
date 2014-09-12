@@ -147,12 +147,9 @@ let rec show_value value =
   end
 
 and show_args {normal_args;labeled_args} =
-  let str_normal = SnString.concat_map ", " show_value normal_args in
-  let str_labeled = SnString.concat_map ", " show_labeled_arg labeled_args in
-  if List.length normal_args <> 0 && List.length labeled_args <> 0 then
-    sprintf "(%s, %s)" str_normal str_labeled
-  else
-    sprintf "(%s%s)" str_normal str_labeled
+  let normal = List.map show_value normal_args in
+  let labeled = List.map show_labeled_arg labeled_args in
+  sprintf "(%s)" (SnString.concat ", " (normal @ labeled))
 
 and show_labeled_arg (label, value) =
   sprintf ":%s %s" label (show_value value)
