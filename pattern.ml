@@ -37,14 +37,14 @@ let rec show pat =
   end
 
 and show_params {normal_params;rest_param;labeled_params} =
-  let str_normal = SnString.concat_map ", " show normal_params in
-  let str_labeled = SnString.concat_map ", " show_labeled_param labeled_params in
+  let normal = List.map show normal_params in
+  let labeled = List.map show_labeled_param labeled_params in
   begin match rest_param with
     | Some rest_param ->
-      let str_rest = sprintf "*%s" (show rest_param) in
-      sprintf "(%s)" (SnString.concat ", " [str_normal; str_rest; str_labeled])
+      let rest = sprintf "*%s" (show rest_param) in
+      sprintf "(%s)" (SnString.concat ", " (normal @ rest::labeled))
     | None ->
-      sprintf "(%s)" (SnString.concat ", " [str_normal; str_labeled])
+      sprintf "(%s)" (SnString.concat ", " (normal @ labeled))
   end
 
 and show_labeled_param (label, (pat, has_default)) =

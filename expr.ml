@@ -96,14 +96,14 @@ let rec show_pattern {pat_raw} =
   end
 
 and show_params {normal_params;rest_param;labeled_params;} =
-  let str_normal = SnString.concat_map ", " show_pattern normal_params in
-  let str_labeled = SnString.concat_map ", " show_labeled_param labeled_params in
+  let normal = List.map show_pattern normal_params in
+  let labeled = List.map show_labeled_param labeled_params in
   begin match rest_param with
     | Some rest_param ->
-      let str_rest = sprintf "*%s" (show_pattern rest_param) in
-      sprintf "(%s)" (SnString.concat ", " [str_normal; str_rest; str_labeled])
+      let rest = sprintf "*%s" (show_pattern rest_param) in
+      sprintf "(%s)" (SnString.concat ", " (normal @ rest::labeled))
     | None ->
-      sprintf "(%s)" (SnString.concat ", " [str_normal; str_labeled])
+      sprintf "(%s)" (SnString.concat ", " (normal @ labeled))
   end
 
 and show_labeled_param (label, (pat, _)) =
@@ -169,14 +169,14 @@ let rec show {raw} =
   end
 
 and show_args {normal_args;rest_arg;labeled_args} =
-  let str_normal = SnString.concat_map ", " show normal_args in
-  let str_labeled = SnString.concat_map ", " show_labeled_arg labeled_args in
+  let normal = List.map show normal_args in
+  let labeled = List.map show_labeled_arg labeled_args in
   begin match rest_arg with
     | Some rest_arg ->
-      let str_rest = sprintf "*%s" (show rest_arg) in
-      sprintf "(%s)" (SnString.concat ", " [str_normal; str_rest; str_labeled])
+      let rest = sprintf "*%s" (show rest_arg) in
+      sprintf "(%s)" (SnString.concat ", " (normal @ rest::labeled))
     | None ->
-      sprintf "(%s)" (SnString.concat ", " [str_normal; str_labeled])
+      sprintf "(%s)" (SnString.concat ", " (normal @ labeled))
   end
 
 and show_labeled_arg (label, value) =
