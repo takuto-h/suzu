@@ -201,6 +201,13 @@ module Exn:
   export C
 end
 
+module Ref:
+  class C = make:
+    mutable value
+  end
+  export C, make, C#value, C#(value=)
+end
+
 module Option:
   class C:
     def None()
@@ -289,11 +296,41 @@ module List:
   export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map, iter
 end
 
-module Ref:
-  class C = make:
-    mutable value
+module Hash:
+  class C
+
+  let create = Builtin::hash_create
+  let get = Builtin::hash_get
+  let add = Builtin::hash_add
+  let remove = Builtin::hash_remove
+  let keys = Builtin::hash_keys
+
+  def set(self, key, value):
+    remove(self, key)
+    add(self, key, value)
   end
-  export C, make, C#value, C#(value=)
+
+  def fold(init, hash, proc):
+    List::fold_left(init, keys(hash))^(key):
+      proc(init, key, hash[key])
+    end
+  end
+
+  export C, create, get, add, remove, set, keys, fold
+end
+
+module Buffer:
+  class C
+
+  let create = Builtin::buffer_create
+  let add_string = Builtin::buffer_add_string
+  let contents = Builtin::buffer_contents
+
+  def add_char(buf, c):
+    add_string(buf, Builtin::char_to_string(c))
+  end
+
+  export C, create, add_string, add_char, contents
 end
 
 module Stream:
@@ -320,43 +357,6 @@ module Stream:
   end
 
   export C, from_string, peek, junk
-end
-
-module Buffer:
-  class C
-
-  let create = Builtin::buffer_create
-  let add_string = Builtin::buffer_add_string
-  let contents = Builtin::buffer_contents
-
-  def add_char(buf, c):
-    add_string(buf, Builtin::char_to_string(c))
-  end
-
-  export C, create, add_string, add_char, contents
-end
-
-module Hash:
-  class C
-
-  let create = Builtin::hash_create
-  let get = Builtin::hash_get
-  let add = Builtin::hash_add
-  let remove = Builtin::hash_remove
-  let keys = Builtin::hash_keys
-
-  def set(self, key, value):
-    remove(self, key)
-    add(self, key, value)
-  end
-
-  def fold(init, hash, proc):
-    List::fold_left(init, keys(hash))^(key):
-      proc(init, key, hash[key])
-    end
-  end
-
-  export C, create, get, add, remove, set, keys, fold
 end
 
 trait DefaultEq(C):
@@ -401,9 +401,9 @@ module Pervasives:
   include DefaultOrd(Char::C)
   include DefaultOrd(String::C)
   include DefaultOrd(Args::C)
+  include DefaultOrd(Ref::C)
   include DefaultOrd(Option::C)
   include DefaultOrd(List::C)
-  include DefaultOrd(Ref::C)
 
   include DefaultEq(Class::C)
   include DefaultEq(Module::C)
@@ -486,6 +486,12 @@ module Pervasives:
     self
   end
 
+  let Ref::C#value = Ref::(Ref::C#value)
+  let Ref::C#(value=) = Ref::(Ref::C#(value=))
+  def Ref::C#to_string(self):
+    String::format("ref({0})", self.value)
+  end
+
   def Option::C#to_string(self):
     match(self):
     case(None()):
@@ -503,12 +509,6 @@ module Pervasives:
     String::format("[{0}]", str)
   end
   
-  let Ref::C#value = Ref::(Ref::C#value)
-  let Ref::C#(value=) = Ref::(Ref::C#(value=))
-  def Ref::C#to_string(self):
-    String::format("ref({0})", self.value)
-  end
-
   def Hash::C#([])(self, key):
     match(Hash::get(self, key)):
     case(Some(c)):
@@ -529,10 +529,10 @@ module Pervasives:
   export identity, not, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
   export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
   export Char::C#to_string
-  export String::C#([]), String::C#to_string
+  export String::C#to_string, String::C#([])
+  export Ref::C#to_string, Ref::C#value, Ref::C#(value=)
   export Option::C#to_string
-  export List::C#(++), List::C#to_string
-  export Ref::C#value, Ref::C#(value=), Ref::C#to_string
-  export Hash::C#([]), Hash::C#([]=), Hash::C#to_string
+  export List::C#to_string, List::C#(++)
+  export Hash::C#to_string, Hash::C#([]), Hash::C#([]=)
 end
 open Pervasives
