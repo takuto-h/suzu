@@ -175,6 +175,7 @@ let subr_hash_keys =
 
 let initialize loader =
   let env = [VM.create_frame ()] in
+  VM.add_var env "not" subr_not ~export:true;
   VM.add_var env "reset" VM.subr_reset ~export:true;
   VM.add_var env "shift" VM.subr_shift ~export:true;
   VM.add_var env "write_line" subr_write_line ~export:true;
@@ -195,7 +196,6 @@ let initialize loader =
   VM.add_var env "int_mod" (create_binary_arith_subr ( mod )) ~export:true;
   VM.add_var env "int_plus" (create_unary_arith_subr ( ~+ )) ~export:true;
   VM.add_var env "int_minus" (create_unary_arith_subr ( ~- )) ~export:true;
-  VM.add_var env "bool_not" subr_not ~export:true;
   VM.add_var env "char_code" subr_char_code ~export:true;
   VM.add_var env "char_to_string" subr_char_to_string ~export:true;
   VM.add_var env "string_get" subr_string_get ~export:true;

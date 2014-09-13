@@ -239,7 +239,7 @@ def Ref::C#decr!(self):
 end
 
 let counter = Ref::make(5)
-my_while: !counter.zero?
+my_while: not(counter.zero?)
 do:
   write_line("{0}", counter.decr!)
 end

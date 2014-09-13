@@ -1,112 +1,18 @@
 
-module Pervasives:
-  exception Invalid_argument(str)
-  exception Not_found()
-  exception Exit()
-
-  let reset = Builtin::reset
-  let shift = Builtin::shift
-
-  def begin(thunk):
-    thunk()
-  end
-
-  def if(cond, then_thunk, :else else_thunk=^{}):
-    match(cond):
-    case(true):
-      then_thunk()
-    case(false):
-      else_thunk()
-    end
-  end
-
-  def while(test_thunk, :do body_thunk):
-    if(test_thunk()):
-      body_thunk()
-      while(test_thunk, :do body_thunk)
-    end
-  end
-
-  def write_line(*args):
-    Builtin::write_line(String::format(*args))
-  end
-  
-  let read_line = Builtin::read_line
-
-  def p(value):
-    Builtin::write_line(Builtin::show(value))
-  end
-
-  export Invalid_argument, Not_found, Exit
-  export reset, shift, begin, if, while, write_line, read_line, p
-end
-open Pervasives
-
-trait DefaultToString(C):
-  let C#to_string = Builtin::show
-  export C#to_string
-end
-
-trait DefaultCompare(C):
-  let C#(>) = Builtin::gt
-  let C#(<) = Builtin::lt
-  let C#(>=) = Builtin::ge
-  let C#(<=) = Builtin::le
-  let C#(==) = Builtin::eq
-  let C#(!=) = Builtin::ne
-  let C#(<=>) = Builtin::compare
-  export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
-end
-
-trait Compare(C, C#(<=>)):
-  def C#(>)(self, other){ (self <=> other) > 0 }end
-  def C#(<)(self, other){ (self <=> other) < 0 }end
-  def C#(>=)(self, other){ (self <=> other) >= 0 }end
-  def C#(<=)(self, other){ (self <=> other) <= 0 }end
-  def C#(==)(self, other){ (self <=> other) == 0 }end
-  def C#(!=)(self, other){ (self <=> other) != 0 }end
-  export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
-end
-
 module Unit:
   class C
-  module Open:
-    include DefaultCompare(C)
-    include DefaultToString(C)
-  end
-  export C, Open
+  export C
 end
-open Unit::Open
 
 module Bool:
   class C
-  module Open:
-    include DefaultCompare(C)
-    include DefaultToString(C)
-    let C#(!) = Builtin::bool_not
-    export C#(!)
-  end
-  export C, Open
+  export C
 end
-open Bool::Open
 
 module Int:
   class C
-  module Open:
-    include DefaultCompare(C)
-    include DefaultToString(C)
-    let C#(+) = Builtin::int_add
-    let C#(-) = Builtin::int_sub
-    let C#(*) = Builtin::int_mul
-    let C#(/) = Builtin::int_div
-    let C#(%) = Builtin::int_mod
-    let C#(~+) = Builtin::int_plus
-    let C#(~-) = Builtin::int_minus
-    export C#(+), C#(-), C#(*), C#(/), C#(%), C#(~+), C#(~-)
-  end
-  export C, Open
+  export C
 end
-open Int::Open
 
 module Char:
   class C
@@ -120,16 +26,9 @@ module Char:
   def digit_to_int(c):
     code(c) - code('0')
   end
-
-  module Open:
-    include DefaultCompare(C)
-    let C#to_string = Builtin::char_to_string
-    export C#to_string
-  end
   
-  export C, code, digit?, digit_to_int, Open
+  export C, code, digit?, digit_to_int
 end
-open Char::Open
 
 module String:
   class C
@@ -252,69 +151,31 @@ module String:
   end
 
   let format = Format::f
-
-  module Open:
-    include DefaultCompare(C)
-
-    def C#([])(self, index):
-      match(get(self, index)):
-      case(Some(c)):
-        c
-      case(None()):
-        throw Invalid_argument("index out of bounds")
-      end
-    end
-    
-    def C#to_string(self):
-      self
-    end
-    
-    export C#([]), C#to_string
-  end
   
-  export C, get, length, contain?, format, Open
+  export C, get, length, contain?, format
 end
-open String::Open
 
 module Args:
   class C
   let get = Builtin::args_get
-  module Open:
-    include DefaultCompare(C)
-    include DefaultToString(C)
-  end
-  export C, get, Open
+  export C, get
 end
-open Args::Open
 
 module Class:
   class C
   let of = Builtin::class_of
-  module Open:
-    include DefaultCompare(C)
-    include DefaultToString(C)
-  end
-  export C, of, Open
+  export C, of
 end
-open Class::Open
 
 module Module:
   class C
-  module Open:
-    include DefaultToString(C)
-  end
-  export C, Open
+  export C
 end
-open Module::Open
 
 module Proc:
   class C
-  module Open:
-    include DefaultToString(C)
-  end
-  export C, Open
+  export C
 end
-open Proc::Open
 
 module List:
   class C:
@@ -377,59 +238,20 @@ module List:
     end
   end
 
-  module Open:
-    include Compare(C)^(self, other):
-      match(self, other):
-      case([] , []):
-        0
-      case([] , [y | ys]):
-        -1
-      case([x | xs] , []):
-        1
-      case([x | xs], [y | ys])when((x <=> y) != 0):
-        x <=> y
-      case([x | xs], [y | ys]):
-        xs <=> ys
-      end
-    end
-
-    let C#(++) = append
-
-    export C#(++)
-  end
-
-  export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map, Open
+  export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map
 end
-open List::Open
 
 module Ref:
   class C = make:
     mutable value
   end
-
-  module Open:
-    include Compare(C)^(self, other):
-      self.value <=> other.value
-    end
-
-    let C#value = C#value
-    let C#(value=) = C#(value=)
-
-    export C#value, C#(value=)
-  end
-
-  export make, C, Open
+  export C, make, C#value, C#(value=)
 end
-open Ref::Open
 
 module Exn:
   class C
-  module Open:
-    include DefaultToString(C)
-  end
-  export C, Open
+  export C
 end
-open Exn::Open
 
 module Option:
   class C:
@@ -446,27 +268,8 @@ module Option:
     end
   end
 
-  module Open:
-    include DefaultCompare(C)
-
-    let None = None
-    let Some = Some
-
-    def C#to_string(self):
-      match(self):
-      case(None()):
-        "None()"
-      case(Some(x)):
-        String::format("Some({0})", x)
-      end
-    end
-
-    export None, Some, C#to_string
-  end
-
-  export C, None, Some, bind, Open
+  export C, None, Some, bind
 end
-open Option::Open
 
 module Stream:
   class C = make:
@@ -528,34 +331,188 @@ module Hash:
     end
   end
 
-  module Open:
-    def C#([])(self, key):
-      match(get(self, key)):
-      case(Some(c)):
-        c
-      case(None()):
-        throw Not_found()
-      end
-    end
+  export C, create, get, add, remove, set, keys, fold
+end
 
-    let C#([]=) = set
-    
-    def C#to_string(self):
-      match(keys(self)):
-      case([]):
-        "%{}"
-      case([key | keys]):
-        let str = String::format("{0}=>{1}", key, self[key])
-        let str = List::fold_left(str, keys)^(acc, key):
-          String::format("{0}, {1}=>{2}", acc, key, self[key])
-        end
-        String::format("%{{{0}}}", str)
-      end
-    end
-    
-    export C#([]), C#([]=), C#to_string
+trait DefaultToString(C):
+  let C#to_string = Builtin::show
+  export C#to_string
+end
+
+trait DefaultCompare(C):
+  let C#(>) = Builtin::gt
+  let C#(<) = Builtin::lt
+  let C#(>=) = Builtin::ge
+  let C#(<=) = Builtin::le
+  let C#(==) = Builtin::eq
+  let C#(!=) = Builtin::ne
+  let C#(<=>) = Builtin::compare
+  export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
+end
+
+trait Compare(C, C#(<=>)):
+  def C#(>)(self, other){ (self <=> other) > 0 }end
+  def C#(<)(self, other){ (self <=> other) < 0 }end
+  def C#(>=)(self, other){ (self <=> other) >= 0 }end
+  def C#(<=)(self, other){ (self <=> other) <= 0 }end
+  def C#(==)(self, other){ (self <=> other) == 0 }end
+  def C#(!=)(self, other){ (self <=> other) != 0 }end
+  export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
+end
+
+module Pervasives:
+  exception Invalid_argument(str)
+  exception Not_found()
+  exception Exit()
+
+  def identity(x):
+    x
   end
 
-  export C, create, get, add, remove, keys, fold, Open
+  let reset = Builtin::reset
+  let shift = Builtin::shift
+
+  def begin(thunk):
+    thunk()
+  end
+
+  def if(cond, then_thunk, :else else_thunk=^{}):
+    match(cond):
+    case(true):
+      then_thunk()
+    case(false):
+      else_thunk()
+    end
+  end
+
+  def while(test_thunk, :do body_thunk):
+    if(test_thunk()):
+      body_thunk()
+      while(test_thunk, :do body_thunk)
+    end
+  end
+
+  def write_line(*args):
+    Builtin::write_line(String::format(*args))
+  end
+  
+  let read_line = Builtin::read_line
+
+  def p(value):
+    Builtin::write_line(Builtin::show(value))
+  end
+
+  include DefaultCompare(Unit::C)
+  include DefaultToString(Unit::C)
+
+  include DefaultCompare(Int::C)
+  include DefaultToString(Int::C)
+  let Int::C#(+) = Builtin::int_add
+  let Int::C#(-) = Builtin::int_sub
+  let Int::C#(*) = Builtin::int_mul
+  let Int::C#(/) = Builtin::int_div
+  let Int::C#(%) = Builtin::int_mod
+  let Int::C#(~+) = Builtin::int_plus
+  let Int::C#(~-) = Builtin::int_minus
+
+  include DefaultCompare(Bool::C)
+  include DefaultToString(Bool::C)
+  let not = Builtin::not
+
+  include DefaultCompare(Char::C)
+  let Char::C#to_string = Builtin::char_to_string
+
+  include DefaultCompare(String::C)
+  def String::C#([])(self, index):
+    match(String::get(self, index)):
+    case(Some(c)):
+      c
+    case(None()):
+      throw Invalid_argument("index out of bounds")
+    end
+  end
+  def String::C#to_string(self):
+    self
+  end
+
+  include DefaultCompare(Args::C)
+  include DefaultToString(Args::C)
+
+  include DefaultCompare(Class::C)
+  include DefaultToString(Class::C)
+
+  include DefaultToString(Module::C)
+
+  include DefaultToString(Proc::C)
+
+  include Compare(List::C)^(self, other):
+    match(self, other):
+    case([] , []):
+      0
+    case([] , [y | ys]):
+      -1
+    case([x | xs] , []):
+      1
+    case([x | xs], [y | ys])when((x <=> y) != 0):
+      x <=> y
+    case([x | xs], [y | ys]):
+      xs <=> ys
+    end
+  end
+  let List::C#(++) = List::append
+
+  include Compare(Ref::C)^(self, other):
+    self.value <=> other.value
+  end
+  let Ref::C#value = Ref::(Ref::C#value)
+  let Ref::C#(value=) = Ref::(Ref::C#(value=))
+
+  include DefaultToString(Exn::C)
+
+  include DefaultCompare(Option::C)
+  let None = Option::None
+  let Some = Option::Some
+  def Option::C#to_string(self):
+    match(self):
+    case(None()):
+      "None()"
+    case(Some(x)):
+      String::format("Some({0})", x)
+    end
+  end
+
+  def Hash::C#([])(self, key):
+    match(Hash::get(self, key)):
+    case(Some(c)):
+      c
+    case(None()):
+      throw Not_found()
+    end
+  end
+  let Hash::C#([]=) = Hash::set
+  def Hash::C#to_string(self):
+    match(Hash::keys(self)):
+    case([]):
+      "%{}"
+    case([key | keys]):
+      let str = String::format("{0}=>{1}", key, self[key])
+      let str = List::fold_left(str, keys)^(acc, key):
+        String::format("{0}, {1}=>{2}", acc, key, self[key])
+      end
+      String::format("%{{{0}}}", str)
+    end
+  end
+  
+  export Invalid_argument, Not_found, Exit
+  export identity, reset, shift, begin, if, while
+  export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
+  export not
+  export Char::C#to_string
+  export String::C#([]), String::C#to_string
+  export List::C#(++)
+  export Ref::C#value, Ref::C#(value=)
+  export None, Some, Option::C#to_string
+  export Hash::C#([]), Hash::C#([]=), Hash::C#to_string
+  export write_line, read_line, p
 end
-open Hash::Open
+open Pervasives
