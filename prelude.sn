@@ -430,6 +430,7 @@ module Pervasives:
   let not = Builtin::not
   let None = Option::None
   let Some = Option::Some
+  let ref = Ref::make
   let reset = Builtin::reset
   let shift = Builtin::shift
 
@@ -495,9 +496,18 @@ module Pervasives:
   end
 
   let List::C#(++) = List::append
+  def List::C#to_string(self):
+    let str = String::concat_map(self, ", ")^(elem):
+      elem.to_string
+    end
+    String::format("[{0}]", str)
+  end
   
   let Ref::C#value = Ref::(Ref::C#value)
   let Ref::C#(value=) = Ref::(Ref::C#(value=))
+  def Ref::C#to_string(self):
+    String::format("ref({0})", self.value)
+  end
 
   def Hash::C#([])(self, key):
     match(Hash::get(self, key)):
@@ -516,13 +526,13 @@ module Pervasives:
   end
   
   export Invalid_argument, Not_found, Exit
-  export identity, not, None, Some, reset, shift, begin, if, while, write_line, read_line, p
+  export identity, not, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
   export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
   export Char::C#to_string
   export String::C#([]), String::C#to_string
   export Option::C#to_string
-  export List::C#(++)
-  export Ref::C#value, Ref::C#(value=)
+  export List::C#(++), List::C#to_string
+  export Ref::C#value, Ref::C#(value=), Ref::C#to_string
   export Hash::C#([]), Hash::C#([]=), Hash::C#to_string
 end
 open Pervasives

@@ -59,20 +59,6 @@ taro.introduce_oneself //=> My name is Taro Tsukuba. I'm a member of Graduate Sc
 
 let lst1 = [1, 2, 3]
 let lst2 = [4, 5, 6]
-
-def List::C#to_string(self):
-  match(self):
-  case([]):
-    "[]"
-  case([x | xs]):
-    let str = String::format("{0}", x)
-    let str = List::fold_left(str, xs)^(acc, elem):
-      String::format("{0}, {1}", acc, elem)
-    end
-    String::format("[{0}]", str)
-  end
-end
-
 write_line("{0}", lst1) //=> [1, 2, 3]
 write_line("{0}", lst2) //=> [4, 5, 6]
 write_line("{0}", lst1 ++ lst2) //=> [1, 2, 3, 4, 5, 6]
@@ -238,7 +224,7 @@ def Ref::C#decr!(self):
   self.value
 end
 
-let counter = Ref::make(5)
+let counter = ref(5)
 my_while: not(counter.zero?)
 do:
   write_line("{0}", counter.decr!)
@@ -295,7 +281,7 @@ module Coro:
     mutable prev
   end
 
-  let current = Ref::make(())
+  let current = ref(())
 
   def create(proc):
     make(proc, ())
