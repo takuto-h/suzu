@@ -359,33 +359,57 @@ module Hash:
   export C, create, get, add, remove, set, keys, fold
 end
 
+trait DefaultEq(C):
+  let C#(==) = Builtin::eq
+  let C#(!=) = Builtin::ne
+  export C#(==), C#(!=)
+end
+
+trait DefaultOrd(C):
+  include DefaultEq(C)
+  let C#(>) = Builtin::gt
+  let C#(<) = Builtin::lt
+  let C#(>=) = Builtin::ge
+  let C#(<=) = Builtin::le
+  let C#(<=>) = Builtin::compare
+  export C#(>), C#(<), C#(>=), C#(<=), C#(<=>)
+end
+
+trait Eq(C, C#(==)):
+  def C#(!=)(self, other){ not(self == other) }end
+  export C#(==), C#(!=)
+end
+
+trait Ord(C, C#(<=>)):
+  include Eq(C)^(self, other){ (self <=> other) == 0 }end
+  def C#(>)(self, other){ (self <=> other) > 0 }end
+  def C#(<)(self, other){ (self <=> other) < 0 }end
+  def C#(>=)(self, other){ (self <=> other) >= 0 }end
+  def C#(<=)(self, other){ (self <=> other) <= 0 }end
+  export C#(>), C#(<), C#(>=), C#(<=), C#(<=>)
+end
+
 trait DefaultToString(C):
   let C#to_string = Builtin::show
   export C#to_string
 end
 
-trait DefaultCompare(C):
-  let C#(>) = Builtin::gt
-  let C#(<) = Builtin::lt
-  let C#(>=) = Builtin::ge
-  let C#(<=) = Builtin::le
-  let C#(==) = Builtin::eq
-  let C#(!=) = Builtin::ne
-  let C#(<=>) = Builtin::compare
-  export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
-end
-
-trait Compare(C, C#(<=>)):
-  def C#(>)(self, other){ (self <=> other) > 0 }end
-  def C#(<)(self, other){ (self <=> other) < 0 }end
-  def C#(>=)(self, other){ (self <=> other) >= 0 }end
-  def C#(<=)(self, other){ (self <=> other) <= 0 }end
-  def C#(==)(self, other){ (self <=> other) == 0 }end
-  def C#(!=)(self, other){ (self <=> other) != 0 }end
-  export C#(>), C#(<), C#(>=), C#(<=), C#(==), C#(!=), C#(<=>)
-end
-
 module Pervasives:
+  include DefaultOrd(Unit::C)
+  include DefaultOrd(Int::C)
+  include DefaultOrd(Bool::C)
+  include DefaultOrd(Char::C)
+  include DefaultOrd(String::C)
+  include DefaultOrd(Args::C)
+  include DefaultOrd(Option::C)
+  include DefaultOrd(List::C)
+  include DefaultOrd(Ref::C)
+
+  include DefaultEq(Class::C)
+  include DefaultEq(Module::C)
+  include DefaultEq(Proc::C)
+  include DefaultEq(Exn::C)
+
   include DefaultToString(Unit::C)
   include DefaultToString(Int::C)
   include DefaultToString(Bool::C)
@@ -395,17 +419,6 @@ module Pervasives:
   include DefaultToString(Proc::C)
   include DefaultToString(Exn::C)
 
-  include DefaultCompare(Unit::C)
-  include DefaultCompare(Int::C)
-  include DefaultCompare(Bool::C)
-  include DefaultCompare(Char::C)
-  include DefaultCompare(String::C)
-  include DefaultCompare(Args::C)
-  include DefaultCompare(Option::C)
-  include DefaultCompare(List::C)
-  include DefaultCompare(Ref::C)
-//Unit Int Bool Char String Args Class Module Proc Exn  Option List Ref
-  
   exception Invalid_argument(str)
   exception Not_found()
   exception Exit()
