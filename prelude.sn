@@ -201,13 +201,6 @@ module Exn:
   export C
 end
 
-module Ref:
-  class C = make:
-    mutable value
-  end
-  export C, make, C#value, C#(value=)
-end
-
 module Option:
   class C:
     def None()
@@ -294,6 +287,13 @@ module List:
   end
 
   export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map, iter
+end
+
+module Ref:
+  class C = make:
+    mutable value
+  end
+  export C, make, C#value, C#(value=)
 end
 
 module Stream:
@@ -386,6 +386,26 @@ trait Compare(C, C#(<=>)):
 end
 
 module Pervasives:
+  include DefaultToString(Unit::C)
+  include DefaultToString(Int::C)
+  include DefaultToString(Bool::C)
+  include DefaultToString(Args::C)
+  include DefaultToString(Class::C)
+  include DefaultToString(Module::C)
+  include DefaultToString(Proc::C)
+  include DefaultToString(Exn::C)
+
+  include DefaultCompare(Unit::C)
+  include DefaultCompare(Int::C)
+  include DefaultCompare(Bool::C)
+  include DefaultCompare(Char::C)
+  include DefaultCompare(String::C)
+  include DefaultCompare(Args::C)
+  include DefaultCompare(Option::C)
+  include DefaultCompare(List::C)
+  include DefaultCompare(Ref::C)
+//Unit Int Bool Char String Args Class Module Proc Exn  Option List Ref
+  
   exception Invalid_argument(str)
   exception Not_found()
   exception Exit()
@@ -394,6 +414,9 @@ module Pervasives:
     x
   end
 
+  let not = Builtin::not
+  let None = Option::None
+  let Some = Option::Some
   let reset = Builtin::reset
   let shift = Builtin::shift
 
@@ -427,11 +450,6 @@ module Pervasives:
     Builtin::write_line(Builtin::show(value))
   end
 
-  include DefaultCompare(Unit::C)
-  include DefaultToString(Unit::C)
-
-  include DefaultCompare(Int::C)
-  include DefaultToString(Int::C)
   let Int::C#(+) = Builtin::int_add
   let Int::C#(-) = Builtin::int_sub
   let Int::C#(*) = Builtin::int_mul
@@ -440,14 +458,8 @@ module Pervasives:
   let Int::C#(~+) = Builtin::int_plus
   let Int::C#(~-) = Builtin::int_minus
 
-  include DefaultCompare(Bool::C)
-  include DefaultToString(Bool::C)
-  let not = Builtin::not
-
-  include DefaultCompare(Char::C)
   let Char::C#to_string = Builtin::char_to_string
 
-  include DefaultCompare(String::C)
   def String::C#([])(self, index):
     match(String::get(self, index)):
     case(Some(c)):
@@ -460,25 +472,6 @@ module Pervasives:
     self
   end
 
-  include DefaultCompare(Args::C)
-  include DefaultToString(Args::C)
-
-  include DefaultCompare(Class::C)
-  include DefaultToString(Class::C)
-
-  include DefaultToString(Module::C)
-  include DefaultToString(Proc::C)
-  include DefaultToString(Exn::C)
-
-  include Compare(Ref::C)^(self, other):
-    self.value <=> other.value
-  end
-  let Ref::C#value = Ref::(Ref::C#value)
-  let Ref::C#(value=) = Ref::(Ref::C#(value=))
-
-  include DefaultCompare(Option::C)
-  let None = Option::None
-  let Some = Option::Some
   def Option::C#to_string(self):
     match(self):
     case(None()):
@@ -488,21 +481,10 @@ module Pervasives:
     end
   end
 
-  include Compare(List::C)^(self, other):
-    match(self, other):
-    case([] , []):
-      0
-    case([] , [y | ys]):
-      -1
-    case([x | xs] , []):
-      1
-    case([x | xs], [y | ys])when((x <=> y) != 0):
-      x <=> y
-    case([x | xs], [y | ys]):
-      xs <=> ys
-    end
-  end
   let List::C#(++) = List::append
+  
+  let Ref::C#value = Ref::(Ref::C#value)
+  let Ref::C#(value=) = Ref::(Ref::C#(value=))
 
   def Hash::C#([])(self, key):
     match(Hash::get(self, key)):
@@ -521,15 +503,13 @@ module Pervasives:
   end
   
   export Invalid_argument, Not_found, Exit
-  export identity, reset, shift, begin, if, while
+  export identity, not, None, Some, reset, shift, begin, if, while, write_line, read_line, p
   export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
-  export not
   export Char::C#to_string
   export String::C#([]), String::C#to_string
-  export Ref::C#value, Ref::C#(value=)
-  export None, Some, Option::C#to_string
+  export Option::C#to_string
   export List::C#(++)
+  export Ref::C#value, Ref::C#(value=)
   export Hash::C#([]), Hash::C#([]=), Hash::C#to_string
-  export write_line, read_line, p
 end
 open Pervasives
