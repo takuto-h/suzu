@@ -4,12 +4,12 @@ module Unit:
   export C
 end
 
-module Bool:
+module Int:
   class C
   export C
 end
 
-module Int:
+module Bool:
   class C
   export C
 end
@@ -151,8 +151,27 @@ module String:
   end
 
   let format = Format::f
+
+  def concat_map(lst, sep, proc):
+    let buf = Buffer::create(64)
+    match(lst):
+    case([]):
+      ()
+    case([elem | lst]):
+      Buffer::add_string(buf, proc(elem))
+      List::iter(lst)^(elem):
+        Buffer::add_string(buf, sep)
+        Buffer::add_string(buf, proc(elem))
+      end
+    end
+    Buffer::contents(buf)
+  end
+
+  def concat(lst, sep):
+    concat_map(lst, sep, identity)
+  end
   
-  export C, get, length, contain?, format
+  export C, get, length, contain?, format, concat_map, concat
 end
 
 module Args:
@@ -175,6 +194,36 @@ end
 module Proc:
   class C
   export C
+end
+
+module Exn:
+  class C
+  export C
+end
+
+module Ref:
+  class C = make:
+    mutable value
+  end
+  export C, make, C#value, C#(value=)
+end
+
+module Option:
+  class C:
+    def None()
+    def Some(x)
+  end
+
+  def bind(m, proc):
+    match(m):
+    case(None()):
+      None()
+    case(Some(x)):
+      proc(x)
+    end
+  end
+
+  export C, None, Some, bind
 end
 
 module List:
@@ -238,37 +287,13 @@ module List:
     end
   end
 
-  export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map
-end
-
-module Ref:
-  class C = make:
-    mutable value
-  end
-  export C, make, C#value, C#(value=)
-end
-
-module Exn:
-  class C
-  export C
-end
-
-module Option:
-  class C:
-    def None()
-    def Some(x)
-  end
-
-  def bind(m, proc):
-    match(m):
-    case(None()):
-      None()
-    case(Some(x)):
-      proc(x)
+  def iter(lst, proc):
+    fold_left((), lst)^((), elem):
+      proc(elem)
     end
   end
 
-  export C, None, Some, bind
+  export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map, iter
 end
 
 module Stream:
@@ -442,8 +467,26 @@ module Pervasives:
   include DefaultToString(Class::C)
 
   include DefaultToString(Module::C)
-
   include DefaultToString(Proc::C)
+  include DefaultToString(Exn::C)
+
+  include Compare(Ref::C)^(self, other):
+    self.value <=> other.value
+  end
+  let Ref::C#value = Ref::(Ref::C#value)
+  let Ref::C#(value=) = Ref::(Ref::C#(value=))
+
+  include DefaultCompare(Option::C)
+  let None = Option::None
+  let Some = Option::Some
+  def Option::C#to_string(self):
+    match(self):
+    case(None()):
+      "None()"
+    case(Some(x)):
+      String::format("Some({0})", x)
+    end
+  end
 
   include Compare(List::C)^(self, other):
     match(self, other):
@@ -461,26 +504,6 @@ module Pervasives:
   end
   let List::C#(++) = List::append
 
-  include Compare(Ref::C)^(self, other):
-    self.value <=> other.value
-  end
-  let Ref::C#value = Ref::(Ref::C#value)
-  let Ref::C#(value=) = Ref::(Ref::C#(value=))
-
-  include DefaultToString(Exn::C)
-
-  include DefaultCompare(Option::C)
-  let None = Option::None
-  let Some = Option::Some
-  def Option::C#to_string(self):
-    match(self):
-    case(None()):
-      "None()"
-    case(Some(x)):
-      String::format("Some({0})", x)
-    end
-  end
-
   def Hash::C#([])(self, key):
     match(Hash::get(self, key)):
     case(Some(c)):
@@ -491,16 +514,10 @@ module Pervasives:
   end
   let Hash::C#([]=) = Hash::set
   def Hash::C#to_string(self):
-    match(Hash::keys(self)):
-    case([]):
-      "%{}"
-    case([key | keys]):
-      let str = String::format("{0}=>{1}", key, self[key])
-      let str = List::fold_left(str, keys)^(acc, key):
-        String::format("{0}, {1}=>{2}", acc, key, self[key])
-      end
-      String::format("%{{{0}}}", str)
+    let str = String::concat_map(Hash::keys(self), ", ")^(key):
+      String::format("{0}=>{1}", key, self[key])
     end
+    String::format("%{{{0}}}", str)
   end
   
   export Invalid_argument, Not_found, Exit
@@ -509,9 +526,9 @@ module Pervasives:
   export not
   export Char::C#to_string
   export String::C#([]), String::C#to_string
-  export List::C#(++)
   export Ref::C#value, Ref::C#(value=)
   export None, Some, Option::C#to_string
+  export List::C#(++)
   export Hash::C#([]), Hash::C#([]=), Hash::C#to_string
   export write_line, read_line, p
 end
