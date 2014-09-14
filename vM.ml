@@ -14,7 +14,6 @@ type t = {
 }
 
 and value =
-  | Unit
   | Int of int
   | Bool of bool
   | Char of char
@@ -73,6 +72,8 @@ let make_args normal_args labeled_args = {
   labeled_args = labeled_args;  
 }
 
+let unit = Args (make_args [] [])
+
 let create_subr req_count ?(allows_rest=false) ?(req_labels=[]) proc =
   Subr (req_count, allows_rest, req_labels, proc)
 
@@ -85,8 +86,6 @@ let create_frame () = {
 
 let get_class value =
   begin match value with
-    | Unit ->
-      "Unit::C"
     | Int _ ->
       "Int::C"
     | Bool _ ->
@@ -119,8 +118,6 @@ let get_class value =
 
 let rec show_value value =
   begin match value with
-    | Unit ->
-      "()"
     | Int i ->
       sprintf "%d" i
     | Bool b ->
@@ -280,7 +277,7 @@ let pop_value vm =
 let value_of_literal lit =
   begin match lit with
     | Literal.Unit ->
-      Unit
+      unit
     | Literal.Int i ->
       Int i
     | Literal.Bool b ->
@@ -497,7 +494,7 @@ let make_setter klass field =
     begin match self with
       | Record (klass2, table) when klass2 = klass ->
         Hashtbl.replace table field value;
-        push_value vm Unit
+        push_value vm unit
       | _ ->
         raise (required klass self)
     end
@@ -894,7 +891,7 @@ let on_error vm message =
     end vm.controls [Finally subr_report_error]
   in
   vm.insns <- [Insn.Return];
-  vm.stack <- [Unit];
+  vm.stack <- [unit];
   vm.controls <- controls
 
 let rec run vm =

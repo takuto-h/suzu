@@ -50,7 +50,7 @@ let subr_write_line =
   create_unary_subr begin fun arg ->
     let str = VM.string_of_value arg in
     print_endline str;
-    VM.Unit
+    VM.unit
   end
 
 let subr_read_line =
@@ -121,7 +121,7 @@ let subr_buffer_add_string =
     let buffer = VM.buffer_of_value arg0 in
     let str = VM.string_of_value arg1 in
     Buffer.add_string buffer str;
-    VM.Unit;
+    VM.unit;
   end
 
 let subr_buffer_contents =
@@ -154,7 +154,7 @@ let subr_hash_add =
     let key = arg1 in
     let value = arg2 in
     Hashtbl.add table key value;
-    VM.Unit
+    VM.unit
   end
 
 let subr_hash_remove =
@@ -162,7 +162,7 @@ let subr_hash_remove =
     let table = VM.hashtbl_of_value arg0 in
     let key = arg1 in
     Hashtbl.remove table key;
-    VM.Unit
+    VM.unit
   end
 
 let subr_hash_keys =

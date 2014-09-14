@@ -7,7 +7,6 @@ type control
 type env = frame list
 
 type value =
-  | Unit
   | Int of int
   | Bool of bool
   | Char of char
@@ -45,6 +44,7 @@ val buffer_of_value : value -> Buffer.t
 val hashtbl_of_value : value -> (value, value) Hashtbl.t
 
 val push_value : t -> value -> unit
+val unit : value
 
 val add_var : ?export:bool -> env -> string -> value -> unit
 val subr_reset : value
