@@ -168,10 +168,23 @@ module String:
   end
 
   def concat(lst, sep):
-    concat_map(lst, sep, identity)
+    concat_map(lst, sep, id)
+  end
+
+  def sub(str, start, len):
+    let buf = Buffer::create(64)
+    def loop(n):
+      if(n == len):
+        Buffer::contents(buf)
+      else:
+        Buffer::add_char(buf, str[start + n])
+        loop(n + 1)
+      end
+    end
+    loop(0)
   end
   
-  export C, get, length, contain?, format, concat_map, concat
+  export C, get, length, contain?, format, concat_map, concat, sub
 end
 
 module Args:
@@ -423,7 +436,7 @@ module Pervasives:
   exception Not_found()
   exception Exit()
 
-  def identity(x):
+  def id(x):
     x
   end
 
@@ -526,7 +539,7 @@ module Pervasives:
   end
   
   export Invalid_argument, Not_found, Exit
-  export identity, not, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
+  export id, not, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
   export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
   export Char::C#to_string
   export String::C#to_string, String::C#([])
