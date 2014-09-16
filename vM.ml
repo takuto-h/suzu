@@ -28,6 +28,7 @@ and value =
   | Cont of control list
   | Buffer of Buffer.t
   | Hash of (value, value) Hashtbl.t
+  | Regex of Str.regexp * string
 
 and args = {
   normal_args : value list;
@@ -114,6 +115,8 @@ let get_class value =
       "Buffer::C"
     | Hash _ ->
       "Hash::C"
+    | Regex (_, _) ->
+      "Regex::C"
   end
 
 let rec show_value value =
@@ -146,6 +149,8 @@ let rec show_value value =
       "<buffer>"
     | Hash table ->
       sprintf "%%{%s}" (show_table table)
+    | Regex (_, source) ->
+      sprintf "<regex %S>" source
   end
 
 and show_args {normal_args;labeled_args} =
@@ -261,6 +266,14 @@ let hashtbl_of_value value =
       table
     | _ ->
       raise (required "hash" value)
+  end
+
+let regexp_of_value value =
+  begin match value with
+    | Regex (reg, _) ->
+      reg
+    | _ ->
+      raise (required "regex" value)
   end
 
 let push_value vm value =
