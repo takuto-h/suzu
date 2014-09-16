@@ -557,5 +557,5 @@ let e = begin:
 end
 
 p(PEG::parse(e, "123"))
-p(PEG::parse(e, "1+2+3"))
+p(PEG::parse(e, "1+2*3"))
 p(PEG::parse(e, "(1+2)*3"))

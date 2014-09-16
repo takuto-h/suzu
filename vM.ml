@@ -515,6 +515,13 @@ let make_variant_ctor klass ctor params =
     push_value vm (Variant (klass, ctor, args))
   end
 
+let copy_frame {vars;methods;exported_vars;exported_methods} = {
+  vars = Hashtbl.copy vars;
+  methods = Hashtbl.copy methods;
+  exported_vars = exported_vars;
+  exported_methods = exported_methods;
+}
+
 let call vm func args =
   begin match func with
     | Closure (env, insns) ->
@@ -528,6 +535,19 @@ let call vm func args =
       check_args_for_subr req_count allows_rest req_labels args;
       proc vm args;
     | Cont controls ->
+      let controls = List.fold_right begin fun control controls ->
+          let control = begin match control with
+            | Dump (insns, stack, env, pos) ->
+              Dump (insns, stack, List.map copy_frame env, pos)
+            | Catch (pat, insns, env, pos) ->
+              Catch (pat, insns, List.map copy_frame env, pos)
+            | _ ->
+              control
+          end
+          in
+          control::controls
+        end controls []
+      in
       let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
       let args = args_of_value args in
       check_args_for_subr 1 false [] args;
