@@ -13,12 +13,11 @@ type t =
   | CmpOp of string
   | AddOp of string
   | MulOp of string
-  | PowOp of string
   | UnaryOp of string
 
 let get_op token =
   begin match token with
-    | CmpOp str | AddOp str | MulOp str | PowOp str | UnaryOp str ->
+    | CmpOp str | AddOp str | MulOp str | UnaryOp str ->
       Some str
     | _ ->
       None
@@ -40,6 +39,6 @@ let show token =
       "string"
     | Ident _ ->
       "identifier"
-    | Reserved s | CmpOp s | AddOp s | MulOp s | PowOp s | UnaryOp s ->
+    | Reserved s | CmpOp s | AddOp s | MulOp s | UnaryOp s ->
       sprintf "'%s'" s
   end
