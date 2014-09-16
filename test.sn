@@ -520,15 +520,15 @@ p(PEG::parse(s, "ab"))
 p(PEG::parse(s, "aaabbbccc"))
 p(PEG::parse(s, "aabbbccc"))
 
-let e = begin:
+def digits_to_int(digits):
+  List::fold_left(0, digits)^(n, digit):
+    n * 10 + Char::digit_to_int(digit)
+  end
+end
+
+let e1 = begin:
   open PEG::New()
   open Reflect(bind)
-
-  def digits_to_int(digits):
-    List::fold_left(0, digits)^(n, digit):
-      n * 10 + Char::digit_to_int(digit)
-    end
-  end
 
   "E" <- reset:
            let (v1, s1) = reflect(nt_ref("T"))
@@ -556,6 +556,59 @@ let e = begin:
   nt_ref("E")
 end
 
-p(PEG::parse(e, "123"))
-p(PEG::parse(e, "1+2*3"))
-p(PEG::parse(e, "(1+2)*3"))
+p(PEG::parse(e1, "123"))
+p(PEG::parse(e1, "1+2*3"))
+p(PEG::parse(e1, "(1+2)*3"))
+p(PEG::parse(e1, "1+2+3"))
+p(PEG::parse(e1, "1*2*3"))
+
+let e2 = begin:
+  open PEG::New()
+  open Reflect(bind)
+
+  def chainl1(e, op):
+    def rest(x):
+      reset:
+        let f = reflect(op)
+        let y = reflect(e)
+        rest(f(x, y))
+      end
+        |+ return(x)
+    end
+    reset:
+      let x = reflect(e)
+      rest(x)
+    end
+  end
+
+  "E" <- begin:
+           let op = char('+') &+ return^((v1, s1), (v2, s2)):
+             (v1 + v2, String::format("({0} + {1})", s1, s2))
+           end
+           chainl1(nt_ref("T"), op)
+         end
+
+  "T" <- begin:
+           let op = char('*') &+ return^((v1, s1), (v2, s2)):
+             (v1 * v2, String::format("({0} * {1})", s1, s2))
+           end
+           chainl1(nt_ref("P"), op)
+         end
+
+  "P" <- reset:
+           let digits = reflect(one_or_more(char_set("0123456789")))
+           return((digits_to_int(digits), String::concat_map(digits, "", Char::C#to_string)))
+         end
+      |+ reset:
+           let (v, s)  = reflect(char('(') &+ nt_ref("E"))
+           char(')') &+ return((v, s))
+         end
+
+  nt_ref("E")
+end
+
+p(PEG::parse(e2, "123"))
+p(PEG::parse(e2, "1+2*3"))
+p(PEG::parse(e2, "(1+2)*3"))
+p(PEG::parse(e2, "1+2+3"))
+p(PEG::parse(e2, "1*2*3"))
