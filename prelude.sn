@@ -515,7 +515,6 @@ module Pervasives:
     end
   end
 
-  let List::C#(++) = List::append
   def List::C#to_string(self):
     let str = String::concat_map(self, ", ")^(elem):
       elem.to_string
@@ -547,7 +546,7 @@ module Pervasives:
   export String::C#to_string, String::C#([])
   export Ref::C#to_string, Ref::C#value, Ref::C#(value=)
   export Option::C#to_string
-  export List::C#to_string, List::C#(++)
+  export List::C#to_string
   export Hash::C#to_string, Hash::C#([]), Hash::C#([]=)
 end
 open Pervasives
