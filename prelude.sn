@@ -80,7 +80,7 @@ module String:
           loop(n * 10 + i)
         case(Some('}')):
           Stream::junk(strm)
-          parse_format_insns(strm, [Placeholder(n) | rev_insns])
+          parse_format_insns(strm, [Placeholder(n), *rev_insns])
         case(Some(_) or None()):
           throw Illegal_format()
         end
@@ -101,7 +101,7 @@ module String:
             Stream::junk(strm)
             loop()
           else:
-            parse_placeholder(strm, [String(Buffer::contents(buf)) | rev_insns])
+            parse_placeholder(strm, [String(Buffer::contents(buf)), *rev_insns])
           end
         case(Some('}')):
           Stream::junk(strm)
@@ -117,7 +117,7 @@ module String:
           Stream::junk(strm)
           loop()
         case(None):
-          List::rev([String(Buffer::contents(buf)) | rev_insns])
+          List::rev([String(Buffer::contents(buf)), *rev_insns])
         end
       end
       loop()
@@ -127,10 +127,10 @@ module String:
       match(insns):
       case([]):
         Buffer::contents(buf)
-      case([String(str) | insns]):
+      case([String(str), *insns]):
         Buffer::add_string(buf, str)
         execute_format_insns(insns, args, buf)
-      case([Placeholder(n) | insns]):
+      case([Placeholder(n), *insns]):
         match(Args::get(args, n)):
         case(Some(arg)):
           Buffer::add_string(buf, arg.to_string)
@@ -157,7 +157,7 @@ module String:
     match(lst):
     case([]):
       ()
-    case([elem | lst]):
+    case([elem, *lst]):
       Buffer::add_string(buf, proc(elem))
       List::iter(lst)^(elem):
         Buffer::add_string(buf, sep)
@@ -251,7 +251,7 @@ module List:
     match(lst):
     case([]):
       init
-    case([x | xs]):
+    case([x, *xs]):
       fold_left(proc(init, x), xs, proc)
     end
   end
@@ -260,20 +260,20 @@ module List:
     match(lst):
     case([]):
       init
-    case([x | xs]):
+    case([x, *xs]):
       proc(x, fold_right(xs, init, proc))
     end
   end
 
   def append(lst1, lst2):
     fold_right(lst1, lst2)^(elem, acc):
-      [elem | acc]
+      [elem, *acc]
     end
   end
 
   def rev(lst):
     fold_left([], lst)^(acc, elem):
-      [elem | acc]
+      [elem, *acc]
     end
   end
 
@@ -281,9 +281,9 @@ module List:
     match(lst):
     case([]):
       None()
-    case([x | _])when(pred(x)):
+    case([x, *_])when(pred(x)):
       Some(x)
-    case([_ | xs]):
+    case([_, *xs]):
       find(xs, pred)
     end
   end
@@ -296,7 +296,7 @@ module List:
 
   def map(lst, proc):
     fold_right(lst, [])^(elem, acc):
-      [proc(elem) | acc]
+      [proc(elem), *acc]
     end
   end
 

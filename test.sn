@@ -429,7 +429,7 @@ module PEG:
         def loop(rev_values, pos):
           match(expr(str, pos, caches)):
           case(Success(pos, value)):
-            loop([value | rev_values], pos)
+            loop([value, *rev_values], pos)
           case(Failure()):
             Success(pos, List::rev(rev_values))
           end
@@ -470,7 +470,7 @@ module PEG:
     def one_or_more(expr):
       bind(expr)^(value):
         bind(zero_or_more(expr))^(values):
-          return([value | values])
+          return([value, *values])
         end
       end
     end
@@ -509,7 +509,7 @@ let s = begin:
 
   "B" <- char('b')
       &+ zero_or_one(nt_ref("B"))
-      &+char('c')
+      &+ char('c')
 
   nt_ref("S")
 end

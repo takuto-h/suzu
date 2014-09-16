@@ -707,6 +707,11 @@ and parse_list parser pos =
       | Token.Reserved "]" ->
         lookahead parser;
         nil
+      | Token.MulOp "*" ->
+        lookahead parser;
+        let tail = parse_expr parser in
+        parse_token parser (Token.Reserved "]");
+        tail
       | _ ->
         let head = parse_expr parser in
         begin match parser.token with
@@ -716,13 +721,8 @@ and parse_list parser pos =
           | Token.Reserved "," ->
             lookahead parser;
             cons head (loop ())
-          | Token.Reserved "|" ->
-            lookahead parser;
-            let tail = parse_expr parser in
-            parse_token parser (Token.Reserved "]");
-            cons head tail
           | _ ->
-            raise (expected parser "',' or '|' or ']'")
+            raise (expected parser "',' or ']'")
         end
     end
   in
@@ -917,6 +917,11 @@ and parse_list_pattern parser pos =
       | Token.Reserved "]" ->
         lookahead parser;
         nil
+      | Token.MulOp "*" ->
+        lookahead parser;
+        let tail = parse_pattern parser in
+        parse_token parser (Token.Reserved "]");
+        tail
       | _ ->
         let head = parse_pattern parser in
         begin match parser.token with
@@ -926,13 +931,8 @@ and parse_list_pattern parser pos =
           | Token.Reserved "," ->
             lookahead parser;
             cons head (loop ())
-          | Token.Reserved "|" ->
-            lookahead parser;
-            let tail = parse_pattern parser in
-            parse_token parser (Token.Reserved "]");
-            cons head tail
           | _ ->
-            raise (expected parser "',' or '|' or ']'")
+            raise (expected parser "',' or ']'")
         end
     end
   in
