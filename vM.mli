@@ -21,7 +21,6 @@ type value =
   | Cont of control list
   | Buffer of Buffer.t
   | Hash of (value, value) Hashtbl.t
-  | Regex of Str.regexp * string
 
 exception Error of Pos.t * string * Pos.t list
 exception InternalError of string
@@ -43,7 +42,6 @@ val string_of_value : value -> string
 val args_of_value : value -> args
 val buffer_of_value : value -> Buffer.t
 val hashtbl_of_value : value -> (value, value) Hashtbl.t
-val regexp_of_value : value -> Str.regexp
 
 val push_value : t -> value -> unit
 val unit : value
