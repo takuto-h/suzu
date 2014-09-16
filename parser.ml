@@ -284,9 +284,6 @@ and parse_binding_expr parser =
     | Token.Reserved "include" ->
       lookahead parser;
       parse_include_expr parser pos
-    | Token.Reserved "trait" ->
-      lookahead parser;
-      parse_trait parser pos
     | Token.Reserved "throw" ->
       lookahead parser;
       let expr = parse_expr parser in
@@ -333,15 +330,6 @@ and parse_open_expr parser pos =
 and parse_include_expr parser pos =
   let expr = parse_expr parser in
   Expr.at pos (Expr.Include expr)
-
-and parse_trait parser pos =
-  let pos_vom = parser.pos in
-  let vom = parse_var_or_method parser in
-  let pat = Expr.Pattern.at pos_vom (Expr.PatBind vom) in
-  let (params, body) = parse_function parser in
-  skip parser Token.Newline;
-  parse_token parser (Token.Reserved "end");
-  Expr.at pos (Expr.Let (pat, Expr.at pos (Expr.Trait (params, body))))
 
 and parse_except_expr parser =
   let expr = parse_or_expr parser in
@@ -1056,6 +1044,15 @@ let parse_class parser pos =
       Expr.at pos (Expr.Phantom klass)
   end
 
+let parse_trait parser pos =
+  let pos_vom = parser.pos in
+  let vom = parse_var_or_method parser in
+  let pat = Expr.Pattern.at pos_vom (Expr.PatBind vom) in
+  let (params, body) = parse_function parser in
+  skip parser Token.Newline;
+  parse_token parser (Token.Reserved "end");
+  Expr.at pos (Expr.Let (pat, Expr.at pos (Expr.Trait (params, body))))
+
 let rec parse_toplevel parser =
   let pos = parser.pos in
   begin match parser.token with
@@ -1065,6 +1062,9 @@ let rec parse_toplevel parser =
     | Token.Reserved "class" ->
       lookahead parser;
       parse_class parser pos
+    | Token.Reserved "trait" ->
+      lookahead parser;
+      parse_trait parser pos
     | _ ->
       parse_expr parser
   end

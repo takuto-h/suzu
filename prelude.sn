@@ -389,7 +389,7 @@ trait DefaultOrd(C):
 end
 
 trait Eq(C, C#(==)):
-  def C#(!=)(self, other){ not(self == other) }end
+  def C#(!=)(self, other){ !(self == other) }end
   export C#(==), C#(!=)
 end
 
@@ -440,7 +440,6 @@ module Pervasives:
     x
   end
 
-  let not = Builtin::not
   let None = Option::None
   let Some = Option::Some
   let ref = Ref::make
@@ -484,6 +483,8 @@ module Pervasives:
   let Int::C#(%) = Builtin::int_mod
   let Int::C#(~+) = Builtin::int_plus
   let Int::C#(~-) = Builtin::int_minus
+
+  let Bool::C#(!) = Builtin::bool_not
 
   let Char::C#to_string = Builtin::char_to_string
 
@@ -539,8 +540,9 @@ module Pervasives:
   end
   
   export Invalid_argument, Not_found, Exit
-  export id, not, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
+  export id, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
   export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
+  export Bool::C#(!)
   export Char::C#to_string
   export String::C#to_string, String::C#([])
   export Ref::C#to_string, Ref::C#value, Ref::C#(value=)
