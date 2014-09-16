@@ -332,7 +332,7 @@ and parse_include_expr parser pos =
   Expr.at pos (Expr.Include expr)
 
 and parse_except_expr parser =
-  let expr = parse_or_expr parser in
+  let expr = parse_oror_expr parser in
   begin match parser.token with
     | Token.Reserved "except" ->
       let pos = parser.pos in
@@ -343,25 +343,25 @@ and parse_except_expr parser =
       expr
   end
 
-and parse_or_expr parser =
-  let lhs = parse_and_expr parser in
+and parse_oror_expr parser =
+  let lhs = parse_andand_expr parser in
   begin match parser.token with
     | Token.Reserved "||" ->
       let pos = parser.pos in
       lookahead parser;
-      let rhs = parse_or_expr parser in
+      let rhs = parse_oror_expr parser in
       Expr.at pos (Expr.Or (lhs, rhs))
     | _ ->
       lhs
   end
 
-and parse_and_expr parser =
+and parse_andand_expr parser =
   let lhs = parse_cmp_expr parser in
   begin match parser.token with
     | Token.Reserved "&&" ->
       let pos = parser.pos in
       lookahead parser;
-      let rhs = parse_and_expr parser in
+      let rhs = parse_andand_expr parser in
       Expr.at pos (Expr.And (lhs, rhs))
     | _ ->
       lhs
@@ -376,7 +376,29 @@ and parse_cmp_expr parser =
         None
     end
   in
-  parse_non_assoc parser get_op parse_add_expr
+  parse_non_assoc parser get_op parse_or_expr
+
+and parse_or_expr parser =
+  let get_op token =
+    begin match token with
+      | Token.OrOp str ->
+        Some str
+      | _ ->
+        None
+    end
+  in
+  parse_right_assoc parser get_op parse_and_expr
+
+and parse_and_expr parser =
+  let get_op token =
+    begin match token with
+      | Token.AndOp str ->
+        Some str
+      | _ ->
+        None
+    end
+  in
+  parse_right_assoc parser get_op parse_add_expr
 
 and parse_add_expr parser =
   let get_op token =

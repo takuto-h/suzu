@@ -237,7 +237,7 @@ let lex_visible_token lexer pos c =
         | Some c when is_op_part c ->
           let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf '|';
-          Token.CmpOp (lex_op lexer buf)
+          Token.OrOp (lex_op lexer buf)
         | Some _ | None ->
           Token.Reserved "|"
       end
@@ -249,7 +249,7 @@ let lex_visible_token lexer pos c =
         | Some c when is_op_part c ->
           let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf c;
-          Token.CmpOp (lex_op lexer buf)
+          Token.AndOp (lex_op lexer buf)
         | Some _ | None ->
           Token.Reserved "&"
       end

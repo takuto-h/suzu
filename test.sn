@@ -484,12 +484,12 @@ module PEG:
     end
 
     let String::C#(<-) = def_nt
-    let Expr#(*) = seq
-    let Expr#(+) = alt
+    let Expr#(&+) = seq
+    let Expr#(|+) = alt
 
     export def_nt, char, string, char_set, nt_ref, fail, no_op, seq, alt, zero_or_more, not
     export return, bind, one_or_more, zero_or_one, and
-    export String::C#(<-), Expr#(*), Expr#(+)
+    export String::C#(<-), Expr#(&+), Expr#(|+)
   end
 
   export Success, Failure, parse, New
@@ -498,18 +498,18 @@ end
 let s = begin:
   open PEG::New()
   
-  "S" <- and(nt_ref("A") * not(char('b')))
-       * one_or_more(char('a'))
-       * nt_ref("B")
-       * not(char('c'))
+  "S" <- and(nt_ref("A") &+ not(char('b')))
+      &+ one_or_more(char('a'))
+      &+ nt_ref("B")
+      &+ not(char('c'))
 
   "A" <- char('a')
-       * zero_or_one(nt_ref("A"))
-       * char('b')
+      &+ zero_or_one(nt_ref("A"))
+      &+ char('b')
 
   "B" <- char('b')
-       * zero_or_one(nt_ref("B"))
-       * char('c')
+      &+ zero_or_one(nt_ref("B"))
+      &+char('c')
 
   nt_ref("S")
 end
@@ -532,25 +532,25 @@ let e = begin:
 
   "E" <- reset:
            let (v1, s1) = reflect(nt_ref("T"))
-           let (v2, s2) = reflect(char('+') * nt_ref("E"))
+           let (v2, s2) = reflect(char('+') &+ nt_ref("E"))
            return((v1 + v2, String::format("({0} + {1})", s1, s2)))
          end
-       + nt_ref("T")
+      |+ nt_ref("T")
 
   "T" <- reset:
            let (v1, s1) = reflect(nt_ref("P"))
-           let (v2, s2) = reflect(char('*') * nt_ref("T"))
+           let (v2, s2) = reflect(char('*') &+ nt_ref("T"))
            return((v1 * v2, String::format("({0} * {1})", s1, s2)))
          end
-       + nt_ref("P")
+      |+ nt_ref("P")
 
   "P" <- reset:
            let digits = reflect(one_or_more(char_set("0123456789")))
            return((digits_to_int(digits), String::concat_map(digits, "", Char::C#to_string)))
          end
-       + reset:
-           let (v, s)  = reflect(char('(') * nt_ref("E"))
-           char(')') * return((v, s))
+      |+ reset:
+           let (v, s)  = reflect(char('(') &+ nt_ref("E"))
+           char(')') &+ return((v, s))
          end
 
   nt_ref("E")

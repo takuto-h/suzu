@@ -9,6 +9,8 @@ type t =
   | Ident of string
   | Reserved of string
   | CmpOp of string
+  | OrOp of string
+  | AndOp of string
   | AddOp of string
   | MulOp of string
   | UnaryOp of string
