@@ -59,9 +59,17 @@ taro.introduce_oneself //=> My name is Taro Tsukuba. I'm a member of Graduate Sc
 
 let lst1 = [1, 2, 3]
 let lst2 = [4, 5, 6]
-write_line("{0}", lst1) //=> [1, 2, 3]
-write_line("{0}", lst2) //=> [4, 5, 6]
-write_line("{0}", List::append(lst1, lst2)) //=> [1, 2, 3, 4, 5, 6]
+
+def list_to_string(lst):
+  let str = String::concat_map(lst, ", ")^(elem):
+    elem.to_string
+  end
+  String::format("[{0}]", str)
+end
+
+write_line("{0}", list_to_string(lst1)) //=> [1, 2, 3]
+write_line("{0}", list_to_string(lst2)) //=> [4, 5, 6]
+write_line("{0}", list_to_string(List::append(lst1, lst2))) //=> [1, 2, 3, 4, 5, 6]
 
 
 trait Account(C, C#balance, C#(balance=)):

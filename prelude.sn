@@ -416,12 +416,13 @@ module Pervasives:
   include DefaultOrd(Args::C)
   include DefaultOrd(Ref::C)
   include DefaultOrd(Option::C)
-  include DefaultOrd(List::C)
 
   include DefaultEq(Class::C)
   include DefaultEq(Module::C)
   include DefaultEq(Proc::C)
   include DefaultEq(Exn::C)
+  include DefaultEq(List::C)
+  include DefaultEq(Hash::C)
 
   include DefaultToString(Unit::C)
   include DefaultToString(Int::C)
@@ -431,6 +432,10 @@ module Pervasives:
   include DefaultToString(Module::C)
   include DefaultToString(Proc::C)
   include DefaultToString(Exn::C)
+  include DefaultToString(Ref::C)
+  include DefaultToString(Option::C)
+  include DefaultToString(List::C)
+  include DefaultToString(Hash::C)
 
   exception Invalid_argument(str)
   exception Not_found()
@@ -502,25 +507,6 @@ module Pervasives:
 
   let Ref::C#value = Ref::(Ref::C#value)
   let Ref::C#(value=) = Ref::(Ref::C#(value=))
-  def Ref::C#to_string(self):
-    String::format("ref({0})", self.value)
-  end
-
-  def Option::C#to_string(self):
-    match(self):
-    case(None()):
-      "None()"
-    case(Some(x)):
-      String::format("Some({0})", x)
-    end
-  end
-
-  def List::C#to_string(self):
-    let str = String::concat_map(self, ", ")^(elem):
-      elem.to_string
-    end
-    String::format("[{0}]", str)
-  end
   
   def Hash::C#([])(self, key):
     match(Hash::get(self, key)):
@@ -531,12 +517,6 @@ module Pervasives:
     end
   end
   let Hash::C#([]=) = Hash::set
-  def Hash::C#to_string(self):
-    let str = String::concat_map(Hash::keys(self), ", ")^(key):
-      String::format("{0}=>{1}", key, self[key])
-    end
-    String::format("%{{{0}}}", str)
-  end
   
   export Invalid_argument, Not_found, Exit
   export id, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
@@ -544,9 +524,7 @@ module Pervasives:
   export Bool::C#(!)
   export Char::C#to_string
   export String::C#to_string, String::C#([])
-  export Ref::C#to_string, Ref::C#value, Ref::C#(value=)
-  export Option::C#to_string
-  export List::C#to_string
-  export Hash::C#to_string, Hash::C#([]), Hash::C#([]=)
+  export Ref::C#value, Ref::C#(value=)
+  export Hash::C#([]), Hash::C#([]=)
 end
 open Pervasives

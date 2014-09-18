@@ -21,6 +21,7 @@ type value =
   | Cont of control list
   | Buffer of Buffer.t
   | Hash of (value, value) Hashtbl.t
+  | Float of float
 
 exception Error of Pos.t * string * Pos.t list
 exception InternalError of string

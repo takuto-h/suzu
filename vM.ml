@@ -28,6 +28,7 @@ and value =
   | Cont of control list
   | Buffer of Buffer.t
   | Hash of (value, value) Hashtbl.t
+  | Float of float
 
 and args = {
   normal_args : value list;
@@ -114,6 +115,8 @@ let get_class value =
       "Buffer::C"
     | Hash _ ->
       "Hash::C"
+    | Float _ ->
+      "Float::C"
   end
 
 let rec show_value value =
@@ -146,6 +149,8 @@ let rec show_value value =
       "<buffer>"
     | Hash table ->
       sprintf "%%{%s}" (show_table table)
+    | Float f ->
+      sprintf "%F" f
   end
 
 and show_args {normal_args;labeled_args} =
