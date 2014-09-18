@@ -1,8 +1,11 @@
-//
-// $ ./suzu mandelbrot.sn > mandelbrot.dat
-// $ gnuplot
-// gnuplot> plot("mandelbrot.dat")
-//
+/*
+ *  Usage:
+ *
+ *  $ ./suzu mandelbrot.sn > mandelbrot.dat
+ *  $ gnuplot
+ *  gnuplot> plot("mandelbrot.dat")
+ *
+ */
 
 module Cartesian:
   class C:

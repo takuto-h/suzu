@@ -121,14 +121,14 @@ let lex_char lexer =
           Source.junk lexer.source;
           lex_escape_sequence pos c;
         | None ->
-          let pos_eof = (Source.pos lexer.source) in
+          let pos_eof = Source.pos lexer.source in
           raise (Error (pos_eof, "EOF inside a character literal\n"))
       end
     | Some c ->
       Source.junk lexer.source;
       c;
     | None ->
-      let pos_eof = (Source.pos lexer.source) in
+      let pos_eof = Source.pos lexer.source in
       raise (Error (pos_eof, "EOF inside a character literal\n"))
   end
   in
@@ -337,6 +337,24 @@ let rec skip_single_line_comment lexer =
       skip_single_line_comment lexer;
   end
 
+let rec skip_multiple_line_comment lexer =
+  begin match Source.peek lexer.source with
+    | Some '*' ->
+      Source.junk lexer.source;
+      begin match Source.peek lexer.source with
+        | Some '/' ->
+          Source.junk lexer.source
+        | Some _ | None ->
+          skip_multiple_line_comment lexer
+      end
+    | Some _ ->
+      Source.junk lexer.source;
+      skip_multiple_line_comment lexer
+    | None ->
+      let pos_eof = Source.pos lexer.source in
+      raise (Error (pos_eof, "EOF inside a multiple line comment\n"))
+  end
+
 let rec next lexer =
   let pos = Source.pos lexer.source in
   begin match Source.peek lexer.source with
@@ -358,6 +376,10 @@ let rec next lexer =
         | Some '/' ->
           Source.junk lexer.source;
           skip_single_line_comment lexer;
+          next lexer;
+        | Some '*' ->
+          Source.junk lexer.source;
+          skip_multiple_line_comment lexer;
           next lexer;
         | Some _ | None ->
           let buf = Buffer.create initial_token_buffer_size in
