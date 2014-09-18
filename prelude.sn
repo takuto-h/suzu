@@ -17,10 +17,20 @@ end
 module Float:
   class C
   let from_string = Builtin::float_from_string
-  let zero = from_string("0.0")
-  let one = from_string("1.0")
-  let two = from_string("2.0")
-  let three = from_string("3.0")
+  def from_int(i):
+    from_string(i.to_string)
+  end
+  let zero = from_string("0")
+  let one = from_string("1")
+  let two = from_string("2")
+  let three = from_string("3")
+  let four = from_string("4")
+  let five = from_string("5")
+  let six = from_string("6")
+  let seven = from_string("7")
+  let eight = from_string("8")
+  let nine = from_string("9")
+  let ten = from_string("10")
   let sqrt = Builtin::float_sqrt
   let exp = Builtin::float_exp
   let log = Builtin::float_log
@@ -32,7 +42,7 @@ module Float:
   let asin = Builtin::float_asin
   let atan = Builtin::float_atan
   let atan2 = Builtin::float_atan2
-  export C, from_string, zero, one, two, three
+  export C, from_string, from_int, zero, one, two, three, four, five, six, seven, eight, nine, ten
   export sqrt, exp, log, log10, cos, sin, tan, acos, asin, atan, atan2
 end
 
@@ -495,6 +505,13 @@ module Pervasives:
     end
   end
 
+  def for(from, :to to, :do proc):
+    if(from <= to):
+      proc(from)
+      for(from + 1, :to to, :do proc)
+    end
+  end
+
   def write_line(*args):
     Builtin::write_line(String::format(*args))
   end
@@ -551,7 +568,7 @@ module Pervasives:
   let Hash::C#([]=) = Hash::set
 
   export Invalid_argument, Not_found, Exit
-  export id, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
+  export id, None, Some, ref, reset, shift, begin, if, while, for, write_line, read_line, p
   export Bool::C#(!)
   export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
   export Float::C#(+), Float::C#(-), Float::C#(*), Float::C#(/), Float::C#(**), Float::C#(~+), Float::C#(~-)

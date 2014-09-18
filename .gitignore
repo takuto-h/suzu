@@ -5,6 +5,7 @@
 *.cmo
 *.run
 *.annot
+*.dat
 suzu
 suzutop
 sn2ml

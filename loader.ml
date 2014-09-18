@@ -13,7 +13,8 @@ let create () = {
 }
 
 let rec read_multiple_lines buf =
-  printf "... ";
+  eprintf "... ";
+  flush stderr;
   let line = read_line () in
   if line = "" then
     Buffer.contents buf
@@ -56,11 +57,11 @@ let load_source proc loader source =
       loop ()
     with
     | Parser.Error (pos, message) ->
-      printf "%s" (Pos.show_message pos (sprintf "syntax error: %s" message))
+      eprintf "%s" (Pos.show_message pos (sprintf "syntax error: %s" message))
     | VM.Error (pos, message, trace) ->
-      printf "%s" (Pos.show_message pos (sprintf "error: %s" message));
+      eprintf "%s" (Pos.show_message pos (sprintf "error: %s" message));
       List.iter begin fun pos ->
-        printf "%s" (Pos.show_message pos "note: error from here\n")
+        eprintf "%s" (Pos.show_message pos "note: error from here\n")
       end trace
   end
 
@@ -77,10 +78,11 @@ let load_file loader name =
 let rec repl loader =
   let rec loop () =
     begin try
-        printf ">>> ";
+        eprintf ">>> ";
+        flush stderr;
         let str = read () in
         let source = Source.of_string "<stdin>" str in
-        load_source (fun value -> printf "%s\n" (VM.show_value value)) loader source;
+        load_source (fun value -> eprintf "%s\n" (VM.show_value value)) loader source;
         loop ()
       with
       | End_of_file ->

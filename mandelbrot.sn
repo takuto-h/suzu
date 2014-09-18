@@ -1,0 +1,111 @@
+//
+// $ ./suzu mandelbrot.sn > mandelbrot.dat
+// $ gnuplot
+// gnuplot> plot("mandelbrot.dat")
+//
+
+module Cartesian:
+  class C:
+    def Mk(x, y)
+  end
+
+  let make = Mk
+  
+  def abs(Mk(x, y)):
+    Float::sqrt(x * x + y * y)
+  end
+
+  module Open:
+    def C#(+)(Mk(x1, y1), Mk(x2, y2)):
+      Mk(x1 + x2, y1 + y2)
+    end
+  
+    def C#(*)(Mk(x1, y1), Mk(x2, y2)):
+      Mk(x1 * x2 - y1 * y2, x1 * y2 + x2 * y1)
+    end
+
+    export C#(+), C#(*)
+  end
+
+  export C, make, abs, Open
+end
+
+module Polar:
+  class C:
+    def Mk(r, t)
+  end
+
+  def c2p(x, y):
+    Mk(Float::sqrt(x * x + y * y), Float::atan2(y, x))
+  end
+
+  def p2c(Mk(r, t)):
+    (r * Float::cos(t), r * Float::sin(t))
+  end
+
+  def make(x, y):
+    c2p(x, y)
+  end
+
+  def abs(Mk(r, t)):
+    r
+  end
+
+  module Open:
+    def C#(+)(p1, p2):
+      let (x1, y1) = p2c(p1)
+      let (x2, y2) = p2c(p2)
+      c2p(x1 + x2, y1 + y2)
+    end
+  
+    def C#(*)(Mk(r1, t1), Mk(r2, t2)):
+      Mk(r1 * r2, t1 + t2)
+    end
+
+    export C#(+), C#(*)
+  end
+
+  export C, make, abs, Open
+end
+
+trait Mandelbrot(Complex):
+  open Complex::Open
+  let C = Complex
+  let F = Float
+  let d = 50
+  let n = 25
+  let f1 = F::from_int(d)
+  let f2 = F::from_string("1.5")
+  let f3 = F::from_int(d)
+  let f4 = F::from_string("1")
+  def f():
+    def converge(n, c, z):
+      if(n <= 0):
+        true
+      else:
+        if(C::abs(z) >= F::two):
+          false
+        else:
+          converge(n - 1, c, c + z * z)
+        end
+      end
+    end
+    for(0)to(2 * d)do^(x):
+      for(0)to(2 * d)do^(y):
+        let cx = F::from_int(x) / f1 - f2
+        let cy = F::from_int(y) / f3 - f4
+        let conv = converge(n, C::make(cx, cy), C::make(F::zero, F::zero))
+        if(conv):
+          write_line("{0} {1}", cx, cy)
+        end
+      end
+    end
+  end
+  export f
+end
+
+let CartesianMandelbrot = Mandelbrot(Cartesian)
+let PolarMandelbrot = Mandelbrot(Polar)
+
+CartesianMandelbrot::f()
+//PolarMandelbrot::f()
