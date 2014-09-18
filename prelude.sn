@@ -4,14 +4,20 @@ module Unit:
   export C
 end
 
+module Bool:
+  class C
+  export C
+end
+
 module Int:
   class C
   export C
 end
 
-module Bool:
+module Float:
   class C
-  export C
+  let from_string = Builtin::float_from_string
+  export C, from_string
 end
 
 module Char:
@@ -409,8 +415,9 @@ end
 
 module Pervasives:
   include DefaultOrd(Unit::C)
-  include DefaultOrd(Int::C)
   include DefaultOrd(Bool::C)
+  include DefaultOrd(Int::C)
+  include DefaultOrd(Float::C)
   include DefaultOrd(Char::C)
   include DefaultOrd(String::C)
   include DefaultOrd(Args::C)
@@ -425,8 +432,9 @@ module Pervasives:
   include DefaultEq(Hash::C)
 
   include DefaultToString(Unit::C)
-  include DefaultToString(Int::C)
   include DefaultToString(Bool::C)
+  include DefaultToString(Int::C)
+  include DefaultToString(Float::C)
   include DefaultToString(Args::C)
   include DefaultToString(Class::C)
   include DefaultToString(Module::C)
@@ -481,16 +489,24 @@ module Pervasives:
     Builtin::write_line(Builtin::show(value))
   end
 
+  let Bool::C#(!) = Builtin::bool_not
+
+  let Int::C#(~-) = Builtin::int_minus
+  let Int::C#(~+) = Builtin::int_plus
   let Int::C#(+) = Builtin::int_add
   let Int::C#(-) = Builtin::int_sub
   let Int::C#(*) = Builtin::int_mul
   let Int::C#(/) = Builtin::int_div
   let Int::C#(%) = Builtin::int_mod
-  let Int::C#(~+) = Builtin::int_plus
-  let Int::C#(~-) = Builtin::int_minus
 
-  let Bool::C#(!) = Builtin::bool_not
-
+  let Float::C#(~-) = Builtin::float_minus
+  let Float::C#(~+) = Builtin::float_plus
+  let Float::C#(+) = Builtin::float_add
+  let Float::C#(-) = Builtin::float_sub
+  let Float::C#(*) = Builtin::float_mul
+  let Float::C#(/) = Builtin::float_div
+  let Float::C#(**) = Builtin::float_pow
+  
   let Char::C#to_string = Builtin::char_to_string
 
   def String::C#([])(self, index):
@@ -517,11 +533,13 @@ module Pervasives:
     end
   end
   let Hash::C#([]=) = Hash::set
-  
+
   export Invalid_argument, Not_found, Exit
   export id, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
-  export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
   export Bool::C#(!)
+  export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
+  export Float::C#(+), Float::C#(-), Float::C#(*), Float::C#(/), Float::C#(**)
+  export Float::C#(~+), Float::C#(~-)
   export Char::C#to_string
   export String::C#to_string, String::C#([])
   export Ref::C#value, Ref::C#(value=)

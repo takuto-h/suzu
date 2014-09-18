@@ -269,7 +269,7 @@ let lex_visible_token lexer pos c =
       begin match Source.peek lexer.source with
         | Some '*' ->
           Source.junk lexer.source;
-          Token.Reserved "**"
+          Token.PowOp "**"
         | Some _ | None ->
           let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf c;

@@ -7,8 +7,9 @@ type control
 type env = frame list
 
 type value =
-  | Int of int
   | Bool of bool
+  | Int of int
+  | Float of float
   | Char of char
   | String of string
   | Class of string
@@ -21,7 +22,6 @@ type value =
   | Cont of control list
   | Buffer of Buffer.t
   | Hash of (value, value) Hashtbl.t
-  | Float of float
 
 exception Error of Pos.t * string * Pos.t list
 exception InternalError of string
@@ -36,8 +36,9 @@ val get_arg : args -> int -> value
 val get_class : value -> string
 val show_value : value -> string
 
-val int_of_value : value -> int
 val bool_of_value : value -> bool
+val int_of_value : value -> int
+val float_of_value : value -> float
 val char_of_value : value -> char
 val string_of_value : value -> string
 val args_of_value : value -> args

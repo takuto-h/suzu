@@ -425,7 +425,7 @@ and parse_mul_expr parser =
 and parse_pow_expr parser =
   let get_op token =
     begin match token with
-      | Token.Reserved "**" ->
+      | Token.PowOp "**" ->
         Some "**"
       | _ ->
         None

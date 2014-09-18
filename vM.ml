@@ -14,8 +14,9 @@ type t = {
 }
 
 and value =
-  | Int of int
   | Bool of bool
+  | Int of int
+  | Float of float
   | Char of char
   | String of string
   | Class of string
@@ -28,7 +29,6 @@ and value =
   | Cont of control list
   | Buffer of Buffer.t
   | Hash of (value, value) Hashtbl.t
-  | Float of float
 
 and args = {
   normal_args : value list;
@@ -196,6 +196,14 @@ let method_not_found klass sel =
 let method_not_exported klass sel = 
   InternalError (sprintf "method not exported: %s#%s\n" klass (Selector.show sel))
 
+let bool_of_value value =
+  begin match value with
+    | Bool b ->
+      b
+    | _ ->
+      raise (required "bool" value)
+  end
+
 let int_of_value value =
   begin match value with
     | Int i ->
@@ -204,12 +212,12 @@ let int_of_value value =
       raise (required "int" value)
   end
 
-let bool_of_value value =
+let float_of_value value =
   begin match value with
-    | Bool b ->
-      b
+    | Float f ->
+      f
     | _ ->
-      raise (required "bool" value)
+      raise (required "float" value)
   end
 
 let char_of_value value =

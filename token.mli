@@ -13,6 +13,7 @@ type t =
   | AndOp of string
   | AddOp of string
   | MulOp of string
+  | PowOp of string
   | UnaryOp of string
 
 val get_op : t -> string option
