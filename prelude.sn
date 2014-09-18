@@ -507,16 +507,16 @@ module Pervasives:
 
   let Bool::C#(!) = Builtin::bool_not
 
-  let Int::C#(~-) = Builtin::int_minus
-  let Int::C#(~+) = Builtin::int_plus
+  let Int::C#(~-) = Builtin::int_neg
+  let Int::C#(~+) = Builtin::int_pos
   let Int::C#(+) = Builtin::int_add
   let Int::C#(-) = Builtin::int_sub
   let Int::C#(*) = Builtin::int_mul
   let Int::C#(/) = Builtin::int_div
   let Int::C#(%) = Builtin::int_mod
 
-  let Float::C#(~-) = Builtin::float_minus
-  let Float::C#(~+) = Builtin::float_plus
+  let Float::C#(~-) = Builtin::float_neg
+  let Float::C#(~+) = Builtin::float_pos
   let Float::C#(+) = Builtin::float_add
   let Float::C#(-) = Builtin::float_sub
   let Float::C#(*) = Builtin::float_mul
