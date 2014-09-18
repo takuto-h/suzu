@@ -72,28 +72,26 @@ trait Mandelbrot(Complex):
   open Complex::Open
   let C = Complex
   let F = Float
-  let d = 50
-  let n = 25
+  let d = 100
+  let n = 100
   let f1 = F::from_int(d)
   let f2 = F::from_string("1.5")
-  let f3 = F::from_int(d)
-  let f4 = F::from_string("1")
+  let f3 = F::from_string("1")
   def f():
     def converge(n, c, z):
-      if(n <= 0):
+      match():
+      case()when(n <= 0):
         true
-      else:
-        if(C::abs(z) >= F::two):
-          false
-        else:
-          converge(n - 1, c, c + z * z)
-        end
+      case()when(C::abs(z) >= F::two):
+        false
+      case():
+        converge(n - 1, c, c + z * z)
       end
     end
     for(0)to(2 * d)do^(x):
       for(0)to(2 * d)do^(y):
         let cx = F::from_int(x) / f1 - f2
-        let cy = F::from_int(y) / f3 - f4
+        let cy = F::from_int(y) / f1 - f3
         let conv = converge(n, C::make(cx, cy), C::make(F::zero, F::zero))
         if(conv):
           write_line("{0} {1}", cx, cy)
