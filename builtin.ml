@@ -75,11 +75,19 @@ let subr_compare =
 let subr_show =
   create_unary_subr (fun arg -> VM.String (VM.show_value arg))
 
-let subr_class_of =
-  create_unary_subr (fun arg -> VM.Class (VM.get_class arg))
-
 let subr_bool_not =
   create_unary_subr (fun arg -> VM.Bool (not (VM.bool_of_value arg)))
+
+let subr_float_from_string =
+  create_unary_subr begin fun arg0 ->
+    let str = VM.string_of_value arg0 in
+    begin try
+        VM.Float (float_of_string str)
+      with
+      | Failure "float_of_string" ->
+        raise (VM.InternalError "invalid floating point number\n")
+    end
+  end
 
 let subr_char_code =
   create_unary_subr (fun arg -> VM.Int (Char.code (VM.char_of_value arg)))
@@ -120,6 +128,9 @@ let subr_args_get =
         none
     end
   end
+
+let subr_class_of =
+  create_unary_subr (fun arg -> VM.Class (VM.get_class arg))
 
 let subr_buffer_create =
   create_unary_subr begin fun arg ->
@@ -184,17 +195,6 @@ let subr_hash_keys =
     end table nil
   end
 
-let subr_float_from_string =
-  create_unary_subr begin fun arg0 ->
-    let str = VM.string_of_value arg0 in
-    begin try
-        VM.Float (float_of_string str)
-      with
-      | Failure "float_of_string" ->
-        raise (VM.InternalError "invalid floating point number\n")
-    end
-  end
-
 let initialize loader =
   let env = [VM.create_frame ()] in
   VM.add_var env "reset" VM.subr_reset ~export:true;
@@ -209,21 +209,40 @@ let initialize loader =
   VM.add_var env "ne" (create_binary_cmp_subr ( <> )) ~export:true;
   VM.add_var env "compare" subr_compare ~export:true;
   VM.add_var env "show" subr_show ~export:true;
-  VM.add_var env "class_of" subr_class_of ~export:true;
+  VM.add_var env "bool_not" subr_bool_not ~export:true;
+  VM.add_var env "int_minus" (create_unary_int_subr ( ~- )) ~export:true;
+  VM.add_var env "int_plus" (create_unary_int_subr ( ~+ )) ~export:true;
   VM.add_var env "int_add" (create_binary_int_subr ( + )) ~export:true;
   VM.add_var env "int_sub" (create_binary_int_subr ( - )) ~export:true;
   VM.add_var env "int_mul" (create_binary_int_subr ( * )) ~export:true;
   VM.add_var env "int_div" (create_binary_int_subr ( / )) ~export:true;
   VM.add_var env "int_mod" (create_binary_int_subr ( mod )) ~export:true;
-  VM.add_var env "int_plus" (create_unary_int_subr ( ~+ )) ~export:true;
-  VM.add_var env "int_minus" (create_unary_int_subr ( ~- )) ~export:true;
-  VM.add_var env "bool_not" subr_bool_not ~export:true;
+  VM.add_var env "float_from_string" subr_float_from_string ~export:true;
+  VM.add_var env "float_minus" (create_unary_float_subr ( ~-. )) ~export:true;
+  VM.add_var env "float_plus" (create_unary_float_subr ( ~+. )) ~export:true;
+  VM.add_var env "float_add" (create_binary_float_subr ( +. )) ~export:true;
+  VM.add_var env "float_sub" (create_binary_float_subr ( -. )) ~export:true;
+  VM.add_var env "float_mul" (create_binary_float_subr ( *. )) ~export:true;
+  VM.add_var env "float_div" (create_binary_float_subr ( /. )) ~export:true;
+  VM.add_var env "float_pow" (create_binary_float_subr ( ** )) ~export:true;
+  VM.add_var env "float_sqrt" (create_unary_float_subr sqrt) ~export:true;
+  VM.add_var env "float_exp" (create_unary_float_subr exp) ~export:true;
+  VM.add_var env "float_log" (create_unary_float_subr log) ~export:true;
+  VM.add_var env "float_log10" (create_unary_float_subr log10) ~export:true;
+  VM.add_var env "float_cos" (create_unary_float_subr cos) ~export:true;
+  VM.add_var env "float_sin" (create_unary_float_subr sin) ~export:true;
+  VM.add_var env "float_tan" (create_unary_float_subr tan) ~export:true;
+  VM.add_var env "float_acos" (create_unary_float_subr acos) ~export:true;
+  VM.add_var env "float_asin" (create_unary_float_subr asin) ~export:true;
+  VM.add_var env "float_atan" (create_unary_float_subr atan) ~export:true;
+  VM.add_var env "float_atan2" (create_binary_float_subr atan2) ~export:true;
   VM.add_var env "char_code" subr_char_code ~export:true;
   VM.add_var env "char_to_string" subr_char_to_string ~export:true;
   VM.add_var env "string_get" subr_string_get ~export:true;
   VM.add_var env "string_length" subr_string_length ~export:true;
   VM.add_var env "string_contain?" subr_string_contain_p ~export:true;
   VM.add_var env "args_get" subr_args_get ~export:true;
+  VM.add_var env "class_of" subr_class_of ~export:true;
   VM.add_var env "buffer_create" subr_buffer_create ~export:true;
   VM.add_var env "buffer_add_string" subr_buffer_add_string ~export:true;
   VM.add_var env "buffer_contents" subr_buffer_contents ~export:true;
@@ -232,13 +251,4 @@ let initialize loader =
   VM.add_var env "hash_add" subr_hash_add ~export:true;
   VM.add_var env "hash_remove" subr_hash_remove ~export:true;
   VM.add_var env "hash_keys" subr_hash_keys ~export:true;
-  VM.add_var env "float_from_string" subr_float_from_string ~export:true;
-  VM.add_var env "float_add" (create_binary_float_subr ( +. )) ~export:true;
-  VM.add_var env "float_sub" (create_binary_float_subr ( -. )) ~export:true;
-  VM.add_var env "float_mul" (create_binary_float_subr ( *. )) ~export:true;
-  VM.add_var env "float_div" (create_binary_float_subr ( /. )) ~export:true;
-  VM.add_var env "float_pow" (create_binary_float_subr ( ** )) ~export:true;
-  VM.add_var env "float_plus" (create_unary_float_subr ( ~+. )) ~export:true;
-  VM.add_var env "float_minus" (create_unary_float_subr ( ~-. )) ~export:true;
-
   VM.add_var (Loader.get_env loader) "Builtin" (VM.Module (List.hd env));

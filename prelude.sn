@@ -17,7 +17,23 @@ end
 module Float:
   class C
   let from_string = Builtin::float_from_string
-  export C, from_string
+  let zero = from_string("0.0")
+  let one = from_string("1.0")
+  let two = from_string("2.0")
+  let three = from_string("3.0")
+  let sqrt = Builtin::float_sqrt
+  let exp = Builtin::float_exp
+  let log = Builtin::float_log
+  let log10 = Builtin::float_log10
+  let cos = Builtin::float_cos
+  let sin = Builtin::float_sin
+  let tan = Builtin::float_tan
+  let acos = Builtin::float_acos
+  let asin = Builtin::float_asin
+  let atan = Builtin::float_atan
+  let atan2 = Builtin::float_atan2
+  export C, from_string, zero, one, two, three
+  export sqrt, exp, log, log10, cos, sin, tan, acos, asin, atan, atan2
 end
 
 module Char:
@@ -538,8 +554,7 @@ module Pervasives:
   export id, None, Some, ref, reset, shift, begin, if, while, write_line, read_line, p
   export Bool::C#(!)
   export Int::C#(+), Int::C#(-), Int::C#(*), Int::C#(/), Int::C#(%), Int::C#(~+), Int::C#(~-)
-  export Float::C#(+), Float::C#(-), Float::C#(*), Float::C#(/), Float::C#(**)
-  export Float::C#(~+), Float::C#(~-)
+  export Float::C#(+), Float::C#(-), Float::C#(*), Float::C#(/), Float::C#(**), Float::C#(~+), Float::C#(~-)
   export Char::C#to_string
   export String::C#to_string, String::C#([])
   export Ref::C#value, Ref::C#(value=)
