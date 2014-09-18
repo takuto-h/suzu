@@ -190,7 +190,7 @@ let rec lex_ident lexer buf =
 let lex_visible_token lexer pos c =
   Source.junk lexer.source;
   begin match c with
-    | ';' | ',' | '^' | '.' | '#' ->
+    | ';' | ',' | '^' | '.' ->
       Token.Reserved (sprintf "%c" c)
     | '(' | '{' | '[' ->
       Stack.push (sprintf "%c" c) lexer.parens;
@@ -363,6 +363,16 @@ let rec next lexer =
           let buf = Buffer.create initial_token_buffer_size in
           Buffer.add_char buf '/';
           (Some (Token.MulOp (lex_op lexer buf)), pos);
+      end
+    | Some '#' ->
+      Source.junk lexer.source;
+      begin match Source.peek lexer.source with
+        | Some '!' ->
+          Source.junk lexer.source;
+          skip_single_line_comment lexer;
+          next lexer;
+        | Some _ | None ->
+          (Some (Token.Reserved "#"), pos);
       end
     | Some c ->
       (Some (lex_token lexer pos c), pos)
