@@ -15,7 +15,7 @@ TOP_FILES[] = $(addsuffix .cmo, $(SUZU_FILES))
 SN2ML = sn2ml
 SN2ML_FILES[] = snPervasives sn2ml
 
-OCAMLFLAGS = -g
+OCAMLOPTFLAGS = -p
 
 .DEFAULT: $(PROGRAM)
 
@@ -23,6 +23,9 @@ OCamlProgram($(PROGRAM), $(PROGRAM_FILES))
 OCamlProgram($(SN2ML), $(SN2ML_FILES))
 
 %.ml: %.sn $(SN2ML)
+    ./$(SN2ML) $(absname $<)
+
+%.mli: %.sn $(SN2ML)
     ./$(SN2ML) $(absname $<)
 
 .PHONY: run
