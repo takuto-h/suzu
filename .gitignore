@@ -4,8 +4,12 @@
 *.cmi
 *.cmo
 *.run
+*.cmx
+*.o
+*.opt
 *.annot
 *.dat
+*.dtps
 suzu
 suzutop
 sn2ml
