@@ -3,7 +3,7 @@
  *
  *  $ ./suzu mandelbrot.sn > mandelbrot.dat
  *  $ gnuplot
- *  gnuplot> plot("mandelbrot.dat")
+ *  gnuplot> plot "mandelbrot.dat"
  *
  */
 
@@ -79,7 +79,7 @@ trait Mandelbrot(Complex):
   let n = 100
   let f1 = F::from_int(d)
   let f2 = F::from_string("1.5")
-  let f3 = F::from_string("1")
+  let f3 = F::one
   def f():
     def converge(n, c, z):
       match():
@@ -88,7 +88,7 @@ trait Mandelbrot(Complex):
       case()when(C::abs(z) >= F::two):
         false
       case():
-        converge(n - 1, c, c + z * z)
+        converge(n - 1, c, z * z + c)
       end
     end
     for(0)to(2 * d)do^(x):
