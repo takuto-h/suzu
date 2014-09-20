@@ -12,58 +12,13 @@ module MethodSet = Set.Make(Method)
 module MethodMap = Map.Make(Method)
 
 type t = {
-  mutable insns : insn list;
+  mutable insns : Insn.t list;
   mutable stack : value list;
   mutable env : env;
   mutable pos : Pos.t;
   mutable controls  : control list;
   mutable curr_mod_path : string list;
 }
-
-and insn =
-  | At of Pos.t
-  | Push of Literal.t
-  | Pop
-  | Dup
-  | Split
-  | GetLabeled of string * (insn list) option
-  | RemoveTag of string
-  | AssertEqual of Literal.t
-  | Test of Pattern.t
-  | Check of Pattern.t
-  | Branch of insn list * insn list
-  | Call
-  | Send of Selector.t * (string, value) Hashtbl.t
-  | Return
-  | ReturnModule
-  | Fail
-  | Begin
-  | End
-  | BeginModule of string
-  | EndModule of string
-  | FindVar of string
-  | FindMethod of Selector.t
-  | AccessVar of string
-  | AccessMethod of Selector.t
-  | AddVar of string
-  | AddMethod of Selector.t
-  | ExportVar of string
-  | ExportMethod of Selector.t
-  | UnexportVar of string
-  | UnexportMethod of Selector.t
-  | Open
-  | Include
-  | MakeArgs of int * bool * string list
-  | MakeClosure of insn list
-  | MakeClass of string
-  | MakeRecordCtor of string * string list
-  | MakeGetter of string * string
-  | MakeSetter of string * string
-  | MakeVariantCtor of string * string * Pattern.params
-  | MakeExceptionCtor of string * Pattern.params
-  | TryCatch of Pattern.t * insn list
-  | TryFinally
-  | Throw
 
 and value =
   | Bool of bool
@@ -76,7 +31,7 @@ and value =
   | Args of args
   | Variant of string * string * args
   | Record of string * (string, value) Hashtbl.t
-  | Closure of env * insn list
+  | Closure of env * Insn.t list
   | Subr of int * bool * string list * (t -> args -> unit)
   | Cont of control list
   | Buffer of Buffer.t
@@ -97,8 +52,8 @@ and frame = {
 }
 
 and control =
-  | Dump of insn list * value list * env * Pos.t
-  | Catch of Pattern.t * insn list * env * Pos.t
+  | Dump of Insn.t list * value list * env * Pos.t
+  | Catch of Pattern.t * Insn.t list * env * Pos.t
   | Finally of value
   | Reset
 
@@ -170,99 +125,7 @@ let get_class value =
       "Float::C"
   end
 
-let rec show_insn insn =
-  begin match insn with
-    | At pos ->
-      sprintf "(At %s)" (Pos.show pos)
-    | Push lit ->
-      sprintf "(Push %s)" (Literal.show lit)
-    | Pop ->
-      "Pop"
-    | Dup ->
-      "Dup"
-    | Split ->
-      "Split"
-    | GetLabeled (label, None) ->
-      sprintf "(GetLabeled %s)" label
-    | GetLabeled (label, Some insns) ->
-      sprintf "(GetLabeled %s (%s))" label (SnString.concat_map " " show_insn insns)
-    | RemoveTag tag ->
-      sprintf "(RemoveTag %s)" tag
-    | AssertEqual lit ->
-      sprintf "(AssertEqual %s)" (Literal.show lit)
-    | Test pat ->
-      sprintf "(Test %s)" (Pattern.show pat)
-    | Check pat ->
-      sprintf "(Check %s)" (Pattern.show pat)
-    | Branch (then_insns, else_insns) ->
-      sprintf "(Branch (%s) (%s))" (SnString.concat_map " " show_insn then_insns) (SnString.concat_map " " show_insn else_insns)
-    | Call ->
-      "Call"
-    | Send (sel, cache) ->
-      sprintf "(Send %s {%s})" (Selector.show sel) (show_fields cache)
-    | Return ->
-      "Return"
-    | ReturnModule ->
-      "ReturnModule"
-    | Fail ->
-      "Fail"
-    | Begin ->
-      "Begin"
-    | End ->
-      "End"
-    | BeginModule name ->
-      sprintf "(BeginModule %s)" name
-    | EndModule name ->
-      sprintf "(EndModule %s)" name
-    | FindVar x ->
-      sprintf "(FindVar %s)" x
-    | FindMethod sel ->
-      sprintf "(FindMethod %s)" (Selector.show sel)
-    | AccessVar x ->
-      sprintf "(AccessVar %s)" x
-    | AccessMethod sel ->
-      sprintf "(AccessMethod %s)" (Selector.show sel)
-    | AddVar x ->
-      sprintf "(AddVar %s)" x
-    | AddMethod sel ->
-      sprintf "(AddMethod %s)" (Selector.show sel)
-    | ExportVar x ->
-      sprintf "(ExportVar %s)" x
-    | ExportMethod sel ->
-      sprintf "(ExportMethod %s)" (Selector.show sel)
-    | UnexportVar x ->
-      sprintf "(UnexportVar %s)" x
-    | UnexportMethod sel ->
-      sprintf "(UnexportMethod %s)" (Selector.show sel)
-    | Open ->
-      "Open"
-    | Include ->
-      "Include"
-    | MakeArgs (count, has_rest, labels) ->
-      sprintf "(MakeArgs %d %B (%s)))" count has_rest (SnString.concat " " labels)
-    | MakeClosure insns ->
-      sprintf "(MakeClosure (%s)))" (SnString.concat_map " " show_insn insns)
-    | MakeClass klass ->
-      sprintf "(MakeClass %s)" klass
-    | MakeRecordCtor (klass, fields) ->
-      sprintf "(MakeRecordCtor %s (%s))" klass (SnString.concat " " fields)
-    | MakeGetter (klass, field) ->
-      sprintf "(MakeGetter %s %s)" klass field
-    | MakeSetter (klass, field) ->
-      sprintf "(MakeSetter %s %s)" klass field
-    | MakeVariantCtor (klass, ctor, params) ->
-      sprintf "(MakeVariantCtor %s %s %s)" klass ctor (Pattern.show_params params)
-    | MakeExceptionCtor (ctor, params) ->
-      sprintf "(MakeExceptionCtor %s %s)" ctor (Pattern.show_params params)
-    | TryCatch (pat, insns) ->
-      sprintf "(TryCatch %s (%s))" (Pattern.show pat) (SnString.concat_map " " show_insn insns)
-    | TryFinally ->
-      "TryFinally"
-    | Throw ->
-      "Throw"
-  end
-
-and show_value value =
+let rec show_value value =
   begin match value with
     | Int i ->
       sprintf "%d" i
@@ -729,7 +592,7 @@ let call vm func args =
       let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
       let args = args_of_value args in
       check_args_for_subr 1 false [] args;
-      vm.insns <- [Return];
+      vm.insns <- [Insn.Return];
       vm.stack <- [get_arg args 0];
       vm.controls <- controls @ (dump::vm.controls);
     | _ ->
@@ -751,7 +614,7 @@ let rec return vm value =
       vm.controls <- controls;
       return vm value;
     | Finally func::controls ->
-      vm.insns <- [Pop; Return];
+      vm.insns <- [Insn.Pop; Insn.Return];
       vm.stack <- [value];
       vm.controls <- controls;
       call vm func (Args (make_args [] []));
@@ -786,28 +649,28 @@ let throw vm value =
   in
   let controls_and_trace = loop vm.controls in
   trace := snd controls_and_trace;
-  vm.insns <- [Return];
+  vm.insns <- [Insn.Return];
   vm.stack <- [value];
   vm.controls <- fst controls_and_trace
 
 let execute vm insn =
   begin match insn with
-    | At pos ->
+    | Insn.At pos ->
       vm.pos <- pos
-    | Push lit ->
+    | Insn.Push lit ->
       push_value vm (value_of_literal lit)
-    | Pop ->
+    | Insn.Pop ->
       ignore (pop_value vm)
-    | Dup ->
+    | Insn.Dup ->
       let top = peek_value vm in
       push_value vm top
-    | Split ->
+    | Insn.Split ->
       let args = args_of_value (pop_value vm) in
       let arg = List.hd args.normal_args in
       let args = Args {args with normal_args = List.tl args.normal_args} in
       push_value vm args;
       push_value vm arg
-    | GetLabeled (label, default) ->
+    | Insn.GetLabeled (label, default) ->
       let args = args_of_value (peek_value vm) in
       begin try
           push_value vm (get_labeled_arg args label)
@@ -820,7 +683,7 @@ let execute vm insn =
               raise (lack_of_labeled_argument label)
           end
       end
-    | RemoveTag tag ->
+    | Insn.RemoveTag tag ->
       let value = pop_value vm in
       begin match value with
         | Variant (_, tag2, args) when tag2 = tag ->
@@ -828,15 +691,15 @@ let execute vm insn =
         | _ ->
           raise (required tag value)
       end
-    | AssertEqual lit ->
+    | Insn.AssertEqual lit ->
       let value = value_of_literal lit in
       let top = pop_value vm in
       if top <> value then
         raise (required (Literal.show lit) top)
-    | Test pat ->
+    | Insn.Test pat ->
       let value = peek_value vm in
       push_value vm (Bool (test_value pat value))
-    | Check pat ->
+    | Insn.Check pat ->
       let value = peek_value vm in
       begin try
           check_value pat value
@@ -844,91 +707,84 @@ let execute vm insn =
         | Match_failure exn ->
           raise exn
       end
-    | Branch (then_insns, else_insns) ->
+    | Insn.Branch (then_insns, else_insns) ->
       let cond = bool_of_value (pop_value vm) in
       if cond then
         vm.insns <- then_insns @ vm.insns
       else
         vm.insns <- else_insns @ vm.insns
-    | Call ->
+    | Insn.Call ->
       let args = pop_value vm in
       let func = pop_value vm in
       call vm func args
-    | Send (sel, cache) ->
+    | Insn.Send sel ->
       let args = args_of_value (pop_value vm) in
       let recv = pop_value vm in
       let args = Args {args with normal_args = recv::args.normal_args} in
       let klass = get_class recv in
-      begin try
-          let func = Hashtbl.find cache klass in
-          call vm func args
-        with
-        | Not_found ->
-          let func = find_method vm.env klass sel in
-          Hashtbl.add cache klass func;
-          call vm func args
-      end
-    | Return ->
+      let func = find_method vm.env klass sel in
+      call vm func args
+    | Insn.Return ->
       let value = pop_value vm in
       return vm value
-    | ReturnModule ->
+    | Insn.ReturnModule ->
       let value = Module (List.hd vm.env) in
       return vm value
-    | Fail ->
+    | Insn.Fail ->
       let value = pop_value vm in
       raise (InternalError (sprintf "%s didn't match any cases\n" (show_value value)))
-    | Begin ->
+    | Insn.Begin ->
       vm.env <- create_frame ()::vm.env
-    | End ->
+    | Insn.End ->
       vm.env <- List.tl vm.env
-    | BeginModule name ->
+    | Insn.BeginModule name ->
       vm.env <- create_frame ()::vm.env;
       vm.curr_mod_path <- name::vm.curr_mod_path
-    | EndModule name ->
+    | Insn.EndModule name ->
       let modl = List.hd vm.env in
       vm.env <- List.tl vm.env;
       vm.curr_mod_path <- List.tl vm.curr_mod_path;
       add_var vm.env name (Module modl);
-    | FindVar x ->
+    | Insn.FindVar x ->
       push_value vm (find_var vm.env x)
-    | FindMethod sel ->
+    | Insn.FindMethod sel ->
       let klass = class_of_value (pop_value vm) in
       push_value vm (find_method vm.env klass sel)
-    | AccessVar x ->
+    | Insn.AccessVar x ->
       let modl = module_of_value (pop_value vm) in
       push_value vm (access_var modl x)
-    | AccessMethod sel ->
+    | Insn.AccessMethod sel ->
       let klass = class_of_value (pop_value vm) in
       let modl = module_of_value (pop_value vm) in
       push_value vm (access_method modl klass sel)
-    | AddVar x ->
+    | Insn.AddVar x ->
       let value = pop_value vm in
       add_var vm.env x value;
-    | AddMethod sel ->
+    | Insn.AddMethod sel ->
       let klass = class_of_value (pop_value vm) in
       let value = pop_value vm in
       add_method vm.env klass sel value
-    | ExportVar x ->
+    | Insn.ExportVar x ->
       export_var vm.env x
-    | ExportMethod sel ->
+    | Insn.ExportMethod sel ->
       let klass = class_of_value (pop_value vm) in
       export_method vm.env klass sel
-    | UnexportVar x ->
+    | Insn.UnexportVar x ->
       let modl = module_of_value (pop_value vm) in
       let modl = unexport_var modl x in
       push_value vm (Module modl)
-    | UnexportMethod sel ->
+    | Insn.UnexportMethod sel ->
       let klass = class_of_value (pop_value vm) in
       let modl = module_of_value (pop_value vm) in
       let modl = unexport_method modl klass sel in
       push_value vm (Module modl)
-    | Open ->
+    | Insn.Open ->
       let modl = module_of_value (pop_value vm) in
       open_module vm modl
-    | Include ->
+    | Insn.Include ->
       let modl = module_of_value (pop_value vm) in
       include_module vm modl
-    | MakeArgs (count, has_rest, labels) ->
+    | Insn.MakeArgs (count, has_rest, labels) ->
       let labeled_args = List.fold_right begin fun label labeled_args ->
           let value = pop_value vm in
           (label, value)::labeled_args
@@ -955,44 +811,44 @@ let execute vm insn =
       done;
       let normal_args = !normal_args in
       push_value vm (Args (make_args normal_args labeled_args))
-    | MakeClosure insns ->
+    | Insn.MakeClosure insns ->
       push_value vm (Closure (vm.env, insns))
-    | MakeClass klass ->
+    | Insn.MakeClass klass ->
       let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
       push_value vm (Class klass)
-    | MakeRecordCtor (klass, fields) ->
+    | Insn.MakeRecordCtor (klass, fields) ->
       let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
       push_value vm (make_record_ctor klass fields)
-    | MakeGetter (klass, field) ->
+    | Insn.MakeGetter (klass, field) ->
       let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
       push_value vm (make_getter klass field)
-    | MakeSetter (klass, field) ->
+    | Insn.MakeSetter (klass, field) ->
       let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
       push_value vm (make_setter klass field)
-    | MakeVariantCtor (klass, ctor, params) ->
+    | Insn.MakeVariantCtor (klass, ctor, params) ->
       let klass = SnString.concat "::" (List.rev (klass::vm.curr_mod_path)) in
       push_value vm (make_variant_ctor klass ctor params)
-    | MakeExceptionCtor (ctor, params) ->
+    | Insn.MakeExceptionCtor (ctor, params) ->
       let klass = "Exn::C" in
       push_value vm (make_variant_ctor klass ctor params)
-    | TryCatch (pat, insns) ->
+    | Insn.TryCatch (pat, insns) ->
       let env = vm.env in
       let pos = vm.pos in
       let body = pop_value vm in
       let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
-      vm.insns <- [Return];
+      vm.insns <- [Insn.Return];
       vm.stack <- [];
       vm.controls <- Catch (pat, insns, env, pos)::dump::vm.controls;
       call vm body (Args (make_args [] []));
-    | TryFinally ->
+    | Insn.TryFinally ->
       let finally = Finally (pop_value vm) in
       let body = pop_value vm in
       let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
-      vm.insns <- [Return];
+      vm.insns <- [Insn.Return];
       vm.stack <- [];
       vm.controls <- finally::dump::vm.controls;
       call vm body (Args (make_args [] []));
-    | Throw ->
+    | Insn.Throw ->
       let value = pop_value vm in
       throw vm value
   end
@@ -1001,7 +857,7 @@ let subr_reset =
   create_subr 1 begin fun vm args ->
     let func = get_arg args 0 in
     let dump = Dump (vm.insns, vm.stack, vm.env, vm.pos) in
-    vm.insns <- [Return];
+    vm.insns <- [Insn.Return];
     vm.stack <- [];
     vm.controls <- Reset::dump::vm.controls;
     call vm func (Args (make_args [] []));
@@ -1022,7 +878,7 @@ let subr_shift =
     in
     let (left, right) = loop [] vm.controls in
     let left = Dump (vm.insns, vm.stack, vm.env, vm.pos)::left in
-    vm.insns <- [Return];
+    vm.insns <- [Insn.Return];
     vm.stack <- [];
     vm.controls <- right;
     call vm func (Args (make_args [Cont left] []));
@@ -1046,7 +902,7 @@ let on_error vm message =
       end
     end vm.controls [Finally subr_report_error]
   in
-  vm.insns <- [Return];
+  vm.insns <- [Insn.Return];
   vm.stack <- [unit];
   vm.controls <- controls
 
@@ -1057,7 +913,7 @@ let rec run vm =
     | insn::insns ->
       vm.insns <- insns;
       (*printf "%s\n" (SnString.concat_map " " show_value vm.stack);*)
-      (*printf "%s\n" (show_insn insn);*)
+      (*printf "%s\n" (Insn.show insn);*)
       begin try
           execute vm insn;
         with
