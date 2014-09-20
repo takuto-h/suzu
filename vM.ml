@@ -2,11 +2,14 @@
 open Printf
 
 module VarSet = Set.Make(String)
-module MethodSet = Set.Make(
-  struct
-    type t = string * Selector.t
-    let compare = Pervasives.compare
-  end)
+module VarMap = Map.Make(String)
+
+module Method = struct
+  type t = string * Selector.t
+  let compare = Pervasives.compare
+end
+module MethodSet = Set.Make(Method)
+module MethodMap = Map.Make(Method)
 
 type t = {
   mutable insns : Insn.t list;
@@ -42,8 +45,8 @@ and args = {
 and env = frame list
 
 and frame = {
-  vars : (string, value) Hashtbl.t;
-  methods : (string * Selector.t, value) Hashtbl.t;
+  mutable vars : value VarMap.t;
+  mutable methods : value MethodMap.t;
   mutable exported_vars : VarSet.t;
   mutable exported_methods : MethodSet.t;
 }
@@ -60,7 +63,6 @@ exception InternalError of string
 exception Match_failure of exn
 exception Not_exported
 
-let initial_binding_table_size = 4
 let initial_field_table_size = 4
 
 let create insns env = {
@@ -83,8 +85,8 @@ let create_subr req_count ?(allows_rest=false) ?(req_labels=[]) proc =
   Subr (req_count, allows_rest, req_labels, proc)
 
 let create_frame () = {
-  vars = Hashtbl.create initial_binding_table_size;
-  methods = Hashtbl.create initial_binding_table_size;
+  vars = VarMap.empty;
+  methods = MethodMap.empty;
   exported_vars = VarSet.empty;
   exported_methods = MethodSet.empty;
 }
@@ -326,7 +328,7 @@ let rec find_binding proc env =
 
 let find_var env x =
   begin try
-      find_binding (fun {vars} -> Hashtbl.find vars x) env
+      find_binding (fun {vars} -> VarMap.find x vars) env
     with
     | Not_found ->
       raise (variable_not_found x)
@@ -334,21 +336,21 @@ let find_var env x =
 
 let find_method env klass sel =
   begin try
-      find_binding (fun {methods} -> Hashtbl.find methods (klass, sel)) env
+      find_binding (fun {methods} -> MethodMap.find (klass, sel) methods) env
     with
     | Not_found ->
       raise (method_not_found klass sel)
   end
 
 let access_var {vars;exported_vars} x =
-  let value = Hashtbl.find vars x in
+  let value = VarMap.find x vars in
   if VarSet.mem x exported_vars then
     value
   else
     raise (variable_not_exported x)
 
 let access_method {methods;exported_methods} klass sel =
-  let value = Hashtbl.find methods (klass, sel) in
+  let value = MethodMap.find (klass, sel) methods in
   if MethodSet.mem (klass, sel) exported_methods then
     value
   else
@@ -359,7 +361,7 @@ let with_current_frame proc env =
 
 let export_var env x =
   with_current_frame begin fun frame ->
-    if Hashtbl.mem frame.vars x then
+    if VarMap.mem x frame.vars then
       frame.exported_vars <- VarSet.add x frame.exported_vars
     else
       raise (variable_not_found x)
@@ -367,7 +369,7 @@ let export_var env x =
 
 let export_method env klass sel =
   with_current_frame begin fun frame ->
-    if Hashtbl.mem frame.methods (klass, sel) then
+    if MethodMap.mem (klass, sel) frame.methods then
       frame.exported_methods <- MethodSet.add (klass, sel) frame.exported_methods
     else
       raise (method_not_found klass sel)
@@ -375,20 +377,20 @@ let export_method env klass sel =
 
 let add_var ?(export=false) env x value =
   with_current_frame begin fun frame ->
-    if Hashtbl.mem frame.vars x then
+    if VarMap.mem x frame.vars then
       raise (variable_already_defined x)
     else
-      Hashtbl.add frame.vars x value
+      frame.vars <- VarMap.add x value frame.vars
   end env;
   if export then
     export_var env x
 
 let add_method ?(export=false) env klass sel value =
   with_current_frame begin fun frame ->
-    if Hashtbl.mem frame.methods (klass, sel) then
+    if MethodMap.mem (klass, sel) frame.methods then
       raise (method_already_defined klass sel)
     else
-      Hashtbl.add frame.methods (klass, sel) value
+      frame.methods <- MethodMap.add (klass, sel) value frame.methods
   end env;
   if export then
     export_method env klass sel
@@ -555,8 +557,8 @@ let make_variant_ctor klass ctor params =
   end
 
 let copy_frame {vars;methods;exported_vars;exported_methods} = {
-  vars = Hashtbl.copy vars;
-  methods = Hashtbl.copy methods;
+  vars = vars;
+  methods = methods;
   exported_vars = exported_vars;
   exported_methods = exported_methods;
 }
