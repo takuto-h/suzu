@@ -5,12 +5,7 @@ module VarSet = Set.Make(String)
 module MethodSet = Set.Make(
   struct
     type t = string * Selector.t
-    let compare (klass1, sel1) (klass2, sel2) =
-      let comp = String.compare klass1 klass2 in
-      if comp = 0 then
-        String.compare (Selector.string_of sel1) (Selector.string_of sel2)
-      else
-        comp
+    let compare = Pervasives.compare
   end)
 
 type t = {
@@ -380,14 +375,20 @@ let export_method env klass sel =
 
 let add_var ?(export=false) env x value =
   with_current_frame begin fun frame ->
-    Hashtbl.add frame.vars x value
+    if Hashtbl.mem frame.vars x then
+      raise (variable_already_defined x)
+    else
+      Hashtbl.add frame.vars x value
   end env;
   if export then
     export_var env x
 
 let add_method ?(export=false) env klass sel value =
   with_current_frame begin fun frame ->
-    Hashtbl.add frame.methods (klass, sel) value
+    if Hashtbl.mem frame.methods (klass, sel) then
+      raise (method_already_defined klass sel)
+    else
+      Hashtbl.add frame.methods (klass, sel) value
   end env;
   if export then
     export_method env klass sel

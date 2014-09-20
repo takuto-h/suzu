@@ -277,7 +277,8 @@ module List:
     def Cons(x, xs)
   end
 
-  let Nil = Nil()
+  let nil = Nil()
+  let cons = Cons
   
   def fold_left(init, lst, proc):
     match(lst):
@@ -338,7 +339,7 @@ module List:
     end
   end
 
-  export C, Nil, Cons, fold_left, fold_right, append, rev, find, flatten, map, iter
+  export C, nil, cons, fold_left, fold_right, append, rev, find, flatten, map, iter
 end
 
 module Hash:

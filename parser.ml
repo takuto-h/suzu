@@ -697,9 +697,9 @@ and parse_get_expr parser pos rev_idents =
   end
 
 and parse_list parser pos =
-  let nil = Expr.at pos (Expr.Get (["List"], Expr.Var "Nil")) in
+  let nil = Expr.at pos (Expr.Get (["List"], Expr.Var "nil")) in
   let cons head tail =
-    let func = Expr.at pos (Expr.Get (["List"], Expr.Var "Cons")) in
+    let func = Expr.at pos (Expr.Get (["List"], Expr.Var "cons")) in
     Expr.at pos (Expr.Call (func, Expr.Args.n_ary [head;tail]))
   in    
   let rec loop () =
