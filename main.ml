@@ -10,6 +10,7 @@ let main () =
   Arg.parse_argv ~current:(ref 0) Sys.argv [] begin fun fname ->
     Loader.load_file loader fname
   end usage_msg;
-  Loader.repl loader
+  if Array.length Sys.argv = 1 then
+    Loader.repl loader
 
 let () = main ()
