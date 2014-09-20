@@ -1,2 +1,2 @@
 
-val compile : Expr.t -> Insn.t list
+val compile : Expr.t -> VM.insn list
