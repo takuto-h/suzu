@@ -515,11 +515,11 @@ let s = begin:
   nt_ref("S")
 end
 
-p(PEG::parse(s, ""))
-p(PEG::parse(s, "abc"))
-p(PEG::parse(s, "ab"))
-p(PEG::parse(s, "aaabbbccc"))
-p(PEG::parse(s, "aabbbccc"))
+p(PEG::parse(s, ""))           //=> Failure()
+p(PEG::parse(s, "abc"))        //=> Success(3, ())
+p(PEG::parse(s, "ab"))         //=> Failure()
+p(PEG::parse(s, "aaabbbccc"))  //=> Success(9, ())
+p(PEG::parse(s, "aabbbccc"))   //=> Failure()
 
 def digits_to_int(digits):
   List::fold_left(0, digits)^(n, digit):
