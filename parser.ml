@@ -154,9 +154,12 @@ let parse_block_like_elems parser parse_elem =
 
 let parse_literal parser =
   begin match parser.token with
-    | Token.Int n ->
+    | Token.Int i ->
       lookahead parser;
-      Literal.Int n
+      Literal.Int i
+    | Token.Float f ->
+      lookahead parser;
+      Literal.Float f
     | Token.Char c ->
       lookahead parser;
       Literal.Char c
@@ -646,7 +649,7 @@ and parse_extra_labeled_arg parser =
 and parse_atomic_expr parser =
   let pos = parser.pos in
   begin match parser.token with
-    | Token.Int _ | Token.Char _ | Token.String _  | Token.Reserved "true" | Token.Reserved "false" ->
+    | Token.Int _ | Token.Float _ | Token.Char _ | Token.String _  | Token.Reserved "true" | Token.Reserved "false" ->
       let lit = parse_literal parser in
       Expr.at pos (Expr.Const lit)
     | Token.Ident _ ->
@@ -874,7 +877,7 @@ and parse_or_pattern parser =
 and parse_atomic_pattern parser =
   let pos = parser.pos in
   begin match parser.token with
-    | Token.Int _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
+    | Token.Int _ | Token.Float _ | Token.String _ | Token.Char _ | Token.Reserved "true" | Token.Reserved "false" ->
       let lit = parse_literal parser in
       Expr.Pattern.at pos (Expr.PatConst lit)
     | Token.Ident "_" ->

@@ -4,6 +4,7 @@ open Printf
 type t = 
   | Unit
   | Int of int
+  | Float of float
   | Bool of bool
   | Char of char
   | String of string
@@ -14,6 +15,8 @@ let show lit =
       "()"
     | Int i ->
       sprintf "%d" i
+    | Float f ->
+      sprintf "%f" f
     | Bool b ->
       sprintf "%B" b
     | Char c ->

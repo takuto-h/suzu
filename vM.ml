@@ -93,10 +93,12 @@ let create_frame () = {
 
 let get_class value =
   begin match value with
-    | Int _ ->
-      "Int::C"
     | Bool _ ->
       "Bool::C"
+    | Int _ ->
+      "Int::C"
+    | Float _ ->
+      "Float::C"
     | Char _ ->
       "Char::C"
     | String _ ->
@@ -121,16 +123,16 @@ let get_class value =
       "Buffer::C"
     | Hash _ ->
       "Hash::C"
-    | Float _ ->
-      "Float::C"
   end
 
 let rec show_value value =
   begin match value with
-    | Int i ->
-      sprintf "%d" i
     | Bool b ->
       sprintf "%B" b
+    | Int i ->
+      sprintf "%d" i
+    | Float f ->
+      sprintf "%f" f
     | Char c ->
       sprintf "%C" c
     | String str ->
@@ -155,8 +157,6 @@ let rec show_value value =
       "<buffer>"
     | Hash table ->
       sprintf "%%{%s}" (show_table table)
-    | Float f ->
-      sprintf "%f" f
   end
 
 and show_args {normal_args;labeled_args} =
@@ -305,6 +305,8 @@ let value_of_literal lit =
       unit
     | Literal.Int i ->
       Int i
+    | Literal.Float f ->
+      Float f
     | Literal.Bool b ->
       Bool b
     | Literal.Char c ->

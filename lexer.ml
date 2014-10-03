@@ -102,6 +102,7 @@ let rec lex_num lexer buf =
       Source.junk lexer.source;
       begin match Source.peek lexer.source with
         | Some c when SnChar.is_digit c ->
+          Source.junk lexer.source;
           Buffer.add_char buf '.';
           Buffer.add_char buf c;
           lex_float lexer buf

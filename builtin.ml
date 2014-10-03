@@ -89,6 +89,9 @@ let subr_float_from_string =
     end
   end
 
+let subr_float_from_int =
+  create_unary_subr (fun arg0 -> VM.Float (float_of_int (VM.int_of_value arg0)))
+
 let subr_char_code =
   create_unary_subr (fun arg -> VM.Int (Char.code (VM.char_of_value arg)))
 
@@ -218,6 +221,7 @@ let initialize loader =
   VM.add_var env "int_div" (create_binary_int_subr ( / )) ~export:true;
   VM.add_var env "int_mod" (create_binary_int_subr ( mod )) ~export:true;
   VM.add_var env "float_from_string" subr_float_from_string ~export:true;
+  VM.add_var env "float_from_int" subr_float_from_int ~export:true;
   VM.add_var env "float_neg" (create_unary_float_subr ( ~-. )) ~export:true;
   VM.add_var env "float_pos" (create_unary_float_subr ( ~+. )) ~export:true;
   VM.add_var env "float_add" (create_binary_float_subr ( +. )) ~export:true;

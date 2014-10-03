@@ -78,14 +78,14 @@ trait Mandelbrot(Complex):
   let d = 100
   let n = 100
   let f1 = F::from_int(d)
-  let f2 = F::from_string("1.5")
-  let f3 = F::one
+  let f2 = 1.5
+  let f3 = 1.0
   def f():
     def converge(n, c, z):
       match():
       case()when(n <= 0):
         true
-      case()when(C::abs(z) >= F::two):
+      case()when(C::abs(z) >= 2.0):
         false
       case():
         converge(n - 1, c, z * z + c)
@@ -95,7 +95,7 @@ trait Mandelbrot(Complex):
       for(0)to(2 * d)do^(y):
         let cx = F::from_int(x) / f1 - f2
         let cy = F::from_int(y) / f1 - f3
-        let conv = converge(n, C::make(cx, cy), C::make(F::zero, F::zero))
+        let conv = converge(n, C::make(cx, cy), C::make(0.0, 0.0))
         if(conv):
           write_line("{0} {1}", cx, cy)
         end
