@@ -15,7 +15,7 @@ TOP_FILES[] = $(addsuffix .cmo, $(SUZU_FILES))
 SN2ML = sn2ml
 SN2ML_FILES[] = snPervasives sn2ml
 
-OCAMLOPTFLAGS = -p
+#OCAMLOPTFLAGS = -p
 
 .DEFAULT: $(PROGRAM)
 
