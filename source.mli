@@ -6,3 +6,4 @@ val of_string : string -> string -> t
 val pos : t -> Pos.t
 val peek : t -> char option
 val junk : t -> unit
+val unread : t -> char -> unit

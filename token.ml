@@ -6,6 +6,7 @@ type t =
   | Newline
   | Undent
   | Int of int
+  | Float of float
   | Char of char
   | String of string
   | Ident of string
@@ -36,6 +37,8 @@ let show token =
       "undent"
     | Int _ ->
       "integer"
+    | Float _ ->
+      "float"
     | Char _ ->
       "character"
     | String _ ->

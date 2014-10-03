@@ -86,13 +86,35 @@ let rec lex_op lexer buf =
       Buffer.contents buf
   end
 
-let rec lex_int lexer n =
+let rec lex_float lexer buf =
   begin match Source.peek lexer.source with
     | Some c when SnChar.is_digit c ->
       Source.junk lexer.source;
-      lex_int lexer (n * 10 + SnChar.int_of_digit c);
+      Buffer.add_char buf c;
+      lex_float lexer buf
     | Some _ | None ->
-      Token.Int n
+      Token.Float (float_of_string (Buffer.contents buf))
+  end
+
+let rec lex_num lexer buf =
+  begin match Source.peek lexer.source with
+    | Some '.' ->
+      Source.junk lexer.source;
+      begin match Source.peek lexer.source with
+        | Some c when SnChar.is_digit c ->
+          Buffer.add_char buf '.';
+          Buffer.add_char buf c;
+          lex_float lexer buf
+        | Some _ | None ->
+          Source.unread lexer.source '.';
+          Token.Int (int_of_string (Buffer.contents buf))
+      end
+    | Some c when SnChar.is_digit c ->
+      Source.junk lexer.source;
+      Buffer.add_char buf c;
+      lex_num lexer buf
+    | Some _ | None ->
+      Token.Int (int_of_string (Buffer.contents buf))
   end
 
 let lex_escape_sequence pos c =
@@ -281,7 +303,9 @@ let lex_visible_token lexer pos c =
     | '\'' ->
       lex_char lexer
     | _ when SnChar.is_digit c ->
-      lex_int lexer (SnChar.int_of_digit c)
+      let buf = Buffer.create initial_token_buffer_size in
+      Buffer.add_char buf c;
+      lex_num lexer buf
     | _ when is_ident_start c ->
       let buf = Buffer.create initial_token_buffer_size in
       Buffer.add_char buf c;

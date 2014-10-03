@@ -156,7 +156,7 @@ let rec show_value value =
     | Hash table ->
       sprintf "%%{%s}" (show_table table)
     | Float f ->
-      sprintf "%F" f
+      sprintf "%f" f
   end
 
 and show_args {normal_args;labeled_args} =

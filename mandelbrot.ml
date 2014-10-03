@@ -53,7 +53,7 @@ struct
         let cx = float x /. f1 -. f2 in
         let cy = float y /. f1 -. f3 in
         let conv = converge n (C.make (cx, cy)) (C.make (0.0, 0.0)) in
-        if conv then Printf.printf "%F %F\n" cx cy;
+        if conv then Printf.printf "%f %f\n" cx cy;
       done
     done
 end

@@ -4,6 +4,7 @@ type t =
   | Newline
   | Undent
   | Int of int
+  | Float of float
   | Char of char
   | String of string
   | Ident of string
