@@ -36,6 +36,10 @@ run: $(PROGRAM)
 test: $(PROGRAM)
     ./$(PROGRAM) test.sn
 
+.PHONY: watch
+watch: $(PROGRAM) watch.sn
+    ./$(PROGRAM) watch.sn
+
 $(TOP): $(TOP_FILES)
     $(OCAMLMKTOP) -o $(TOP) $(TOP_FILES)
 
