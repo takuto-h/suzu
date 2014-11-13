@@ -1,6 +1,6 @@
 # Suzu
 
-## Quick start
+## Hello, Suzu!
 ```
 $ git clone https://github.com/takuto-h/suzu.git
 $ cd suzu
