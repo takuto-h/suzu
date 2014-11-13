@@ -1,4 +1,10 @@
 
+def assert(cond):
+  if(!cond):
+    throw "Assertion failed."
+  end
+end
+
 write_line("hello, world.")
 
 
