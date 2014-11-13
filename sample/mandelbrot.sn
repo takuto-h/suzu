@@ -1,7 +1,7 @@
 /*
  *  Usage:
  *
- *  $ ./suzu mandelbrot.sn > mandelbrot.dat
+ *  $ ../suzu mandelbrot.sn > mandelbrot.dat
  *  $ gnuplot
  *  gnuplot> plot "mandelbrot.dat"
  *

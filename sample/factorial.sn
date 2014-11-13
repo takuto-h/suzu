@@ -1,0 +1,10 @@
+
+def fac(n):
+  if(n == 0):
+    1
+  else:
+    n * fac(n - 1)
+  end
+end
+
+write_line("fac(10) = {0}", fac(10)) //=> fac(10) = 3628800
