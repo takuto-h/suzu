@@ -7,7 +7,6 @@ $ cd suzu
 $ omake
 $ ./suzu sample/hello.sn
 Hello, Suzu!
-$ 
 ```
 
 ## Documentation
