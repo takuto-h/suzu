@@ -1,0 +1,20 @@
+
+class Point = make_point:
+  x
+  y
+end
+
+let p1 = make_point(1, 2)
+let p2 = make_point(1, 2)
+let p3 = make_point(2, 2)
+
+begin:
+  def Point#(==)(self, other):
+    self.x == other.x && self.y == other.y
+  end
+
+  p(p1 == p2) //=> true
+  p(p2 == p3) //=> false
+end
+
+//p(p1 == p2) // error: method not found: Point#(==)
