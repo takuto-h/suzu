@@ -1,0 +1,284 @@
+
+module PEG:
+  class Expr:
+    def MkExpr(proc)
+  end
+
+  class Result:
+    def Success(pos, value)
+    def Failure()
+  end
+
+  def parse(MkExpr(expr), str):
+    expr(str, 0, Hash::create(16))
+  end
+
+  trait New():
+    let nonterms = Hash::create(16)
+    
+    def def_nt(name, MkExpr(expr)):
+      nonterms[name] = expr
+    end
+
+    def char(c):
+      MkExpr^(str, pos, caches):
+        if(pos < String::length(str) && str[pos] == c):
+          Success(pos + 1, c)
+        else:
+          Failure()
+        end
+      end
+    end
+
+    def string(s):
+      let len = String::length(s)
+      MkExpr^(str, pos, caches):
+        if(pos + len <= String::length(str) && String::sub(str, pos, len) == s):
+          Success(pos + len, s)
+        else:
+          Failure()
+        end
+      end
+    end
+
+    def char_set(cs):
+      MkExpr^(str, pos, caches):
+        if(pos < String::length(str) && String::contain?(cs, str[pos])):
+          Success(pos + 1, str[pos])
+        else:
+          Failure()
+        end
+      end
+    end
+
+    def nt_ref(name):
+      MkExpr^(str, pos, caches):
+        match(Hash::get(caches, (name, pos))):
+        case(Some(result)):
+          result
+        case(None()):
+          let result = nonterms[name](str, pos, caches)
+          caches[(name, pos)] = result
+          result
+        end
+      end
+    end
+
+    let fail = MkExpr^(str, pos, caches):
+      Failure()
+    end
+
+    let no_op = MkExpr^(str, pos, caches):
+      Success(pos, ())
+    end
+
+    def seq(MkExpr(expr1), MkExpr(expr2)):
+      MkExpr^(str, pos, caches):
+        match(expr1(str, pos, caches)):
+        case(Success(pos, value)):
+          expr2(str, pos, caches)
+        case(Failure()):
+          Failure()
+        end
+      end
+    end
+
+    def alt(MkExpr(expr1), MkExpr(expr2)):
+      MkExpr^(str, pos, caches):
+        match(expr1(str, pos, caches)):
+        case(Success(pos, value)):
+          Success(pos, value)
+        case(Failure()):
+          expr2(str, pos, caches)
+        end
+      end
+    end
+
+    def zero_or_more(MkExpr(expr)):
+      MkExpr^(str, pos, caches):
+        def loop(rev_values, pos):
+          match(expr(str, pos, caches)):
+          case(Success(pos, value)):
+            loop([value, *rev_values], pos)
+          case(Failure()):
+            Success(pos, List::rev(rev_values))
+          end
+        end
+        loop([], pos)
+      end
+    end
+
+    def not(MkExpr(expr)):
+      MkExpr^(str, pos, caches):
+        match(expr(str, pos, caches)):
+        case(Success(pos, value)):
+          Failure()
+        case(Failure()):
+          Success(pos, ())
+        end
+      end
+    end
+
+    def return(value):
+      MkExpr^(str, pos, caches):
+        Success(pos, value)
+      end
+    end
+
+    def bind(MkExpr(expr), proc):
+      MkExpr^(str, pos, caches):
+        match(expr(str, pos, caches)):
+        case(Success(pos, value)):
+          let MkExpr(expr) = proc(value)
+          expr(str, pos, caches)
+        case(Failure()):
+          Failure()
+        end
+      end
+    end
+
+    def one_or_more(expr):
+      bind(expr)^(value):
+        bind(zero_or_more(expr))^(values):
+          return([value, *values])
+        end
+      end
+    end
+
+    def zero_or_one(expr):
+      alt(expr, no_op)
+    end
+
+    def and(expr):
+      not(not(expr))
+    end
+
+    let String::C#(<-) = def_nt
+    let Expr#(&+) = seq
+    let Expr#(|+) = alt
+
+    export def_nt, char, string, char_set, nt_ref, fail, no_op, seq, alt, zero_or_more, not
+    export return, bind, one_or_more, zero_or_one, and
+    export String::C#(<-), Expr#(&+), Expr#(|+)
+  end
+
+  export Success, Failure, parse, New
+end
+
+let s = begin:
+  open PEG::New()
+  
+  "S" <- and(nt_ref("A") &+ not(char('b')))
+      &+ one_or_more(char('a'))
+      &+ nt_ref("B")
+      &+ not(char('c'))
+
+  "A" <- char('a')
+      &+ zero_or_one(nt_ref("A"))
+      &+ char('b')
+
+  "B" <- char('b')
+      &+ zero_or_one(nt_ref("B"))
+      &+ char('c')
+
+  nt_ref("S")
+end
+
+p(PEG::parse(s, ""))          //=> Failure()
+p(PEG::parse(s, "abc"))       //=> Success(3, ())
+p(PEG::parse(s, "ab"))        //=> Failure()
+p(PEG::parse(s, "aaabbbccc")) //=> Success(9, ())
+p(PEG::parse(s, "aabbbccc"))  //=> Failure()
+
+def digits_to_int(digits):
+  List::fold_left(0, digits)^(n, digit):
+    n * 10 + Char::digit_to_int(digit)
+  end
+end
+
+let e1 = begin:
+  open PEG::New()
+  open Reflect(bind)
+
+  "E" <- reset:
+           let (v1, s1) = reflect(nt_ref("T"))
+           let (v2, s2) = reflect(char('+') &+ nt_ref("E"))
+           return((v1 + v2, String::format("({0} + {1})", s1, s2)))
+         end
+      |+ nt_ref("T")
+
+  "T" <- reset:
+           let (v1, s1) = reflect(nt_ref("P"))
+           let (v2, s2) = reflect(char('*') &+ nt_ref("T"))
+           return((v1 * v2, String::format("({0} * {1})", s1, s2)))
+         end
+      |+ nt_ref("P")
+
+  "P" <- reset:
+           let digits = reflect(one_or_more(char_set("0123456789")))
+           return((digits_to_int(digits), String::concat_map(digits, "", Char::C#to_string)))
+         end
+      |+ reset:
+           let (v, s)  = reflect(char('(') &+ nt_ref("E"))
+           char(')') &+ return((v, s))
+         end
+
+  nt_ref("E")
+end
+
+p(PEG::parse(e1, "123"))     //=> Success(3, (123, "123"))
+p(PEG::parse(e1, "1+2*3"))   //=> Success(5, (7, "(1 + (2 * 3))"))
+p(PEG::parse(e1, "(1+2)*3")) //=> Success(7, (9, "((1 + 2) * 3)"))
+p(PEG::parse(e1, "1+2+3"))   //=> Success(5, (6, "(1 + (2 + 3))"))
+p(PEG::parse(e1, "1*2*3"))   //=> Success(5, (6, "(1 * (2 * 3))"))
+
+let e2 = begin:
+  open PEG::New()
+  open Reflect(bind)
+
+  def chainl1(e, op):
+    def rest(x):
+      reset:
+        let f = reflect(op)
+        let y = reflect(e)
+        rest(f(x, y))
+      end
+        |+ return(x)
+    end
+    reset:
+      let x = reflect(e)
+      rest(x)
+    end
+  end
+
+  "E" <- begin:
+           let op = char('+') &+ return^((v1, s1), (v2, s2)):
+             (v1 + v2, String::format("({0} + {1})", s1, s2))
+           end
+           chainl1(nt_ref("T"), op)
+         end
+
+  "T" <- begin:
+           let op = char('*') &+ return^((v1, s1), (v2, s2)):
+             (v1 * v2, String::format("({0} * {1})", s1, s2))
+           end
+           chainl1(nt_ref("P"), op)
+         end
+
+  "P" <- reset:
+           let digits = reflect(one_or_more(char_set("0123456789")))
+           return((digits_to_int(digits), String::concat_map(digits, "", Char::C#to_string)))
+         end
+      |+ reset:
+           let (v, s)  = reflect(char('(') &+ nt_ref("E"))
+           char(')') &+ return((v, s))
+         end
+
+  nt_ref("E")
+end
+
+p(PEG::parse(e2, "123"))     //=> Success(3, (123, "123"))
+p(PEG::parse(e2, "1+2*3"))   //=> Success(5, (7, "(1 + (2 * 3))")) 
+p(PEG::parse(e2, "(1+2)*3")) //=> Success(7, (9, "((1 + 2) * 3)"))
+p(PEG::parse(e2, "1+2+3"))   //=> Success(5, (6, "((1 + 2) + 3)"))
+p(PEG::parse(e2, "1*2*3"))   //=> Success(5, (6, "((1 * 2) * 3)"))

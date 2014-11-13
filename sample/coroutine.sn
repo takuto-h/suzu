@@ -1,0 +1,46 @@
+
+module Coro:
+  class C = make:
+    mutable proc
+    mutable prev
+  end
+
+  let current = ref(())
+
+  def create(proc):
+    make(proc, ())
+  end
+
+  def resume(coro):
+    reset:
+      coro.prev = current.value
+      current.value = coro
+      (coro.proc)()
+    end
+  end
+
+  def yield(arg):
+    shift^(k):
+      current.value.proc = ^{ k(()) }
+      current.value = current.value.prev
+      arg
+    end
+  end
+
+  export create, resume, yield
+end
+
+let coro = Coro::create:
+  def loop(a, b):
+    Coro::yield(a)
+    loop(b, a + b)
+  end
+  loop(1, 1)
+end
+
+p(Coro::resume(coro)) //=> 1
+p(Coro::resume(coro)) //=> 1
+p(Coro::resume(coro)) //=> 2
+p(Coro::resume(coro)) //=> 3
+p(Coro::resume(coro)) //=> 5
+p(Coro::resume(coro)) //=> 8

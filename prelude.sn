@@ -421,6 +421,15 @@ trait DefaultToString(C):
   export C#to_string
 end
 
+trait Reflect(bind):
+  def reflect(m):
+    shift^(k):
+      bind(m, k)
+    end
+  end
+  export reflect
+end
+
 module Pervasives:
   include DefaultOrd(Bool::C)
   include DefaultOrd(Int::C)
@@ -491,7 +500,7 @@ module Pervasives:
   let read_line = Builtin::read_line
 
   def p(value):
-    Builtin::write_line("{0}", Builtin::show(value))
+    Builtin::write_line(Builtin::show(value))
   end
 
   let Bool::C#(!) = Builtin::bool_not
