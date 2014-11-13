@@ -5,8 +5,8 @@
 $ git clone https://github.com/takuto-h/suzu.git
 $ cd suzu
 $ omake
-$ ./suzu
->>> [Write your own code here.]
+$ ./suzu sample/hello.sn
+Hello, Suzu!
 ```
 
 ## Documentation
