@@ -6,12 +6,6 @@ def assert(cond):
 end
 
 
-let x = (1, 2, 3, :p 4)
-
-let (a, b, c, :p d, :q e=5) = x
-
-write_line("{0}{1}{2}{3}{4}", a, b, c, d, e)
-
 
 def my_if1(cond, then_thunk, :else else_thunk=^{}):
   if(cond):

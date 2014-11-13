@@ -1,0 +1,17 @@
+
+let x = (1, 2, 3, :p 4)
+
+let (a, b, c, :p d, :q e=5) = x
+write_line("{0}{1}{2}{3}{4}", a, b, c, d, e) //=> 12345
+
+let (f, *g, :p h) = x
+p(f) //=> 1
+p(g) //=> (2, 3, :p 4)
+p(h) //=> 4
+
+let y = (0, *x, :r 6)
+p(y) //=> (0, 1, 2, 3, :p 4, :r 6)
+
+let triple1 = (:first 10, :second 20, :third 30)
+let triple2 = (*triple1, :third 40)
+p(triple2) //=> (:first 10, :second 20, :third 40)
