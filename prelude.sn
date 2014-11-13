@@ -1,9 +1,4 @@
 
-module Unit:
-  class C
-  export C
-end
-
 module Bool:
   class C
   export C
@@ -427,7 +422,6 @@ trait DefaultToString(C):
 end
 
 module Pervasives:
-  include DefaultOrd(Unit::C)
   include DefaultOrd(Bool::C)
   include DefaultOrd(Int::C)
   include DefaultOrd(Float::C)
@@ -444,19 +438,9 @@ module Pervasives:
   include DefaultEq(List::C)
   include DefaultEq(Hash::C)
 
-  include DefaultToString(Unit::C)
   include DefaultToString(Bool::C)
   include DefaultToString(Int::C)
   include DefaultToString(Float::C)
-  include DefaultToString(Args::C)
-  include DefaultToString(Class::C)
-  include DefaultToString(Module::C)
-  include DefaultToString(Proc::C)
-  include DefaultToString(Exn::C)
-  include DefaultToString(Ref::C)
-  include DefaultToString(Option::C)
-  include DefaultToString(List::C)
-  include DefaultToString(Hash::C)
 
   exception Invalid_argument(str)
   exception Not_found()
@@ -469,6 +453,7 @@ module Pervasives:
   let None = Option::None
   let Some = Option::Some
   let ref = Ref::make
+  let show = Builtin::show
   let reset = Builtin::reset
   let shift = Builtin::shift
 
@@ -506,7 +491,7 @@ module Pervasives:
   let read_line = Builtin::read_line
 
   def p(value):
-    Builtin::write_line(Builtin::show(value))
+    Builtin::write_line("{0}", Builtin::show(value))
   end
 
   let Bool::C#(!) = Builtin::bool_not

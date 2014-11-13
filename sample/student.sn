@@ -1,0 +1,42 @@
+
+class UgradStudent = make_ugrad_student:
+  name
+  college
+  mutable grade
+end
+
+let taro = make_ugrad_student("Taro Tsukuba", "College of Information Science", 3)
+write_line("{0}", taro.name) //=> Taro Tsukuba
+write_line("{0}", taro.college) //=> College of Information Science
+write_line("{0}", taro.grade) //=> 3
+
+def UgradStudent#promote!(self):
+  if(self.grade < 4):
+    self.grade = self.grade + 1
+  end
+  self.grade
+end
+
+taro.promote!
+write_line("{0}", taro.grade) //=> 4
+
+trait Student(C, C#name, C#department):
+  def C#introduce_oneself(self):
+    write_line("My name is {0}. I'm a member of {1}.", self.name, self.department)
+  end
+  export C#introduce_oneself
+end
+
+class GradStudent = make_grad_student:
+  name
+  school
+  mutable grade
+end
+
+let hanako = make_grad_student("Hanako Ibaraki", "Graduate School of Systems and Information Engineering", 1)
+
+open Student(UgradStudent, UgradStudent#name, UgradStudent#college)
+open Student(GradStudent, GradStudent#name, GradStudent#school)
+
+taro.introduce_oneself //=> My name is Taro Tsukuba. I'm a member of College of Information Science.
+hanako.introduce_oneself //=> My name is Hanako Ibaraki. I'm a member of Graduate School of Systems and Information Engineering.

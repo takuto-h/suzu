@@ -1,0 +1,70 @@
+
+trait Account(C, C#balance, C#(balance=)):
+  def C#deposit!(self, x):
+    self.balance = self.balance + x
+  end
+
+  def C#withdraw!(self, x):
+    self.balance = self.balance - x
+    if(self.balance < 0):
+      self.balance = 0
+    end
+  end
+
+  export C#deposit!, C#withdraw!
+end
+
+class BankAccount = make_bank_account:
+  mutable balance
+end
+
+open Account(BankAccount, BankAccount#balance, BankAccount#(balance=))
+
+def create_bank_account():
+  make_bank_account(0)
+end
+
+let account = create_bank_account()
+
+account.balance = 200
+p(account.balance) //=> 200
+account.deposit!(50)
+p(account.balance) //=> 250
+account.withdraw!(100)
+p(account.balance) //=> 150
+account.withdraw!(200)
+p(account.balance) //=> 0
+
+class StockAccount = make_stock_account:
+  mutable num_shares
+  price_per_share
+end
+
+def StockAccount#balance(self):
+  self.num_shares * self.price_per_share
+end
+
+def StockAccount#(balance=)(self, x):
+  self.num_shares = x / self.price_per_share
+end
+
+open Account(StockAccount, StockAccount#balance, StockAccount#(balance=))
+
+def create_stock_account():
+  make_stock_account(10, 30)
+end
+
+let stock = create_stock_account()
+
+p(stock.num_shares) //=> 10
+p(stock.price_per_share) //=> 30
+p(stock.balance) //=> 300
+stock.balance = 150
+p(stock.num_shares) //=> 5
+
+stock.balance = 600
+p(stock.balance) //=> 600
+p(stock.num_shares) //=> 20
+stock.deposit!(60)
+p(stock.balance) //=> 660
+p(stock.num_shares) //=> 22

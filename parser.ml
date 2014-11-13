@@ -41,6 +41,14 @@ let lookahead parser =
       raise (Error (pos, message))
   end
 
+let indent parser =
+  begin try
+      Lexer.indent parser.lexer
+    with
+    | Lexer.Error (pos, message) ->
+      raise (Error (pos, message))
+  end
+
 let skip parser token =
   if parser.token = token then
     lookahead parser
@@ -142,7 +150,7 @@ let semi_or_rbrace token =
 let parse_block_like_elems parser parse_elem =
   begin match parser.token with
     | Token.Reserved ":" ->
-      Lexer.indent parser.lexer;
+      indent parser;
       lookahead parser;
       parse_elems parser semi_or_newline_or_undent parse_elem
     | Token.Reserved "{" ->
@@ -588,7 +596,7 @@ and parse_extra_rev_args parser rev_normal rev_labeled =
       (lambda::rev_normal, parse_extra_rev_labeled_args parser rev_labeled)
     | Token.Reserved ":" ->
       let pos_lambda = parser.pos in
-      Lexer.indent parser.lexer;
+      indent parser;
       lookahead parser;
       if parser.token = Token.Newline then
         begin
