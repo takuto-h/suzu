@@ -11,7 +11,7 @@ $
 ```
 
 ## Documentation
-In preparation
+https://github.com/takuto-h/suzu/wiki
 
 ## Contact
 - Twitter: [@takuto_h](https://twitter.com/takuto_h)
