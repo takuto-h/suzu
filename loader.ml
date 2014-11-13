@@ -81,7 +81,7 @@ let parse_directive loader str =
       sscanf str "#use %S" (load_file loader)
     with
     | Scan_failure _ | End_of_file ->
-      eprintf "unknown directive: %s\n" str
+      eprintf "invalid directive: %s\n" str
   end
 
 let rec repl loader =
