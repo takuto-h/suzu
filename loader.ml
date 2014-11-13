@@ -1,6 +1,7 @@
 
 open SnPervasives
 open Printf
+open Scanf
 
 type t = {
   mutable env : VM.env;
@@ -11,28 +12,6 @@ let initial_buffer_size = 64
 let create () = {
   env = [VM.create_frame ()];
 }
-
-let rec read_multiple_lines buf =
-  eprintf "... ";
-  flush stderr;
-  let line = read_line () in
-  if line = "" then
-    Buffer.contents buf
-  else
-    begin
-      Buffer.add_string buf (sprintf "%s\n" line);
-      read_multiple_lines buf
-    end
-
-let read () =
-  let line = read_line () in
-  let len = String.length line in
-  if len <> 0 && (line.[len - 1] = ':' || line.[len - 1] = '{') then
-    let buf = Buffer.create initial_buffer_size in
-    Buffer.add_string buf (sprintf "%s\n" line);
-    read_multiple_lines buf
-  else
-    line
 
 let compile_and_run loader expr =
   let insns = Compiler.compile expr in
@@ -75,14 +54,48 @@ let load_file loader name =
     load_source (fun _ -> ()) loader source
   end name
 
+let rec read_multiple_lines buf =
+  eprintf "... ";
+  flush stderr;
+  let line = read_line () in
+  if line = "" then
+    Buffer.contents buf
+  else
+    begin
+      Buffer.add_string buf (sprintf "%s\n" line);
+      read_multiple_lines buf
+    end
+
+let read () =
+  let line = read_line () in
+  let len = String.length line in
+  if len <> 0 && (line.[len - 1] = ':' || line.[len - 1] = '{') then
+    let buf = Buffer.create initial_buffer_size in
+    Buffer.add_string buf (sprintf "%s\n" line);
+    read_multiple_lines buf
+  else
+    line
+
+let parse_directive loader str =
+  begin try
+      sscanf str "#use %S" (load_file loader)
+    with
+    | Scan_failure _ | End_of_file ->
+      eprintf "unknown directive: %s\n" str
+  end
+
 let rec repl loader =
   let rec loop () =
     begin try
         eprintf ">>> ";
         flush stderr;
         let str = read () in
-        let source = Source.of_string "<stdin>" str in
-        load_source (fun value -> eprintf "%s\n" (VM.show_value value)) loader source;
+        begin if String.length str <> 0 && str.[0] = '#' then
+            parse_directive loader str
+          else
+            let source = Source.of_string "<stdin>" str in
+            load_source (fun value -> eprintf "%s\n" (VM.show_value value)) loader source
+        end;
         loop ()
       with
       | End_of_file ->
