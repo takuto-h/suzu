@@ -12,7 +12,7 @@ begin:
     let b = reflect(List::find([2, 3, 1], ^(n){ n == 3 }))
     Some([a, b])
   end
-  p(result2) //=> Some(Cons(2, Cons(3, Nil())))
+  p(result2) //=> Some([2, 3])
 end
 
 begin:
@@ -29,5 +29,5 @@ begin:
       [c]
     end
   end
-  p(result) //=> Cons(6, Cons(12, Cons(12, Cons(18, Nil()))))
+  p(result) //=> [6, 12, 12, 18]
 end

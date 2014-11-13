@@ -9,7 +9,7 @@ type t =
   | Pop
   | Dup
   | Split
-  | GetLabeled of string * (t list) option
+  | SplitLabeled of string * (t list) option
   | RemoveTag of string
   | AssertEqual of Literal.t
   | Test of Pattern.t
@@ -60,10 +60,10 @@ let rec show insn =
       "Dup"
     | Split ->
       "Split"
-    | GetLabeled (label, None) ->
-      sprintf "(GetLabeled %s)" label
-    | GetLabeled (label, Some insns) ->
-      sprintf "(GetLabeled %s (%s))" label (SnString.concat_map " " show insns)
+    | SplitLabeled (label, None) ->
+      sprintf "(SplitLabeled %s)" label
+    | SplitLabeled (label, Some insns) ->
+      sprintf "(SplitLabeled %s (%s))" label (SnString.concat_map " " show insns)
     | RemoveTag tag ->
       sprintf "(RemoveTag %s)" tag
     | AssertEqual lit ->

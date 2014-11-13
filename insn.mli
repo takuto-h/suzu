@@ -7,7 +7,7 @@ type t =
   | Pop
   | Dup
   | Split
-  | GetLabeled of string * (t list) option
+  | SplitLabeled of string * (t list) option
   | RemoveTag of string
   | AssertEqual of Literal.t
   | Test of Pattern.t

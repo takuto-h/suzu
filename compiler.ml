@@ -284,6 +284,16 @@ and compile_multiple_bind {Expr.normal_params;Expr.rest_param;Expr.labeled_param
     Stack.push Insn.Split insns;
     compile_bind pat insns
   end normal_params;
+  List.iter begin fun (label, (pat, default)) ->
+    begin match default with
+      | None ->
+        Stack.push (Insn.SplitLabeled (label, None)) insns
+      | Some expr ->
+        let default = compile_with (compile_expr expr) in
+        Stack.push (Insn.SplitLabeled (label, Some default)) insns
+    end;
+    compile_bind pat insns
+  end labeled_params;
   begin match rest_param with
     | None ->
       ()
@@ -291,16 +301,6 @@ and compile_multiple_bind {Expr.normal_params;Expr.rest_param;Expr.labeled_param
       Stack.push Insn.Dup insns;
       compile_bind rest_param insns
   end;
-  List.iter begin fun (label, (pat, default)) ->
-    begin match default with
-      | None ->
-        Stack.push (Insn.GetLabeled (label, None)) insns
-      | Some expr ->
-        let default = compile_with (compile_expr expr) in
-        Stack.push (Insn.GetLabeled (label, Some default)) insns
-    end;
-    compile_bind pat insns
-  end labeled_params;
   Stack.push Insn.Pop insns;
 
 and compile_args {Expr.normal_args;Expr.rest_arg;Expr.labeled_args} insns =

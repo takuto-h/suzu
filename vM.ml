@@ -143,6 +143,18 @@ let rec show_value value =
       "<module>"
     | Args args ->
       show_args args
+    | Variant ("List::C", "Nil", {normal_args=[];labeled_args=[]}) ->
+      "[]"
+    | Variant ("List::C", "Cons", {
+        normal_args=[x; Variant ("List::C", _, _) as xs];
+        labeled_args=[];
+      }) ->
+      sprintf "[%s]" (show_list (show_value x) xs)
+    | Variant ("List::C", "Cons", {
+        normal_args=[x; xs];
+        labeled_args=[];
+      }) ->
+      sprintf "[%s, *%s]" (show_value x) (show_value xs)
     | Variant (_, tag, args) ->
       sprintf "%s%s" tag (show_args args)
     | Record (_, fields) ->
@@ -166,6 +178,24 @@ and show_args {normal_args;labeled_args} =
 
 and show_labeled_arg (label, value) =
   sprintf ":%s %s" label (show_value value)
+
+and show_list acc xs =
+  begin match xs with
+    | Variant ("List::C", "Nil", {normal_args=[];labeled_args=[]}) ->
+      acc
+    | Variant ("List::C", "Cons", {
+        normal_args=[x; Variant ("List::C", _, _) as xs];
+        labeled_args=[];
+      }) ->
+      show_list (sprintf "%s, %s" acc (show_value x)) xs
+    | Variant ("List::C", "Cons", {
+        normal_args=[x; xs];
+        labeled_args=[];
+      }) ->
+      sprintf "%s, %s, *%s" acc (show_value x) (show_value xs)
+    | _ ->
+      assert false
+  end
 
 and show_fields table =
   let rev_strs = Hashtbl.fold begin fun key value acc ->
@@ -672,10 +702,14 @@ let execute vm insn =
       let args = Args {args with normal_args = List.tl args.normal_args} in
       push_value vm args;
       push_value vm arg
-    | Insn.GetLabeled (label, default) ->
+    | Insn.SplitLabeled (label, default) ->
       let args = args_of_value (peek_value vm) in
       begin try
-          push_value vm (get_labeled_arg args label)
+          let arg = List.assoc label args.labeled_args in
+          let args = Args {args with labeled_args = List.remove_assoc label args.labeled_args} in
+          ignore (pop_value vm);
+          push_value vm args;
+          push_value vm arg;
         with
         | Not_found ->
           begin match default with
