@@ -10,7 +10,7 @@ $ ./suzu
 ```
 
 ## Documentation
-https://github.com/takuto-h/suzu/wiki
+In preparation
 
 ## Contact
 - Twitter: [@takuto_h](https://twitter.com/takuto_h)
