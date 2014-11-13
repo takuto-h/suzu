@@ -1,0 +1,10 @@
+
+def Int::C#times(self, proc):
+  for(0)to(self - 1)do^(i):
+    proc(i)
+  end
+end
+
+10.times^(i):
+  p(i)
+end
