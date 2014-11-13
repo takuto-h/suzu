@@ -1,0 +1,15 @@
+
+def Ref::C#zero?(self):
+  self.value == 0
+end
+
+def Ref::C#decr!(self):
+  self.value = self.value - 1
+  self.value
+end
+
+let counter = ref(5)
+while: !counter.zero?
+do:
+  p(counter.decr!)
+end

@@ -1,0 +1,46 @@
+
+def my_if1(cond, then_thunk, :else else_thunk=^{}):
+  if(cond):
+    then_thunk()
+  else:
+    else_thunk()
+  end
+end
+
+my_if1(true):
+  write_line("ok!")
+else:
+  write_line("NG")
+end
+
+my_if1(true):
+  write_line("ok!")
+end
+
+def my_if2(cond, :then then_thunk=^{}, :else else_thunk=^{}):
+  if(cond):
+    then_thunk()
+  else:
+    else_thunk()
+  end
+end
+
+my_if2(false):
+then:
+  write_line("NG")
+else:
+  write_line("ok!")
+end
+
+my_if2(false):
+else:
+  write_line("ok!")
+end
+
+my_if2(false):
+then:
+  write_line("NG")
+end
+
+my_if2(false):
+end
