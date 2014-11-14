@@ -8,7 +8,7 @@ end
 
 let lst = [1, 2, 3]
 
-//write_line("{0}", lst) // error: method not found: List::C#to_string
+//write_line("lst = {0}", lst) // error: method not found: List::C#to_string
 
 begin:
   def List::C#to_string(self):
@@ -23,6 +23,8 @@ begin:
     end
   end
 
+  //write_line("lst = {0}", lst) // error: method not found: List::C#to_string
+
   open WriteLine(^(obj){obj.to_string})
 
   write_line("lst = {0}", lst) //=> lst = 1, 2 and 3
@@ -32,4 +34,4 @@ begin:
   write_line("{0}", []) //=> nothing
 end
 
-//write_line("{0}", lst) // error: method not found: List::C#to_string
+//write_line("lst = {0}", lst) // error: method not found: List::C#to_string
