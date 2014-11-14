@@ -672,10 +672,14 @@ let execute vm insn =
       let args = Args {args with normal_args = List.tl args.normal_args} in
       push_value vm args;
       push_value vm arg
-    | Insn.GetLabeled (label, default) ->
+    | Insn.SplitLabeled (label, default) ->
       let args = args_of_value (peek_value vm) in
       begin try
-          push_value vm (get_labeled_arg args label)
+          let arg = List.assoc label args.labeled_args in
+          let args = Args {args with labeled_args = List.remove_assoc label args.labeled_args} in
+          ignore (pop_value vm);
+          push_value vm args;
+          push_value vm arg;
         with
         | Not_found ->
           begin match default with
