@@ -136,28 +136,28 @@ module String:
       loop()
     end
 
-    def execute_format_insns(insns, args, buf):
+    def execute_format_insns(insns, args, buf, to_string):
       match(insns):
       case([]):
         Buffer::contents(buf)
       case([String(str), *insns]):
         Buffer::add_string(buf, str)
-        execute_format_insns(insns, args, buf)
+        execute_format_insns(insns, args, buf, to_string)
       case([Placeholder(n), *insns]):
         match(Args::get(args, n)):
         case(Some(arg)):
-          Buffer::add_string(buf, arg.to_string)
+          Buffer::add_string(buf, to_string(arg))
         case(None()):
           throw Illegal_format
         end
-        execute_format_insns(insns, args, buf)
+        execute_format_insns(insns, args, buf, to_string)
       end
     end
 
-    def f(str, *args):
+    def f(str, *args, :to_string to_string=^(obj){obj.to_string}):
       let insns = parse_format_insns(Stream::from_string(str), [])
       let buf = Buffer::create(initial_formatted_buffer_size)
-      execute_format_insns(insns, args, buf)
+      execute_format_insns(insns, args, buf, to_string)
     end
 
     export f
@@ -493,8 +493,8 @@ module Pervasives:
     end
   end
 
-  def write_line(*args):
-    Builtin::write_line(String::format(*args))
+  def write_line(*args, :to_string to_string=^(obj){obj.to_string}):
+    Builtin::write_line(String::format(*args, :to_string to_string))
   end
   
   let read_line = Builtin::read_line

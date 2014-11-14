@@ -1,0 +1,35 @@
+
+trait WriteLine(to_string):
+  def write_line(*args):
+    Pervasives::write_line(*args, :to_string to_string)
+  end
+  export write_line
+end
+
+let lst = [1, 2, 3]
+
+//write_line("{0}", lst) // error: method not found: List::C#to_string
+
+begin:
+  def List::C#to_string(self):
+    if(self == []):
+      "nothing"
+    else:
+      let [last, *rest] = List::rev(self)
+      let str = String::concat_map(List::rev(rest), ", ")^(elem):
+        elem.to_string
+      end
+      String::format("{0} and {1}", str, last.to_string)
+    end
+  end
+
+  open WriteLine(^(obj){obj.to_string})
+
+  write_line("lst = {0}", lst) //=> lst = 1, 2 and 3
+  let [x, *xs] = lst
+  write_line("x = {0}", x) //=> x = 1
+  write_line("xs = {0}", xs) //=> xs = 2 and 3
+  write_line("{0}", []) //=> nothing
+end
+
+//write_line("{0}", lst) // error: method not found: List::C#to_string
