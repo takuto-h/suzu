@@ -33,6 +33,12 @@ OCamlProgram($(SN2ML), $(SN2ML_FILES))
 %.mli: %.sn $(SN2ML)
     ./$(SN2ML) $(absname $<)
 
+.SCANNER: %.ml: %.sn
+    println($"$@: $<")
+
+.SCANNER: %.mli: %.sn
+    println($"$@: $<")
+
 .PHONY: run
 run: $(PROGRAM)
     ./$(PROGRAM)
