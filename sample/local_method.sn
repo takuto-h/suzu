@@ -1,9 +1,22 @@
 
-p(3 / 2) //=> 1
+assert(3 / 2 == 1)
 begin:
   def Int::C#(/)(self, other):
     Float::from_int(self) / Float::from_int(other)
   end
-  p(3 / 2) //=> 1.500000
+  assert(3 / 2 == 1.5)
 end
-p(3 / 2) //=> 1
+assert(3 / 2 == 1)
+
+module DivToFloat:
+  def Int::C#(/)(self, other):
+    Float::from_int(self) / Float::from_int(other)
+  end
+  export Int::C#(/)
+end
+assert(3 / 2 == 1)
+begin:
+  open DivToFloat
+  assert(3 / 2 == 1.5)
+end
+assert(3 / 2 == 1)
