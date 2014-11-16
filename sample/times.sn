@@ -11,4 +11,4 @@ assert(x.value == 0)
   p(i)
   x.value = x.value + 1
 end
-assert(x.value == 9)
+assert(x.value == 10)

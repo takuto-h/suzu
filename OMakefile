@@ -40,7 +40,7 @@ run: $(PROGRAM)
 .PHONY: test
 test: $(PROGRAM) $(TEST_FILES)
     foreach(file => ..., $(TEST_FILES))
-        ./$(PROGRAM) $(file)
+        ./$(PROGRAM) $(file) > /dev/null
 
 .PHONY: watch
 watch: $(PROGRAM) watch.sn
