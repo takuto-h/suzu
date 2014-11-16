@@ -6,11 +6,11 @@
   * Shadowing
   * Exporting/importing from modules
   * Binding as a formal parameter
-* Traits as a parametrized modules
+* Traits as parametrized modules
 * User-defined operators
 * Delimited continuations
 * Passing multiple function literals as labeled arguments
-* Variants, records, pattern matching
+* Variants, records and pattern matching
 
 ## Documentation
 https://github.com/takuto-h/suzu/wiki
