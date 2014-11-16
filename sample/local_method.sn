@@ -1,0 +1,9 @@
+
+p(3 / 2) //=> 1
+begin:
+  def Int::C#(/)(self, other):
+    Float::from_int(self) / Float::from_int(other)
+  end
+  p(3 / 2) //=> 1.500000
+end
+p(3 / 2) //=> 1
