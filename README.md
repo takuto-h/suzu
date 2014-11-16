@@ -1,13 +1,16 @@
 # Suzu
 
-## Hello, Suzu!
-```
-$ git clone https://github.com/takuto-h/suzu.git
-$ cd suzu
-$ omake
-$ ./suzu sample/hello.sn
-Hello, Suzu!
-```
+## Features
+* Flexible method definition
+  * Local definition like a variable
+  * Shadowing
+  * Exporting/importing from modules
+  * Binding as a formal parameter
+* Traits as a parametrized modules
+* User-defined operators
+* Delimited continuations
+* Passing multiple function literals as labeled arguments
+* Variants, records, pattern matching
 
 ## Documentation
 https://github.com/takuto-h/suzu/wiki
