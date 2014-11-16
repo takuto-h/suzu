@@ -1,0 +1,75 @@
+
+def my_if1(cond, then_thunk, :else else_thunk=^{}):
+  if(cond):
+    then_thunk()
+  else:
+    else_thunk()
+  end
+end
+
+my_if1(true):
+  assert(true)
+else:
+  assert(false)
+end
+
+my_if1(false):
+  assert(false)
+else:
+  assert(true)
+end
+
+my_if1(true):
+  assert(true)
+end
+
+my_if1(false):
+  assert(false)
+end
+
+def my_if2(cond, :then then_thunk, :else else_thunk=^{}):
+  if(cond):
+    then_thunk()
+  else:
+    else_thunk()
+  end
+end
+
+my_if2(true):
+then:
+  assert(true)
+else:
+  assert(false)
+end
+
+my_if2(true):
+then:
+  assert(true)
+end
+
+def my_if3(cond, :then then_thunk=^{}, :else else_thunk=^{}):
+  if(cond):
+    then_thunk()
+  else:
+    else_thunk()
+  end
+end
+
+my_if3(true):
+then:
+  assert(true)
+else:
+  assert(false)
+end
+
+my_if3(true):
+then:
+  assert(true)
+end
+
+my_if3(true):
+else:
+  assert(false)
+end
+
+my_if3(true)

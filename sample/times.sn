@@ -5,6 +5,10 @@ def Int::C#times(self, proc):
   end
 end
 
+let x = ref(0)
+assert(x.value == 0)
 10.times^(i):
   p(i)
+  x.value = x.value + 1
 end
+assert(x.value == 9)

@@ -7,6 +7,7 @@ trait WriteLine(to_string):
 end
 
 let lst = [1, 2, 3]
+let [x, *xs] = lst
 
 //write_line("lst = {0}", lst) // error: method not found: List::C#to_string
 
@@ -17,8 +18,12 @@ begin:
 
   open WriteLine(^(obj){obj.to_string})
 
+  assert(lst.to_string == "[1, 2, 3]")
+  assert(x.to_string == "1")
+  assert(xs.to_string == "[2, 3]")
+  assert([].to_string == "[]")
+
   write_line("lst = {0}", lst) //=> lst = [1, 2, 3]
-  let [x, *xs] = lst
   write_line("x = {0}", x) //=> x = 1
   write_line("xs = {0}", xs) //=> xs = [2, 3]
   write_line("{0}", []) //=> []
@@ -43,8 +48,12 @@ begin:
 
   open WriteLine(^(obj){obj.to_string})
 
+  assert(lst.to_string == "1, 2 and 3")
+  assert(x.to_string == "1")
+  assert(xs.to_string == "2 and 3")
+  assert([].to_string == "nothing")
+  
   write_line("lst = {0}", lst) //=> lst = 1, 2 and 3
-  let [x, *xs] = lst
   write_line("x = {0}", x) //=> x = 1
   write_line("xs = {0}", xs) //=> xs = 2 and 3
   write_line("{0}", []) //=> nothing

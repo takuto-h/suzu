@@ -13,6 +13,10 @@ module PEG:
     expr(str, 0, Hash::create(16))
   end
 
+  module Open:
+    include DefaultEq(Result)
+  end
+
   trait New():
     let nonterms = Hash::create(16)
     
@@ -162,8 +166,10 @@ module PEG:
     export String::C#(<-), Expr#(&+), Expr#(|+)
   end
 
-  export Success, Failure, parse, New
+  export Open, New, parse, Success, Failure
 end
+
+open PEG::Open
 
 let s = begin:
   open PEG::New()
@@ -184,11 +190,11 @@ let s = begin:
   nt_ref("S")
 end
 
-p(PEG::parse(s, ""))          //=> Failure()
-p(PEG::parse(s, "abc"))       //=> Success(3, ())
-p(PEG::parse(s, "ab"))        //=> Failure()
-p(PEG::parse(s, "aaabbbccc")) //=> Success(9, ())
-p(PEG::parse(s, "aabbbccc"))  //=> Failure()
+assert(PEG::parse(s, "")          == PEG::Failure())
+assert(PEG::parse(s, "abc")       == PEG::Success(3, ()))
+assert(PEG::parse(s, "ab")        == PEG::Failure())
+assert(PEG::parse(s, "aaabbbccc") == PEG::Success(9, ()))
+assert(PEG::parse(s, "aabbbccc")  == PEG::Failure())
 
 def digits_to_int(digits):
   List::fold_left(0, digits)^(n, digit):
@@ -226,11 +232,11 @@ let e1 = begin:
   nt_ref("E")
 end
 
-p(PEG::parse(e1, "123"))     //=> Success(3, (123, "123"))
-p(PEG::parse(e1, "1+2*3"))   //=> Success(5, (7, "(1 + (2 * 3))"))
-p(PEG::parse(e1, "(1+2)*3")) //=> Success(7, (9, "((1 + 2) * 3)"))
-p(PEG::parse(e1, "1+2+3"))   //=> Success(5, (6, "(1 + (2 + 3))"))
-p(PEG::parse(e1, "1*2*3"))   //=> Success(5, (6, "(1 * (2 * 3))"))
+assert(PEG::parse(e1, "123")     == PEG::Success(3, (123, "123")))
+assert(PEG::parse(e1, "1+2*3")   == PEG::Success(5, (7, "(1 + (2 * 3))")))
+assert(PEG::parse(e1, "(1+2)*3") == PEG::Success(7, (9, "((1 + 2) * 3)")))
+assert(PEG::parse(e1, "1+2+3")   == PEG::Success(5, (6, "(1 + (2 + 3))")))
+assert(PEG::parse(e1, "1*2*3")   == PEG::Success(5, (6, "(1 * (2 * 3))")))
 
 let e2 = begin:
   open PEG::New()
@@ -277,8 +283,8 @@ let e2 = begin:
   nt_ref("E")
 end
 
-p(PEG::parse(e2, "123"))     //=> Success(3, (123, "123"))
-p(PEG::parse(e2, "1+2*3"))   //=> Success(5, (7, "(1 + (2 * 3))")) 
-p(PEG::parse(e2, "(1+2)*3")) //=> Success(7, (9, "((1 + 2) * 3)"))
-p(PEG::parse(e2, "1+2+3"))   //=> Success(5, (6, "((1 + 2) + 3)"))
-p(PEG::parse(e2, "1*2*3"))   //=> Success(5, (6, "((1 * 2) * 3)"))
+assert(PEG::parse(e2, "123")     == PEG::Success(3, (123, "123")))
+assert(PEG::parse(e2, "1+2*3")   == PEG::Success(5, (7, "(1 + (2 * 3))")))
+assert(PEG::parse(e2, "(1+2)*3") == PEG::Success(7, (9, "((1 + 2) * 3)")))
+assert(PEG::parse(e2, "1+2+3")   == PEG::Success(5, (6, "((1 + 2) + 3)")))
+assert(PEG::parse(e2, "1*2*3")   == PEG::Success(5, (6, "((1 * 2) * 3)")))

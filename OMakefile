@@ -6,6 +6,11 @@ SUZU_FILES[] =\
   snPervasives snChar snString pos source token lexer literal selector expr parser\
   pattern insn compiler vM loader builtin prelude main
 
+TEST_FILES[] =\
+  sample/arguments.sn sample/bank_account.sn sample/coroutine.sn sample/counter.sn\
+  sample/custom_output.sn sample/factorial.sn sample/hello.sn sample/labeled_blocks.sn\
+  sample/monads.sn sample/parser_combinator.sn sample/students.sn sample/times.sn
+
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)
 
@@ -33,8 +38,9 @@ run: $(PROGRAM)
     ./$(PROGRAM)
 
 .PHONY: test
-test: $(PROGRAM)
-    ./$(PROGRAM) test.sn
+test: $(PROGRAM) $(TEST_FILES)
+    foreach(file => ..., $(TEST_FILES))
+        ./$(PROGRAM) $(file)
 
 .PHONY: watch
 watch: $(PROGRAM) watch.sn

@@ -9,7 +9,10 @@ def Ref::C#decr!(self):
 end
 
 let counter = ref(5)
+assert(counter.value == 5)
 while: !counter.zero?
 do:
-  p(counter.decr!)
+  p(counter.value)
+  ignore(counter.decr!)
 end
+assert(counter.value == 0)

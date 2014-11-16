@@ -7,4 +7,6 @@ def fac(n):
   end
 end
 
-write_line("fac(10) = {0}", fac(10)) //=> fac(10) = 3628800
+let x = fac(10)
+assert(x == 3628800)
+write_line("fac(10) = {0}", x) //=> fac(10) = 3628800

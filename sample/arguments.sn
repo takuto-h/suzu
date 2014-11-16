@@ -1,0 +1,36 @@
+
+let x = (1, 2, :label1 3, :label2 4)
+
+let (a1, a2, :label1 a3, :label2 a4) = x
+assert(a1 == 1)
+assert(a2 == 2)
+assert(a3 == 3)
+assert(a4 == 4)
+
+let (b1, b2, :label2 b3) = x
+assert(b1 == 1)
+assert(b2 == 2)
+assert(b3 == 4)
+
+let (c1, *c2, :label1 c3) = x
+assert(c1 == 1)
+assert(c2 == (2, :label2 4))
+assert(c3 == 3)
+
+let (d1, d2, :label1 d3=5, :label3 d4=6) = x
+assert(d1 == 1)
+assert(d2 == 2)
+assert(d3 == 3)
+assert(d4 == 6)
+
+let y = (0, *x, :label3 5)
+assert(y == (0, 1, 2, :label1 3, :label2 4, :label3 5))
+
+def f(0, *z, :label3 5):
+  assert(z == x)
+end
+f(*y)
+
+let w1 = (:first 10, :second 20, :third 30)
+let w2 = (*w1, :third 40)
+assert(w2 == (:first 10, :second 20, :third 40))

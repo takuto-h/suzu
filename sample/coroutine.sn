@@ -38,9 +38,9 @@ let coro = Coro::create:
   loop(1, 1)
 end
 
-p(Coro::resume(coro)) //=> 1
-p(Coro::resume(coro)) //=> 1
-p(Coro::resume(coro)) //=> 2
-p(Coro::resume(coro)) //=> 3
-p(Coro::resume(coro)) //=> 5
-p(Coro::resume(coro)) //=> 8
+assert(Coro::resume(coro) == 1)
+assert(Coro::resume(coro) == 1)
+assert(Coro::resume(coro) == 2)
+assert(Coro::resume(coro) == 3)
+assert(Coro::resume(coro) == 5)
+assert(Coro::resume(coro) == 8)

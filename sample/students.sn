@@ -1,0 +1,66 @@
+
+class UgradStudent = make_ugrad_student:
+  name
+  college
+  mutable grade
+end
+
+let taro = make_ugrad_student(
+  "Taro Tsukuba",
+  "College of Information Science",
+  3,
+  )
+assert(taro.name == "Taro Tsukuba")
+assert(taro.college == "College of Information Science")
+assert(taro.grade == 3)
+
+def UgradStudent#promote!(self):
+  if(self.grade < 4):
+    self.grade = self.grade + 1
+  end
+  self.grade
+end
+
+assert(taro.grade == 3)
+taro.promote!
+assert(taro.grade == 4)
+taro.promote!
+assert(taro.grade == 4)
+
+class GradStudent = make_grad_student:
+  name
+  school
+  mutable grade
+end
+
+let hanako = make_grad_student(
+  "Hanako Ibaraki",
+  "Graduate School of Systems and Information Engineering",
+  1,
+  )
+assert(hanako.name == "Hanako Ibaraki")
+assert(hanako.school == "Graduate School of Systems and Information Engineering")
+assert(hanako.grade == 1)
+
+trait Student(C, C#name, C#department):
+  def C#self_introduction(self):
+    String::format(
+      "My name is {0}. I'm a member of {1}.",
+      self.name,
+      self.department,
+      )
+  end
+  export C#self_introduction
+end
+
+open Student(UgradStudent, UgradStudent#name, UgradStudent#college)
+open Student(GradStudent, GradStudent#name, GradStudent#school)
+
+assert(
+  taro.self_introduction ==
+  "My name is Taro Tsukuba. I'm a member of College of Information Science."
+  )
+assert(
+  hanako.self_introduction ==
+  "My name is Hanako Ibaraki. I'm a member of Graduate School of Systems and Information Engineering."
+  )
