@@ -1,0 +1,24 @@
+module PrettyRegex:
+  def String::C#(|)(lhs, rhs):
+    String::format("({0}|{1})", lhs, rhs)
+  end
+  def String::C#(+)(lhs, rhs):
+    String::format("{0}{1}", lhs, rhs)
+  end
+  def Char::C#(-)(lhs, rhs):
+    String::format("[{0}-{1}]", lhs, rhs)
+  end
+  def String::C#one_or_more(exp):
+    String::format("{0}*", exp)
+  end
+  export String::C#(|)
+  export String::C#(+)
+  export String::C#one_or_more
+  export Char::C#(-)
+end
+
+let regex = begin:
+  open PrettyRegex
+  ("foo"|"bar")+('0'-'9').one_or_more
+end
+assert(regex == "(foo|bar)[0-9]*")

@@ -9,8 +9,8 @@ SUZU_FILES[] =\
 TEST_FILES[] =\
   sample/arguments.sn sample/bank_account.sn sample/coroutine.sn sample/counter.sn\
   sample/custom_output.sn sample/factorial.sn sample/hello.sn sample/labeled_blocks.sn\
-  sample/local_method.sn sample/monads.sn sample/parser_combinator.sn sample/students.sn\
-  sample/times.sn
+  sample/local_method.sn sample/monads.sn sample/parser_combinator.sn sample/pretty_regex.sn\
+  sample/students.sn sample/times.sn
 
 PROGRAM = suzu
 PROGRAM_FILES[] = $(SUZU_FILES)
