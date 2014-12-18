@@ -6,7 +6,12 @@ end
 
 module Int:
   class C
-  export C
+
+  def quo(i1, i2):
+    Float::from_int(i1) / Float::from_int(i2)
+  end
+
+  export C, quo
 end
 
 module Float:

@@ -1,22 +1,18 @@
 
 assert(3 / 2 == 1)
 begin:
-  def Int::C#(/)(self, other):
-    Float::from_int(self) / Float::from_int(other)
-  end
+  let Int::C#(/) = Int::quo
   assert(3 / 2 == 1.5)
 end
 assert(3 / 2 == 1)
 
-module DivToFloat:
-  def Int::C#(/)(self, other):
-    Float::from_int(self) / Float::from_int(other)
-  end
+module Quo:
+  let Int::C#(/) = Int::quo
   export Int::C#(/)
 end
 assert(3 / 2 == 1)
 begin:
-  open DivToFloat
+  open Quo
   assert(3 / 2 == 1.5)
 end
 assert(3 / 2 == 1)
