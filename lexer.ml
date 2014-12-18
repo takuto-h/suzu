@@ -262,7 +262,7 @@ let lex_visible_token lexer pos c =
           Buffer.add_char buf '|';
           Token.OrOp (lex_op lexer buf)
         | Some _ | None ->
-          Token.Reserved "|"
+          Token.OrOp "|"
       end
     | '&' ->
       begin match Source.peek lexer.source with
@@ -274,7 +274,7 @@ let lex_visible_token lexer pos c =
           Buffer.add_char buf c;
           Token.AndOp (lex_op lexer buf)
         | Some _ | None ->
-          Token.Reserved "&"
+          Token.AndOp "&"
       end
     | '<' | '>' | '!' ->
       let buf = Buffer.create initial_token_buffer_size in
