@@ -31,7 +31,7 @@ let show {fname;lnum;cnum;bol;} =
 let show_source {fname;lnum;cnum;bol;source;} =
   let offset = cnum - bol in
   let str_anchor = String.make (offset + 1) ' ' in
-  Bytes.set str_anchor offset '^';
+  String.set str_anchor offset '^';
   begin match source with
     | File ->
       with_open_in begin fun chan_in ->

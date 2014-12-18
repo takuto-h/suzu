@@ -6,13 +6,13 @@ begin:
 end
 assert(3 / 2 == 1)
 
-module Quo:
+module Quotient:
   let Int::C#(/) = Int::quo
   export Int::C#(/)
 end
 assert(3 / 2 == 1)
 begin:
-  open Quo
+  open Quotient
   assert(3 / 2 == 1.5)
 end
 assert(3 / 2 == 1)
