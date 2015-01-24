@@ -1,0 +1,65 @@
+
+trait Singleton(C, create):
+  let inst_ref = ref(None())
+  
+  def instance():
+    match(inst_ref.value):
+    case(None):
+      let obj = create()
+      inst_ref.value = Some(obj)
+      obj
+    case(Some(obj)):
+      obj
+    end
+  end
+  
+  export instance
+end
+
+module A:
+  class C = make:
+    x
+    y
+  end
+
+  def create():
+    make(1, 2)
+  end
+
+  include Singleton(C, create)
+  export C
+end
+include DefaultEq(A::C)
+
+module B:
+  class C = make:
+    z
+  end
+
+  def create():
+    make(3)
+  end
+
+  include Singleton(C, create)
+  export C
+end
+include DefaultEq(B::C)
+
+let a1 = A::instance()
+let a2 = A::instance()
+assert(a1 == a2)
+assert(Class::of(a1) == A::C)
+assert(Class::of(a2) == A::C)
+assert(Class::of(a1) == Class::of(a2))
+
+let b1 = B::instance()
+let b2 = B::instance()
+assert(b1 == b2)
+assert(Class::of(b1) == B::C)
+assert(Class::of(b2) == B::C)
+assert(Class::of(b1) == Class::of(b2))
+
+assert(a1 != b1)
+assert(a1 != b2)
+assert(a2 != b1)
+assert(a2 != b2)
